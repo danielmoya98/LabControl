@@ -7,6 +7,7 @@
 @inject SignalRClientService SignalRService
 @inject IConfiguration Configuration
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @implements IAsyncDisposable
 
 <PageTitle>Tablero en Tiempo Real — Control de Laboratorios</PageTitle>
@@ -97,7 +98,7 @@
                                     }
                                 </MudCardContent>
                                 <MudCardActions Class="justify-end">
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.Block" OnClick="() => CierreForzado(pc.Hostname)">
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.Block" OnClick="() => ConfirmarCierreForzadoAsync(pc.Hostname)">
                                         Desloguear
                                     </MudButton>
                                 </MudCardActions>
@@ -174,10 +175,18 @@ else
         }
     }
 
-    private Task CierreForzado(string hostname)
+    private async Task ConfirmarCierreForzadoAsync(string hostname)
     {
-        Snackbar.Add($"Orden de cierre forzado enviada a la terminal {hostname}", Severity.Info);
-        return Task.CompletedTask;
+        bool? result = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Cierre Forzado",
+            $"¿Estás seguro de finalizar la sesión de uso y desloguear la terminal '{hostname}'?",
+            yesText: "Sí, Desloguear", cancelText: "Cancelar"
+        );
+
+        if (result == true)
+        {
+            Snackbar.Add($"Orden de cierre forzado enviada a {hostname}", Severity.Warning);
+        }
     }
 
     private Color GetChipColor(EstadoComputadora estado) => estado switch

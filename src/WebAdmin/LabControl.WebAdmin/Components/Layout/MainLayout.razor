@@ -7,8 +7,8 @@
 
 <MudThemeProvider Theme="_customTheme" IsDarkMode="true" />
 <MudPopoverProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
+<MudDialogProvider Position="DialogPosition.Center" CloseButton="true" FullWidth="false" />
+<MudSnackbarProvider Position="Position.BottomRight" />
 
 @if (IsLoginPage)
 {
@@ -65,7 +65,7 @@ else
             <NavMenu />
         </MudDrawer>
 
-        <!-- Main Content con Padding Superior pt-16 para evitar solapamiento -->
+        <!-- Main Content -->
         <MudMainContent Class="pt-16 px-6 pb-6">
             @Body
         </MudMainContent>

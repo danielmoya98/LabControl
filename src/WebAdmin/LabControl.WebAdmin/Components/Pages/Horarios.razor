@@ -14,16 +14,19 @@
         <MudText Typo="Typo.h5" Class="font-weight-bold">⏰ Gestión de Horarios y Recreos</MudText>
         <MudText Typo="Typo.body2" Color="Color.Secondary">Configura la matriz de clases, turnos y franjas de descanso por laboratorio</MudText>
     </div>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@(MostrarModal ? Icons.Material.Filled.Close : Icons.Material.Filled.Add)" OnClick="ToggleModal">
-        @(MostrarModal ? "Cancelar" : "Configurar Nuevo Bloque")
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+        Configurar Nuevo Bloque
     </MudButton>
 </div>
 
-@if (MostrarModal)
-{
-    <MudPaper Elevation="4" Class="pa-6 mb-6 rounded-lg" Style="border: 1px solid #6366f1;">
-        <MudText Typo="Typo.h6" Class="font-weight-bold mb-4" Color="Color.Primary">Registrar Bloque Horario / Recreo</MudText>
-
+<!-- Modal Centrado para Registrar Bloque Horario -->
+<MudDialog @bind-Visible="MostrarModal" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Primary">
+            <MudIcon Icon="@Icons.Material.Filled.AccessTime" Class="mr-2" /> Registrar Bloque Horario / Recreo
+        </MudText>
+    </TitleContent>
+    <DialogContent>
         @if (!string.IsNullOrEmpty(MensajeError))
         {
             <MudAlert Severity="Severity.Error" Class="mb-4">@MensajeError</MudAlert>
@@ -31,8 +34,8 @@
 
         <EditForm Model="this" OnValidSubmit="CrearBloqueHorarioAsync">
             <MudGrid>
-                <MudItem xs="12" sm="4">
-                    <MudSelect T="int" @bind-Value="NuevoAulaId" Label="Aula" Variant="Variant.Outlined" Required="true">
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int" @bind-Value="NuevoAulaId" Label="Aula" Variant="Variant.Outlined" Required="true" FullWidth="true">
                         <MudSelectItem T="int" Value="0">-- Seleccionar Aula --</MudSelectItem>
                         @foreach (var aula in ListaAulas)
                         {
@@ -41,8 +44,8 @@
                     </MudSelect>
                 </MudItem>
 
-                <MudItem xs="12" sm="4">
-                    <MudSelect T="DiaSemana" @bind-Value="NuevoDiaSemana" Label="Día de la Semana" Variant="Variant.Outlined" Required="true">
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="DiaSemana" @bind-Value="NuevoDiaSemana" Label="Día de la Semana" Variant="Variant.Outlined" Required="true" FullWidth="true">
                         <MudSelectItem T="DiaSemana" Value="@DiaSemana.Lunes">Lunes</MudSelectItem>
                         <MudSelectItem T="DiaSemana" Value="@DiaSemana.Martes">Martes</MudSelectItem>
                         <MudSelectItem T="DiaSemana" Value="@DiaSemana.Miercoles">Miércoles</MudSelectItem>
@@ -52,34 +55,34 @@
                     </MudSelect>
                 </MudItem>
 
-                <MudItem xs="12" sm="4">
-                    <MudSelect T="bool" @bind-Value="EsRecreo" Label="Tipo de Franja" Variant="Variant.Outlined">
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="bool" @bind-Value="EsRecreo" Label="Tipo de Franja" Variant="Variant.Outlined" FullWidth="true">
                         <MudSelectItem T="bool" Value="false">📚 Bloque de Clase</MudSelectItem>
                         <MudSelectItem T="bool" Value="true">☕ Franja de Recreo</MudSelectItem>
                     </MudSelect>
                 </MudItem>
 
-                <MudItem xs="12" sm="4">
-                    <MudTimePicker Label="Hora Inicio" @bind-Time="HoraInicioTs" Variant="Variant.Outlined" Required="true" />
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="NuevaDescripcion" Label="Descripción" Variant="Variant.Outlined" Placeholder="Ej: Clase Programación / Recreo Mañana" FullWidth="true" />
                 </MudItem>
 
-                <MudItem xs="12" sm="4">
-                    <MudTimePicker Label="Hora Fin" @bind-Time="HoraFinTs" Variant="Variant.Outlined" Required="true" />
+                <MudItem xs="12" sm="6">
+                    <MudTimePicker Label="Hora Inicio" @bind-Time="HoraInicioTs" Variant="Variant.Outlined" Required="true" FullWidth="true" />
                 </MudItem>
 
-                <MudItem xs="12" sm="4">
-                    <MudTextField @bind-Value="NuevaDescripcion" Label="Descripción" Variant="Variant.Outlined" Placeholder="Ej: Clase Programación / Recreo Mañana" />
+                <MudItem xs="12" sm="6">
+                    <MudTimePicker Label="Hora Fin" @bind-Time="HoraFinTs" Variant="Variant.Outlined" Required="true" FullWidth="true" />
                 </MudItem>
             </MudGrid>
-
-            <div class="d-flex justify-end mt-4">
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save">
-                    @(IsSaving ? "Guardando..." : "Guardar Bloque")
-                </MudButton>
-            </div>
         </EditForm>
-    </MudPaper>
-}
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDialog">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="CrearBloqueHorarioAsync">
+            @(IsSaving ? "Guardando..." : "Guardar Bloque")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 <!-- Selector de Aula y Matriz Horaria -->
 <MudTable Items="ListaHorarios" Loading="IsLoading" Hover="true" Striped="true" Elevation="3" Class="rounded-lg">
@@ -136,6 +139,14 @@
     private bool EsRecreo = false;
     private string? NuevaDescripcion;
 
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseButton = true,
+        MaxWidth = MaxWidth.Medium,
+        FullWidth = true,
+        Position = DialogPosition.Center
+    };
+
     protected override async Task OnInitializedAsync()
     {
         ListaAulas = await ApiClient.GetAulasAsync();
@@ -166,10 +177,15 @@
         await CargarHorariosAsync();
     }
 
-    private void ToggleModal()
+    private void OpenCreateDialog()
     {
-        MostrarModal = !MostrarModal;
         MensajeError = null;
+        MostrarModal = true;
+    }
+
+    private void CloseDialog()
+    {
+        MostrarModal = false;
     }
 
     private async Task CrearBloqueHorarioAsync()

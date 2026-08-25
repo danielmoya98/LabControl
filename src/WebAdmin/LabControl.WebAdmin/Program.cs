@@ -1,14 +1,22 @@
 using LabControl.WebAdmin.Components;
 using LabControl.WebAdmin.Services;
+using MudBlazor;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Registrar Servicios Blazor y MudBlazor
+// Registrar Servicios Blazor y MudBlazor con configuración de Snackbar Abajo-Derecha
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(config =>
+{
+    config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
+    config.SnackbarConfiguration.PreventDuplicates = false;
+    config.SnackbarConfiguration.NewestOnTop = true;
+    config.SnackbarConfiguration.ShowCloseIcon = true;
+    config.SnackbarConfiguration.VisibleStateDuration = 4000;
+});
 
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5256/";
 

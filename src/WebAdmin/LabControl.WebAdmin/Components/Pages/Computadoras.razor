@@ -13,16 +13,19 @@
         <MudText Typo="Typo.h5" Class="font-weight-bold">💻 Gestión de Computadoras y Terminales</MudText>
         <MudText Typo="Typo.body2" Color="Color.Secondary">Registra y asigna las terminales físicas a cada laboratorio</MudText>
     </div>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@(MostrarModal ? Icons.Material.Filled.Close : Icons.Material.Filled.Add)" OnClick="ToggleModal">
-        @(MostrarModal ? "Cancelar" : "Registrar Nueva PC")
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+        Registrar Nueva PC
     </MudButton>
 </div>
 
-@if (MostrarModal)
-{
-    <MudPaper Elevation="4" Class="pa-6 mb-6 rounded-lg" Style="border: 1px solid #6366f1;">
-        <MudText Typo="Typo.h6" Class="font-weight-bold mb-4" Color="Color.Primary">Registrar Nueva Terminal</MudText>
-
+<!-- Modal Centrado para Registrar Computadora -->
+<MudDialog @bind-Visible="MostrarModal" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Primary">
+            <MudIcon Icon="@Icons.Material.Filled.Computer" Class="mr-2" /> Registrar Nueva Terminal
+        </MudText>
+    </TitleContent>
+    <DialogContent>
         @if (!string.IsNullOrEmpty(MensajeError))
         {
             <MudAlert Severity="Severity.Error" Class="mb-4">@MensajeError</MudAlert>
@@ -30,8 +33,8 @@
 
         <EditForm Model="this" OnValidSubmit="CrearComputadoraAsync">
             <MudGrid>
-                <MudItem xs="12" sm="3">
-                    <MudSelect T="int" @bind-Value="NuevoAulaId" Label="Aula de Destino" Variant="Variant.Outlined" Required="true">
+                <MudItem xs="12">
+                    <MudSelect T="int" @bind-Value="NuevoAulaId" Label="Aula de Destino" Variant="Variant.Outlined" Required="true" FullWidth="true">
                         <MudSelectItem T="int" Value="0">-- Seleccionar Aula --</MudSelectItem>
                         @foreach (var aula in ListaAulas)
                         {
@@ -40,27 +43,27 @@
                     </MudSelect>
                 </MudItem>
 
-                <MudItem xs="12" sm="3">
-                    <MudTextField @bind-Value="NuevoHostname" Label="Hostname (Nombre de Equipo)" Variant="Variant.Outlined" Required="true" Placeholder="Ej: LAB01-PC01" />
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="NuevoHostname" Label="Hostname (Nombre de Equipo)" Variant="Variant.Outlined" Required="true" Placeholder="Ej: LAB01-PC01" FullWidth="true" />
                 </MudItem>
 
-                <MudItem xs="12" sm="3">
-                    <MudTextField @bind-Value="NuevaIp" Label="Dirección IP Local" Variant="Variant.Outlined" Required="true" Placeholder="Ej: 192.168.1.11" />
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="NuevaIp" Label="Dirección IP Local" Variant="Variant.Outlined" Required="true" Placeholder="Ej: 192.168.1.11" FullWidth="true" />
                 </MudItem>
 
-                <MudItem xs="12" sm="3">
-                    <MudTextField @bind-Value="NuevaMac" Label="Dirección MAC Física" Variant="Variant.Outlined" Required="true" Placeholder="Ej: 00:1A:2B:3C:01:01" />
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="NuevaMac" Label="Dirección MAC Física" Variant="Variant.Outlined" Required="true" Placeholder="Ej: 00:1A:2B:3C:01:01" FullWidth="true" />
                 </MudItem>
             </MudGrid>
-
-            <div class="d-flex justify-end mt-4">
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save">
-                    @(IsSaving ? "Guardando..." : "Guardar Terminal")
-                </MudButton>
-            </div>
         </EditForm>
-    </MudPaper>
-}
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDialog">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="CrearComputadoraAsync">
+            @(IsSaving ? "Guardando..." : "Guardar Terminal")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 <!-- Selector de Filtro de Aula y Tabla de PCs -->
 <MudTable Items="PCsFiltradas" Loading="IsLoading" Hover="true" Striped="true" Elevation="3" Class="rounded-lg">
@@ -118,6 +121,14 @@
     private string NuevaIp = "192.168.1.10";
     private string NuevaMac = "00:1A:2B:3C:01:01";
 
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseButton = true,
+        MaxWidth = MaxWidth.Medium,
+        FullWidth = true,
+        Position = DialogPosition.Center
+    };
+
     public record PcRowItem(string NombreAula, string Hostname, string IpActual, string MacAddress, Domain.Enums.EstadoComputadora EstadoActual);
 
     private IEnumerable<PcRowItem> PCsFiltradas
@@ -155,10 +166,15 @@
         AulaFiltroId = id;
     }
 
-    private void ToggleModal()
+    private void OpenCreateDialog()
     {
-        MostrarModal = !MostrarModal;
         MensajeError = null;
+        MostrarModal = true;
+    }
+
+    private void CloseDialog()
+    {
+        MostrarModal = false;
     }
 
     private async Task CrearComputadoraAsync()

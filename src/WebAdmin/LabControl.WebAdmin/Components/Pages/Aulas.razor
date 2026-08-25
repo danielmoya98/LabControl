@@ -12,16 +12,19 @@
         <MudText Typo="Typo.h5" Class="font-weight-bold">🏢 Gestión de Aulas y Laboratorios</MudText>
         <MudText Typo="Typo.body2" Color="Color.Secondary">Crea y administra las aulas del centro de cómputo</MudText>
     </div>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@(MostrarModal ? Icons.Material.Filled.Close : Icons.Material.Filled.Add)" OnClick="ToggleModal">
-        @(MostrarModal ? "Cancelar" : "Crear Nueva Aula")
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+        Crear Nueva Aula
     </MudButton>
 </div>
 
-@if (MostrarModal)
-{
-    <MudPaper Elevation="4" Class="pa-6 mb-6 rounded-lg" Style="border: 1px solid #6366f1;">
-        <MudText Typo="Typo.h6" Class="font-weight-bold mb-4" Color="Color.Primary">Registrar Nueva Aula</MudText>
-
+<!-- Modal Centrado para Crear Aula -->
+<MudDialog @bind-Visible="MostrarModal" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Primary">
+            <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Class="mr-2" /> Registrar Nueva Aula
+        </MudText>
+    </TitleContent>
+    <DialogContent>
         @if (!string.IsNullOrEmpty(MensajeError))
         {
             <MudAlert Severity="Severity.Error" Class="mb-4">@MensajeError</MudAlert>
@@ -29,25 +32,25 @@
 
         <EditForm Model="this" OnValidSubmit="CrearAulaAsync">
             <MudGrid>
-                <MudItem xs="12" sm="4">
-                    <MudTextField @bind-Value="NuevoNombre" Label="Nombre del Aula" Variant="Variant.Outlined" Required="true" Placeholder="Ej: Aula 1" />
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="NuevoNombre" Label="Nombre del Aula" Variant="Variant.Outlined" Required="true" Placeholder="Ej: Aula 302" FullWidth="true" />
                 </MudItem>
-                <MudItem xs="12" sm="4">
-                    <MudNumericField @bind-Value="NuevaCapacidad" Label="Capacidad (Nº de PCs)" Variant="Variant.Outlined" Required="true" Min="1" />
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="NuevaCapacidad" Label="Capacidad (Nº de PCs)" Variant="Variant.Outlined" Required="true" Min="1" FullWidth="true" />
                 </MudItem>
-                <MudItem xs="12" sm="4">
-                    <MudTextField @bind-Value="NuevoPabellon" Label="Pabellón / Ubicación" Variant="Variant.Outlined" Placeholder="Ej: Pabellón A" />
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="NuevoPabellon" Label="Pabellón / Ubicación" Variant="Variant.Outlined" Placeholder="Ej: Pabellón A" FullWidth="true" />
                 </MudItem>
             </MudGrid>
-
-            <div class="d-flex justify-end mt-4">
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save">
-                    @(IsSaving ? "Guardando..." : "Guardar Aula")
-                </MudButton>
-            </div>
         </EditForm>
-    </MudPaper>
-}
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDialog">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="CrearAulaAsync">
+            @(IsSaving ? "Guardando..." : "Guardar Aula")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 <!-- Tabla de Aulas Registradas -->
 <MudTable Items="ListaAulas" Loading="IsLoading" Hover="true" Striped="true" Elevation="3" Class="rounded-lg">
@@ -91,6 +94,14 @@
     private int NuevaCapacidad = 35;
     private string? NuevoPabellon = "Pabellón A";
 
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseButton = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        Position = DialogPosition.Center
+    };
+
     protected override async Task OnInitializedAsync()
     {
         await CargarAulasAsync();
@@ -103,10 +114,15 @@
         IsLoading = false;
     }
 
-    private void ToggleModal()
+    private void OpenCreateDialog()
     {
-        MostrarModal = !MostrarModal;
         MensajeError = null;
+        MostrarModal = true;
+    }
+
+    private void CloseDialog()
+    {
+        MostrarModal = false;
     }
 
     private async Task CrearAulaAsync()
