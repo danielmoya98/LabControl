@@ -46,7 +46,35 @@ LabControl.slnx
 
 ---
 
-## 🚀 Guía de Instalación y Ejecución
+## 🗄️ Guía de Creación e Inicialización de la Base de Datos
+
+Si la base de datos `LabControlDb` no existe en tu servidor PostgreSQL, tienes **2 opciones** para crearla:
+
+### ⚡ Opción A: Creación Automática mediante EF Core Migrations (Recomendado)
+
+1. **Establecer la contraseña del usuario `postgres` y crear la BD vacía:**
+   ```bash
+   sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'postgres';"
+   sudo -u postgres psql -c "CREATE DATABASE \"LabControlDb\";"
+   ```
+
+2. **Ejecutar la Migración de Entity Framework Core:**
+   ```bash
+   dotnet ef database update --project src/Backend/LabControl.Infrastructure --startup-project src/Backend/LabControl.Api
+   ```
+   *(Nota: Al iniciar el Backend API por primera vez con `dotnet run`, el inicializador interno `DbInitializer` creará automáticamente todas las tablas, los roles y el usuario administrador por defecto).*
+
+---
+
+### 📄 Opción B: Creación Manual mediante Scripts SQL
+
+Si prefieres ejecutar el DDL manualmente sobre tu cliente PostgreSQL (`psql` o PgAdmin):
+* [`database/schema_sqlserver.sql`](file:///home/daniel/.NET-LABS/database/schema_sqlserver.sql) - Script DDL completo de creación de tablas.
+* [`database/schema_sqlite.sql`](file:///home/daniel/.NET-LABS/database/schema_sqlite.sql) - Script para la base de datos local del cliente Kiosk.
+
+---
+
+## 🚀 Guía de Instalación y Ejecución de los Proyectos
 
 ### 📋 Requisitos Previos
 
@@ -55,35 +83,21 @@ LabControl.slnx
 
 ---
 
-### 1️⃣ Paso 1: Configurar la Base de Datos PostgreSQL
+### 1️⃣ Paso 1: Ejecutar el Servidor Central (Backend API)
 
-Asegúrate de tener PostgreSQL corriendo e inicia sesión para crear la base de datos `LabControlDb` y asignar la contraseña al usuario `postgres`:
-
-```bash
-# Configurar la contraseña del usuario postgres (en Linux/Mint)
-sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'postgres';"
-
-# Crear la base de datos
-sudo -u postgres psql -c "CREATE DATABASE \"LabControlDb\";"
-```
-
----
-
-### 2️⃣ Paso 2: Ejecutar el Servidor Central (Backend API)
-
-La API corre sobre la puerto **`http://localhost:5256`**. Al iniciarse, aplicará automáticamente las migraciones EF Core y sembrará el usuario administrador inicial.
+La API corre sobre el puerto **`http://localhost:5256`**.
 
 ```bash
 dotnet run --project src/Backend/LabControl.Api
 ```
 
-🔑 **Credenciales Administrativas por Defecto:**
+🔑 **Credenciales Administrativas Iniciales:**
 * **Email:** `admin@univalle.edu`
 * **Contraseña:** `AdminPass123!`
 
 ---
 
-### 3️⃣ Paso 3: Ejecutar el Panel Web Administrativo (Blazor MudBlazor)
+### 2️⃣ Paso 2: Ejecutar el Panel Web Administrativo (Blazor MudBlazor)
 
 El Panel Web corre sobre el puerto **`http://localhost:5077`**.
 
@@ -101,12 +115,12 @@ Navega en tu explorador a **`http://localhost:5077`**:
 
 ---
 
-### 4️⃣ Paso 4: Ejecutar / Desplegar el Agente Cliente Kiosk (WPF)
+### 3️⃣ Paso 3: Ejecutar / Desplegar el Agente Cliente Kiosk (WPF)
 
 Para probar o instalar el agente de bloqueo en las PCs de los laboratorios:
 
 ```bash
-# Ejecutar localmente o en entorno de desarrollo
+# Ejecutar localmente en desarrollo:
 dotnet run --project src/Client/LabControl.Client.Kiosk
 
 # O generar ejecutable autónomo listo para desplegar en Windows 10/11:
@@ -115,9 +129,7 @@ dotnet publish src/Client/LabControl.Client.Kiosk/LabControl.Client.Kiosk.csproj
 
 ---
 
-## 📄 Documentación Adicional
+## 📄 Documentación Técnica Adicional
 
 * [`docs/PRD.md`](file:///home/daniel/.NET-LABS/docs/PRD.md) - Product Requirement Document oficial v1.0.
 * [`docs/architecture.md`](file:///home/daniel/.NET-LABS/docs/architecture.md) - Especificación de Arquitectura de Software y flujo SignalR.
-* [`database/schema_sqlserver.sql`](file:///home/daniel/.NET-LABS/database/schema_sqlserver.sql) - DDL para migración alternativa en SQL Server.
-* [`database/schema_sqlite.sql`](file:///home/daniel/.NET-LABS/database/schema_sqlite.sql) - DDL de la base de datos local SQLite (`cache_offline.db`).
