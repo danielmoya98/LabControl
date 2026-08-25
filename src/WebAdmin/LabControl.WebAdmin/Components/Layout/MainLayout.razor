@@ -1,0 +1,115 @@
+@inherits LayoutComponentBase
+@using LabControl.WebAdmin.Services
+@inject UserSessionService SessionService
+@inject SignalRClientService SignalRService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<MudThemeProvider Theme="_customTheme" IsDarkMode="true" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@if (IsLoginPage)
+{
+    <main>
+        @Body
+    </main>
+}
+else
+{
+    <MudLayout>
+        <!-- AppBar Superior -->
+        <MudAppBar Elevation="1" Color="Color.Surface" Fixed="true">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(() => _drawerOpen = !_drawerOpen)" />
+            
+            <MudText Typo="Typo.h6" Class="font-weight-bold ml-3 hidden-xs">
+                Sistema de Control de Laboratorios
+            </MudText>
+
+            <MudSpacer />
+
+            <div class="d-flex align-center gap-3">
+                <!-- Status SignalR Badge -->
+                <MudChip T="string" Color="@(SignalRService.IsConnected ? Color.Success : Color.Error)" Variant="Variant.Filled" Size="Size.Small" Icon="@(SignalRService.IsConnected ? Icons.Material.Filled.Wifi : Icons.Material.Filled.WifiOff)">
+                    @(SignalRService.IsConnected ? "● En vivo" : "○ Desconectado")
+                </MudChip>
+
+                <!-- User Badge & Menu -->
+                <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">
+                    @(SessionService.CurrentUser?.Rol ?? "Admin")
+                </MudChip>
+
+                <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <ActivatorContent>
+                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium">
+                            @(SessionService.CurrentUser?.NombreCompleto?.FirstOrDefault() ?? 'A')
+                        </MudAvatar>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <div class="px-4 py-2">
+                            <MudText Typo="Typo.subtitle2">@(SessionService.CurrentUser?.NombreCompleto ?? "Administrador")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(SessionService.CurrentUser?.Email ?? "admin@univalle.edu")</MudText>
+                        </div>
+                        <MudDivider />
+                        <MudMenuItem Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error" OnClick="HandleLogout">
+                            Cerrar Sesión
+                        </MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
+            </div>
+        </MudAppBar>
+
+        <!-- Sidebar Drawer -->
+        <MudDrawer @bind-Open="_drawerOpen" Elevation="2" ClipMode="DrawerClipMode.Always" Color="Color.Surface">
+            <NavMenu />
+        </MudDrawer>
+
+        <!-- Main Content con Padding Superior pt-16 para evitar solapamiento -->
+        <MudMainContent Class="pt-16 px-6 pb-6">
+            @Body
+        </MudMainContent>
+    </MudLayout>
+}
+
+@code {
+    private bool _drawerOpen = true;
+    private bool IsLoginPage => Navigation.Uri.Contains("/login");
+
+    private readonly MudTheme _customTheme = new()
+    {
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#38bdf8",
+            Secondary = "#a855f7",
+            Background = "#090d16",
+            Surface = "#0f172a",
+            AppbarBackground = "#0f172a",
+            DrawerBackground = "#0f172a",
+            TextPrimary = "#f8fafc",
+            TextSecondary = "#94a3b8",
+            ActionDefault = "#6366f1"
+        }
+    };
+
+    protected override void OnInitialized()
+    {
+        SessionService.OnChange += StateHasChanged;
+
+        if (!SessionService.IsAuthenticated && !IsLoginPage)
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    private void HandleLogout()
+    {
+        SessionService.Logout();
+        Navigation.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        SessionService.OnChange -= StateHasChanged;
+    }
+}

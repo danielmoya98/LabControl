@@ -1,0 +1,19 @@
+## Ignore Visual Studio / .NET build artifacts
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+.idea/
+.vscode/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+## Operating System Files
+.DS_Store
+Thumbs.db
+
+## Publish Output
+publish/

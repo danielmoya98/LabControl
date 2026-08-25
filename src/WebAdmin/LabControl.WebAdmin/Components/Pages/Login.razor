@@ -1,0 +1,98 @@
+@page "/login"
+@using Microsoft.AspNetCore.Components.Web
+@using LabControl.WebAdmin.Services
+@inject LabApiClient ApiClient
+@inject UserSessionService SessionService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Iniciar Sesión — Panel Administrativo</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center justify-center min-vh-100" Style="min-height: 85vh;">
+    <MudPaper Elevation="8" Class="pa-8 rounded-xl mud-width-full" Style="background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08);">
+        <div class="text-center mb-6">
+            <MudIcon Icon="@Icons.Material.Filled.DesktopMac" Color="Color.Primary" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.h4" Class="font-weight-bold" Style="background: linear-gradient(135deg, #38bdf8 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Control de Laboratorios
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Acceso Administrativo Intranet Univalle</MudText>
+        </div>
+
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4" CloseIcon="@Icons.Material.Filled.Close">
+                @ErrorMessage
+            </MudAlert>
+        }
+
+        <EditForm Model="LoginModel" OnValidSubmit="HandleLoginAsync">
+            <MudTextField @bind-Value="LoginModel.Email" 
+                          Label="Correo Institucional" 
+                          Variant="Variant.Outlined" 
+                          InputType="InputType.Email" 
+                          Adornment="Adornment.Start" 
+                          AdornmentIcon="@Icons.Material.Filled.Email" 
+                          Class="mb-4" 
+                          Required="true" />
+
+            <MudTextField @bind-Value="LoginModel.Password" 
+                          Label="Contraseña" 
+                          Variant="Variant.Outlined" 
+                          InputType="InputType.Password" 
+                          Adornment="Adornment.Start" 
+                          AdornmentIcon="@Icons.Material.Filled.Lock" 
+                          Class="mb-6" 
+                          Required="true" />
+
+            <MudButton ButtonType="ButtonType.Submit" 
+                       Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       FullWidth="true" 
+                       Size="Size.Large" 
+                       Disabled="@IsLoading" 
+                       StartIcon="@Icons.Material.Filled.Login">
+                @(IsLoading ? "Autenticando..." : "Ingresar al Panel")
+            </MudButton>
+        </EditForm>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private LoginInputModel LoginModel { get; set; } = new();
+    private string? ErrorMessage;
+    private bool IsLoading;
+
+    private async Task HandleLoginAsync()
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+
+        var result = await ApiClient.LoginAdminAsync(LoginModel.Email, LoginModel.Password);
+
+        if (result != null && !string.IsNullOrEmpty(result.Token))
+        {
+            SessionService.Login(new UserSession
+            {
+                Token = result.Token,
+                Email = result.Email,
+                NombreCompleto = result.NombreCompleto,
+                Rol = result.Rol
+            });
+
+            Snackbar.Add($"¡Bienvenido {result.NombreCompleto}!", Severity.Success);
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            ErrorMessage = "Credenciales incorrectas o servidor no disponible.";
+        }
+
+        IsLoading = false;
+    }
+
+    public class LoginInputModel
+    {
+        public string Email { get; set; } = "admin@univalle.edu";
+        public string Password { get; set; } = "AdminPass123!";
+    }
+}

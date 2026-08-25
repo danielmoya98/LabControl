@@ -1,0 +1,44 @@
+<Window x:Class="LabControl.Client.Kiosk.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Terminal Bloqueada — Univalle LabControl" 
+        WindowState="Maximized"
+        WindowStyle="None"
+        Topmost="True"
+        Background="#090D16">
+    <Grid>
+        <!-- Fondo Decorativo -->
+        <Border Margin="0" Background="#090D16">
+            <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                <!-- Tarjeta de Login Glassmorphic -->
+                <Border Width="450" Padding="35" Background="#1E293B" CornerRadius="20" BorderBrush="#334155" BorderThickness="1">
+                    <StackPanel>
+                        <!-- Logo & Titulo -->
+                        <TextBlock Text="🔒 TERMINAL BLOQUEADA" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Control de Laboratorios" FontSize="26" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="TxtAulaInfo" Text="Aula: ... | PC: ..." FontSize="13" Foreground="#94A3B8" HorizontalAlignment="Center" Margin="0,4,0,25"/>
+
+                        <!-- Mensajes de estado -->
+                        <Border x:Name="AlertBorder" Visibility="Collapsed" Background="#331A1D" BorderBrush="#EF4444" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,15">
+                            <TextBlock x:Name="TxtAlert" Text="" Foreground="#FCA5A5" FontSize="12" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+                        </Border>
+
+                        <!-- Formulario de Inicio de Sesión -->
+                        <TextBlock Text="Correo Institucional Estudiante:" FontSize="13" Foreground="#CBD5E1" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBox x:Name="TxtEmail" FontSize="15" Padding="10,8" Background="#0F172A" Foreground="#FFFFFF" BorderBrush="#334155" Margin="0,0,0,20"/>
+
+                        <Button Content="🔓 Iniciar Sesión en Computadora" Height="45" Background="#6366F1" Foreground="#FFFFFF" FontSize="15" FontWeight="Bold" Click="OnIniciarSesionClick"/>
+
+                        <!-- Footer -->
+                        <Border Margin="0,25,0,0" Padding="0,15,0,0" BorderBrush="#334155" BorderThickness="0,1,0,0">
+                            <Grid>
+                                <TextBlock x:Name="TxtSignalRStatus" Text="● SignalR Conectado" FontSize="11" Foreground="#22C55E" HorizontalAlignment="Left"/>
+                                <TextBlock x:Name="TxtIpMac" Text="IP: ... | MAC: ..." FontSize="11" Foreground="#64748B" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

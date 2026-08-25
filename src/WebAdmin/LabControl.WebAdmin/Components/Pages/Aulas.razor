@@ -1,0 +1,140 @@
+@page "/aulas"
+@using Microsoft.AspNetCore.Components.Web
+@using LabControl.Application.Features.Aulas.Commands.CreateAula
+@using LabControl.WebAdmin.Services
+@inject LabApiClient ApiClient
+@inject ISnackbar Snackbar
+
+<PageTitle>Gestión de Aulas — Control de Laboratorios</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">🏢 Gestión de Aulas y Laboratorios</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Crea y administra las aulas del centro de cómputo</MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@(MostrarModal ? Icons.Material.Filled.Close : Icons.Material.Filled.Add)" OnClick="ToggleModal">
+        @(MostrarModal ? "Cancelar" : "Crear Nueva Aula")
+    </MudButton>
+</div>
+
+@if (MostrarModal)
+{
+    <MudPaper Elevation="4" Class="pa-6 mb-6 rounded-lg" Style="border: 1px solid #6366f1;">
+        <MudText Typo="Typo.h6" Class="font-weight-bold mb-4" Color="Color.Primary">Registrar Nueva Aula</MudText>
+
+        @if (!string.IsNullOrEmpty(MensajeError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@MensajeError</MudAlert>
+        }
+
+        <EditForm Model="this" OnValidSubmit="CrearAulaAsync">
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="NuevoNombre" Label="Nombre del Aula" Variant="Variant.Outlined" Required="true" Placeholder="Ej: Aula 1" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudNumericField @bind-Value="NuevaCapacidad" Label="Capacidad (Nº de PCs)" Variant="Variant.Outlined" Required="true" Min="1" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="NuevoPabellon" Label="Pabellón / Ubicación" Variant="Variant.Outlined" Placeholder="Ej: Pabellón A" />
+                </MudItem>
+            </MudGrid>
+
+            <div class="d-flex justify-end mt-4">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save">
+                    @(IsSaving ? "Guardando..." : "Guardar Aula")
+                </MudButton>
+            </div>
+        </EditForm>
+    </MudPaper>
+}
+
+<!-- Tabla de Aulas Registradas -->
+<MudTable Items="ListaAulas" Loading="IsLoading" Hover="true" Striped="true" Elevation="3" Class="rounded-lg">
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>NOMBRE AULA</MudTh>
+        <MudTh>CAPACIDAD</MudTh>
+        <MudTh>PABELLÓN</MudTh>
+        <MudTh>PCS ASIGNADAS</MudTh>
+        <MudTh>ESTADO</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID">#@context.Id</MudTd>
+        <MudTd DataLabel="Nombre">
+            <MudText Typo="Typo.body1" Class="font-weight-bold" Color="Color.Primary">@context.Nombre</MudText>
+        </MudTd>
+        <MudTd DataLabel="Capacidad">@context.Capacidad PCs</MudTd>
+        <MudTd DataLabel="Pabellón">@(context.Pabellon ?? "N/A")</MudTd>
+        <MudTd DataLabel="Computadoras">@context.TotalComputadoras PCs</MudTd>
+        <MudTd DataLabel="Estado">
+            <MudChip T="string" Color="@(context.Activo ? Color.Success : Color.Error)" Size="Size.Small">
+                @(context.Activo ? "Activa" : "Inactiva")
+            </MudChip>
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Typo="Typo.body1" Class="pa-4 text-center" Color="Color.Secondary">
+            ⚠️ No hay aulas creadas aún. Haz clic en "Crear Nueva Aula" para registrar la primera.
+        </MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    private List<AulaDto> ListaAulas = [];
+    private bool IsLoading = true;
+    private bool MostrarModal = false;
+    private bool IsSaving = false;
+    private string? MensajeError;
+
+    private string NuevoNombre = "";
+    private int NuevaCapacidad = 35;
+    private string? NuevoPabellon = "Pabellón A";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAulasAsync();
+    }
+
+    private async Task CargarAulasAsync()
+    {
+        IsLoading = true;
+        ListaAulas = await ApiClient.GetAulasAsync();
+        IsLoading = false;
+    }
+
+    private void ToggleModal()
+    {
+        MostrarModal = !MostrarModal;
+        MensajeError = null;
+    }
+
+    private async Task CrearAulaAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NuevoNombre) || NuevaCapacidad <= 0)
+        {
+            MensajeError = "Por favor ingrese un nombre y capacidad válida.";
+            return;
+        }
+
+        IsSaving = true;
+        MensajeError = null;
+
+        bool exito = await ApiClient.CreateAulaAsync(NuevoNombre, NuevaCapacidad, NuevoPabellon);
+
+        if (exito)
+        {
+            Snackbar.Add($"¡Aula '{NuevoNombre}' registrada exitosamente!", Severity.Success);
+            NuevoNombre = "";
+            NuevaCapacidad = 35;
+            MostrarModal = false;
+            await CargarAulasAsync();
+        }
+        else
+        {
+            MensajeError = "No se pudo crear el aula. Verifica que el servidor API esté disponible.";
+        }
+
+        IsSaving = false;
+    }
+}

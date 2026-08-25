@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Backend/">
+    <Project Path="src/Backend/LabControl.Api/LabControl.Api.csproj" />
+    <Project Path="src/Backend/LabControl.Application/LabControl.Application.csproj" />
+    <Project Path="src/Backend/LabControl.Domain/LabControl.Domain.csproj" />
+    <Project Path="src/Backend/LabControl.Infrastructure/LabControl.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/WebAdmin/">
+    <Project Path="src/WebAdmin/LabControl.WebAdmin/LabControl.WebAdmin.csproj" />
+  </Folder>
+  <Folder Name="/src/Client/">
+    <Project Path="src/Client/LabControl.Client.Kiosk/LabControl.Client.Kiosk.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LabControl.IntegrationTests/LabControl.IntegrationTests.csproj" />
+    <Project Path="tests/LabControl.UnitTests/LabControl.UnitTests.csproj" />
+  </Folder>
+</Solution>

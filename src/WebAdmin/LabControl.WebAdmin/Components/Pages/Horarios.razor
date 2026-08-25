@@ -1,0 +1,215 @@
+@page "/horarios"
+@using Microsoft.AspNetCore.Components.Web
+@using LabControl.Application.Features.Aulas.Commands.CreateAula
+@using LabControl.Application.Features.Horarios.Commands.CreateBloqueHorario
+@using LabControl.Domain.Enums
+@using LabControl.WebAdmin.Services
+@inject LabApiClient ApiClient
+@inject ISnackbar Snackbar
+
+<PageTitle>Horarios y Turnos — Control de Laboratorios</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">⏰ Gestión de Horarios y Recreos</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Configura la matriz de clases, turnos y franjas de descanso por laboratorio</MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@(MostrarModal ? Icons.Material.Filled.Close : Icons.Material.Filled.Add)" OnClick="ToggleModal">
+        @(MostrarModal ? "Cancelar" : "Configurar Nuevo Bloque")
+    </MudButton>
+</div>
+
+@if (MostrarModal)
+{
+    <MudPaper Elevation="4" Class="pa-6 mb-6 rounded-lg" Style="border: 1px solid #6366f1;">
+        <MudText Typo="Typo.h6" Class="font-weight-bold mb-4" Color="Color.Primary">Registrar Bloque Horario / Recreo</MudText>
+
+        @if (!string.IsNullOrEmpty(MensajeError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@MensajeError</MudAlert>
+        }
+
+        <EditForm Model="this" OnValidSubmit="CrearBloqueHorarioAsync">
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="int" @bind-Value="NuevoAulaId" Label="Aula" Variant="Variant.Outlined" Required="true">
+                        <MudSelectItem T="int" Value="0">-- Seleccionar Aula --</MudSelectItem>
+                        @foreach (var aula in ListaAulas)
+                        {
+                            <MudSelectItem T="int" Value="@aula.Id">@aula.Nombre</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="DiaSemana" @bind-Value="NuevoDiaSemana" Label="Día de la Semana" Variant="Variant.Outlined" Required="true">
+                        <MudSelectItem T="DiaSemana" Value="@DiaSemana.Lunes">Lunes</MudSelectItem>
+                        <MudSelectItem T="DiaSemana" Value="@DiaSemana.Martes">Martes</MudSelectItem>
+                        <MudSelectItem T="DiaSemana" Value="@DiaSemana.Miercoles">Miércoles</MudSelectItem>
+                        <MudSelectItem T="DiaSemana" Value="@DiaSemana.Jueves">Jueves</MudSelectItem>
+                        <MudSelectItem T="DiaSemana" Value="@DiaSemana.Viernes">Viernes</MudSelectItem>
+                        <MudSelectItem T="DiaSemana" Value="@DiaSemana.Sabado">Sábado</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="bool" @bind-Value="EsRecreo" Label="Tipo de Franja" Variant="Variant.Outlined">
+                        <MudSelectItem T="bool" Value="false">📚 Bloque de Clase</MudSelectItem>
+                        <MudSelectItem T="bool" Value="true">☕ Franja de Recreo</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <MudTimePicker Label="Hora Inicio" @bind-Time="HoraInicioTs" Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <MudTimePicker Label="Hora Fin" @bind-Time="HoraFinTs" Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="NuevaDescripcion" Label="Descripción" Variant="Variant.Outlined" Placeholder="Ej: Clase Programación / Recreo Mañana" />
+                </MudItem>
+            </MudGrid>
+
+            <div class="d-flex justify-end mt-4">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save">
+                    @(IsSaving ? "Guardando..." : "Guardar Bloque")
+                </MudButton>
+            </div>
+        </EditForm>
+    </MudPaper>
+}
+
+<!-- Selector de Aula y Matriz Horaria -->
+<MudTable Items="ListaHorarios" Loading="IsLoading" Hover="true" Striped="true" Elevation="3" Class="rounded-lg">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6" Class="font-weight-bold">Matriz Horaria Semanal</MudText>
+        <MudSpacer />
+        <MudSelect T="int" Value="AulaSeleccionadaId" ValueChanged="OnAulaSeleccionadaChanged" Label="Seleccionar Aula" Variant="Variant.Outlined" Style="width: 240px;">
+            @foreach (var aula in ListaAulas)
+            {
+                <MudSelectItem T="int" Value="@aula.Id">@aula.Nombre</MudSelectItem>
+            }
+        </MudSelect>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>DÍA</MudTh>
+        <MudTh>HORA INICIO</MudTh>
+        <MudTh>HORA FIN</MudTh>
+        <MudTh>TIPO DE FRANJA</MudTh>
+        <MudTh>DESCRIPCIÓN</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Día">
+            <MudText Typo="Typo.body1" Class="font-weight-bold" Color="Color.Primary">@context.DiaSemana.ToString()</MudText>
+        </MudTd>
+        <MudTd DataLabel="Hora Inicio">@context.HoraInicio.ToString(@"hh\:mm")</MudTd>
+        <MudTd DataLabel="Hora Fin">@context.HoraFin.ToString(@"hh\:mm")</MudTd>
+        <MudTd DataLabel="Tipo">
+            <MudChip T="string" Color="@(context.EsRecreo ? Color.Warning : Color.Success)" Size="Size.Small" Icon="@(context.EsRecreo ? Icons.Material.Filled.Coffee : Icons.Material.Filled.School)">
+                @(context.EsRecreo ? "☕ Recreo" : "📚 Clase")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Descripción">@(context.Descripcion ?? "-")</MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Typo="Typo.body1" Class="pa-4 text-center" Color="Color.Secondary">
+            ⚠️ No hay bloques horarios o recesos configurados para esta aula.
+        </MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    private List<AulaDto> ListaAulas = [];
+    private List<BloqueHorarioDto> ListaHorarios = [];
+    private int AulaSeleccionadaId = 0;
+    private bool IsLoading = true;
+    private bool MostrarModal = false;
+    private bool IsSaving = false;
+    private string? MensajeError;
+
+    private int NuevoAulaId = 0;
+    private DiaSemana NuevoDiaSemana = DiaSemana.Lunes;
+    private TimeSpan? HoraInicioTs = new TimeSpan(7, 30, 0);
+    private TimeSpan? HoraFinTs = new TimeSpan(9, 0, 0);
+    private bool EsRecreo = false;
+    private string? NuevaDescripcion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ListaAulas = await ApiClient.GetAulasAsync();
+        if (ListaAulas.Any())
+        {
+            AulaSeleccionadaId = ListaAulas.First().Id;
+            NuevoAulaId = AulaSeleccionadaId;
+            await CargarHorariosAsync();
+        }
+        else
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task CargarHorariosAsync()
+    {
+        if (AulaSeleccionadaId <= 0) return;
+        IsLoading = true;
+        ListaHorarios = await ApiClient.GetHorariosByAulaAsync(AulaSeleccionadaId);
+        IsLoading = false;
+    }
+
+    private async Task OnAulaSeleccionadaChanged(int id)
+    {
+        AulaSeleccionadaId = id;
+        NuevoAulaId = id;
+        await CargarHorariosAsync();
+    }
+
+    private void ToggleModal()
+    {
+        MostrarModal = !MostrarModal;
+        MensajeError = null;
+    }
+
+    private async Task CrearBloqueHorarioAsync()
+    {
+        if (NuevoAulaId <= 0)
+        {
+            MensajeError = "Por favor selecciona un aula válida.";
+            return;
+        }
+
+        if (!HoraInicioTs.HasValue || !HoraFinTs.HasValue || HoraFinTs.Value <= HoraInicioTs.Value)
+        {
+            MensajeError = "La hora de fin debe ser posterior a la hora de inicio.";
+            return;
+        }
+
+        IsSaving = true;
+        MensajeError = null;
+
+        bool exito = await ApiClient.CreateBloqueHorarioAsync(
+            NuevoAulaId,
+            NuevoDiaSemana,
+            HoraInicioTs.Value,
+            HoraFinTs.Value,
+            EsRecreo,
+            NuevaDescripcion
+        );
+
+        if (exito)
+        {
+            Snackbar.Add("¡Bloque horario guardado exitosamente!", Severity.Success);
+            NuevaDescripcion = "";
+            MostrarModal = false;
+            await CargarHorariosAsync();
+        }
+        else
+        {
+            MensajeError = "No se pudo registrar el bloque horario. Revisa los datos ingresados.";
+        }
+
+        IsSaving = false;
+    }
+}

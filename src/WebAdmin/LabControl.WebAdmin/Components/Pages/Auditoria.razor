@@ -1,0 +1,39 @@
+@page "/auditoria"
+
+<PageTitle>Auditoría y Reportes — Control de Laboratorios</PageTitle>
+
+<div class="dashboard-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1 style="font-size: 1.5rem; font-weight: 700;">📋 Módulo de Auditoría y Reportes</h1>
+        <button class="btn-action">📥 Exportar a PDF / Excel</button>
+    </div>
+
+    <div class="stat-card" style="margin-bottom: 2rem;">
+        <div style="font-weight: 600; margin-bottom: 1rem;">🔍 Filtros de Búsqueda</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div>
+                <label class="form-label">Rango de Fechas</label>
+                <input type="date" class="form-input" />
+            </div>
+            <div>
+                <label class="form-label">Aula</label>
+                <select class="form-input">
+                    <option value="">Todas las Aulas</option>
+                    <option value="1">Aula 1</option>
+                    <option value="2">Aula 2</option>
+                    <option value="3">Aula 3</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Estudiante (@@est.univalle.edu)</label>
+                <input type="text" class="form-input" placeholder="correo@est.univalle.edu" />
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+            📄 No se encontraron registros de auditoría para los filtros seleccionados.
+        </div>
+    </div>
+</div>

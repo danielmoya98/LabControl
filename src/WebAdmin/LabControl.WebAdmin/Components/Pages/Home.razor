@@ -1,0 +1,203 @@
+@page "/"
+@using Microsoft.AspNetCore.Components.Web
+@using LabControl.Application.Features.Computadoras.Queries.GetEstadoAulasMapa
+@using LabControl.Domain.Enums
+@using LabControl.WebAdmin.Services
+@inject LabApiClient ApiClient
+@inject SignalRClientService SignalRService
+@inject IConfiguration Configuration
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+
+<PageTitle>Tablero en Tiempo Real — Control de Laboratorios</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">📊 Mapa de Laboratorios en Tiempo Real</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Supervisión y control de terminales activas vía WebSockets</MudText>
+    </div>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CargarDatosAsync">
+        Refrescar
+    </MudButton>
+</div>
+
+<!-- Tarjetas de Estadísticas Globales (KPIs) -->
+<MudGrid Class="mb-6">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="3" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">TOTAL PCS</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold">@TotalPcs</MudText>
+            </div>
+            <MudIcon Icon="@Icons.Material.Filled.Computer" Color="Color.Info" Size="Size.Large" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="3" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Success">EN USO</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Success">@TotalEnUso</MudText>
+            </div>
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="3" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">DISPONIBLES</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Default">@TotalDisponibles</MudText>
+            </div>
+            <MudIcon Icon="@Icons.Material.Filled.DesktopAccessDisabled" Color="Color.Default" Size="Size.Large" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Elevation="3" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Error">INACTIVAS / OFFLINE</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Error">@TotalOffline</MudText>
+            </div>
+            <MudIcon Icon="@Icons.Material.Filled.PowerOff" Color="Color.Error" Size="Size.Large" />
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<!-- Pestañas de Aulas & Grilla de Computadoras -->
+@if (Aulas.Any())
+{
+    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Surface">
+        @foreach (var aula in Aulas)
+        {
+            <MudTabPanel Text="@($"{aula.Nombre} ({aula.Computadoras.Count} PCs)")" Icon="@Icons.Material.Filled.MeetingRoom" Class="pa-6">
+                <MudGrid>
+                    @foreach (var pc in aula.Computadoras)
+                    {
+                        <MudItem xs="12" sm="6" md="4" lg="3">
+                            <MudCard Elevation="4" Class="rounded-lg" Style="@GetEstiloBordeCard(pc.EstadoActual)">
+                                <MudCardHeader>
+                                    <CardHeaderContent>
+                                        <MudText Typo="Typo.h6" Class="font-weight-bold">@pc.Hostname</MudText>
+                                    </CardHeaderContent>
+                                    <CardHeaderActions>
+                                        <MudChip T="string" Color="@GetChipColor(pc.EstadoActual)" Size="Size.Small">
+                                            @pc.EstadoActual.ToString()
+                                        </MudChip>
+                                    </CardHeaderActions>
+                                </MudCardHeader>
+                                <MudCardContent>
+                                    <MudText Typo="Typo.body2"><strong>IP:</strong> @pc.IpActual</MudText>
+                                    <MudText Typo="Typo.body2"><strong>MAC:</strong> @pc.MacAddress</MudText>
+                                    @if (!string.IsNullOrEmpty(pc.EmailEstudianteActual))
+                                    {
+                                        <MudText Typo="Typo.body2" Color="Color.Success" Class="mt-2 font-weight-bold">
+                                            👤 @pc.EmailEstudianteActual
+                                        </MudText>
+                                    }
+                                </MudCardContent>
+                                <MudCardActions Class="justify-end">
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.Block" OnClick="() => CierreForzado(pc.Hostname)">
+                                        Desloguear
+                                    </MudButton>
+                                </MudCardActions>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudTabPanel>
+        }
+    </MudTabs>
+}
+else if (IsLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+    <MudText Typo="Typo.body1" Align="Align.Center">⏳ Cargando mapa de laboratorios desde la API central...</MudText>
+}
+else
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-4">
+        ⚠️ No se pudieron cargar los datos del servidor central. Asegúrate de que la API esté corriendo en http://localhost:5256.
+    </MudAlert>
+}
+
+@code {
+    private List<AulaEstadoDto> Aulas = [];
+    private bool IsLoading = true;
+    private bool IsSignalRConnected => SignalRService.IsConnected;
+
+    private int TotalPcs => Aulas.Sum(a => a.Computadoras.Count);
+    private int TotalEnUso => Aulas.Sum(a => a.Computadoras.Count(c => c.EstadoActual == EstadoComputadora.EnUso));
+    private int TotalDisponibles => Aulas.Sum(a => a.Computadoras.Count(c => c.EstadoActual == EstadoComputadora.Disponible));
+    private int TotalOffline => Aulas.Sum(a => a.Computadoras.Count(c => c.EstadoActual == EstadoComputadora.Offline));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatosAsync();
+
+        SignalRService.OnEstadoComputadoraCambiado += HandleEstadoComputadoraCambiado;
+
+        string baseUrl = Configuration["ApiBaseUrl"] ?? "http://localhost:5256/";
+        string hubUrl = baseUrl.TrimEnd('/') + "/hubs/laboratorio";
+        await SignalRService.StartAsync(hubUrl);
+    }
+
+    private async Task CargarDatosAsync()
+    {
+        IsLoading = true;
+        Aulas = await ApiClient.GetMapaAulasAsync();
+        IsLoading = false;
+        StateHasChanged();
+    }
+
+    private void HandleEstadoComputadoraCambiado(int computadoraId, string hostname, EstadoComputadora nuevoEstado, string? emailEstudiante)
+    {
+        foreach (var aula in Aulas)
+        {
+            var pc = aula.Computadoras.FirstOrDefault(c => c.ComputadoraId == computadoraId || c.Hostname == hostname);
+            if (pc != null)
+            {
+                var index = aula.Computadoras.IndexOf(pc);
+                aula.Computadoras[index] = new ComputadoraTarjetaDto(
+                    pc.ComputadoraId,
+                    pc.Hostname,
+                    pc.IpActual,
+                    pc.MacAddress,
+                    nuevoEstado,
+                    DateTime.UtcNow,
+                    nuevoEstado == EstadoComputadora.EnUso ? emailEstudiante : null,
+                    nuevoEstado == EstadoComputadora.EnUso ? DateTime.UtcNow : null
+                );
+                InvokeAsync(StateHasChanged);
+                break;
+            }
+        }
+    }
+
+    private Task CierreForzado(string hostname)
+    {
+        Snackbar.Add($"Orden de cierre forzado enviada a la terminal {hostname}", Severity.Info);
+        return Task.CompletedTask;
+    }
+
+    private Color GetChipColor(EstadoComputadora estado) => estado switch
+    {
+        EstadoComputadora.EnUso => Color.Success,
+        EstadoComputadora.Disponible => Color.Default,
+        EstadoComputadora.Offline => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetEstiloBordeCard(EstadoComputadora estado) => estado switch
+    {
+        EstadoComputadora.EnUso => "border-left: 4px solid #22c55e; background: #1e293b;",
+        EstadoComputadora.Disponible => "border-left: 4px solid #64748b; background: #1e293b;",
+        EstadoComputadora.Offline => "border-left: 4px solid #ef4444; background: #1e293b;",
+        _ => "border-left: 4px solid #64748b; background: #1e293b;"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        SignalRService.OnEstadoComputadoraCambiado -= HandleEstadoComputadoraCambiado;
+    }
+}

@@ -1,0 +1,52 @@
+@using LabControl.WebAdmin.Services
+@inject UserSessionService SessionService
+@inject NavigationManager Navigation
+
+<MudNavMenu Class="mud-width-full">
+    <div class="pa-4 d-flex align-center gap-3">
+        <MudIcon Icon="@Icons.Material.Filled.DesktopWindows" Color="Color.Primary" Size="Size.Large" />
+        <div>
+            <MudText Typo="Typo.h6" Class="font-weight-bold" Style="background: linear-gradient(135deg, #38bdf8 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                LabControl
+            </MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Univalle Intranet</MudText>
+        </div>
+    </div>
+    <MudDivider Class="mb-3" />
+
+    <MudNavLink href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard" IconColor="Color.Info">
+        Dashboard Aulas
+    </MudNavLink>
+
+    <MudNavLink href="aulas" Icon="@Icons.Material.Filled.MeetingRoom" IconColor="Color.Primary">
+        Aulas & Labs
+    </MudNavLink>
+
+    <MudNavLink href="computadoras" Icon="@Icons.Material.Filled.Computer" IconColor="Color.Secondary">
+        PCs & Terminales
+    </MudNavLink>
+
+    <MudNavLink href="horarios" Icon="@Icons.Material.Filled.AccessTime" IconColor="Color.Warning">
+        Horarios & Recreos
+    </MudNavLink>
+
+    <MudNavLink href="auditoria" Icon="@Icons.Material.Filled.Assessment" IconColor="Color.Success">
+        Auditoría y Reportes
+    </MudNavLink>
+
+    <MudDivider Class="my-4" />
+
+    <div class="pa-4">
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true" StartIcon="@Icons.Material.Filled.Logout" OnClick="HandleLogout">
+            Cerrar Sesión
+        </MudButton>
+    </div>
+</MudNavMenu>
+
+@code {
+    private void HandleLogout()
+    {
+        SessionService.Logout();
+        Navigation.NavigateTo("/login");
+    }
+}

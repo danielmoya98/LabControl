@@ -1,0 +1,6 @@
+@LabControl.Api_HostAddress = http://localhost:5256
+
+GET {{LabControl.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

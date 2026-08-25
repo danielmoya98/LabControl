@@ -1,0 +1,199 @@
+@page "/computadoras"
+@using Microsoft.AspNetCore.Components.Web
+@using LabControl.Application.Features.Aulas.Commands.CreateAula
+@using LabControl.Application.Features.Computadoras.Queries.GetEstadoAulasMapa
+@using LabControl.WebAdmin.Services
+@inject LabApiClient ApiClient
+@inject ISnackbar Snackbar
+
+<PageTitle>Gestión de Terminales — Control de Laboratorios</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">💻 Gestión de Computadoras y Terminales</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Registra y asigna las terminales físicas a cada laboratorio</MudText>
+    </div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@(MostrarModal ? Icons.Material.Filled.Close : Icons.Material.Filled.Add)" OnClick="ToggleModal">
+        @(MostrarModal ? "Cancelar" : "Registrar Nueva PC")
+    </MudButton>
+</div>
+
+@if (MostrarModal)
+{
+    <MudPaper Elevation="4" Class="pa-6 mb-6 rounded-lg" Style="border: 1px solid #6366f1;">
+        <MudText Typo="Typo.h6" Class="font-weight-bold mb-4" Color="Color.Primary">Registrar Nueva Terminal</MudText>
+
+        @if (!string.IsNullOrEmpty(MensajeError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@MensajeError</MudAlert>
+        }
+
+        <EditForm Model="this" OnValidSubmit="CrearComputadoraAsync">
+            <MudGrid>
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="int" @bind-Value="NuevoAulaId" Label="Aula de Destino" Variant="Variant.Outlined" Required="true">
+                        <MudSelectItem T="int" Value="0">-- Seleccionar Aula --</MudSelectItem>
+                        @foreach (var aula in ListaAulas)
+                        {
+                            <MudSelectItem T="int" Value="@aula.Id">@aula.Nombre (@aula.Pabellon)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" sm="3">
+                    <MudTextField @bind-Value="NuevoHostname" Label="Hostname (Nombre de Equipo)" Variant="Variant.Outlined" Required="true" Placeholder="Ej: LAB01-PC01" />
+                </MudItem>
+
+                <MudItem xs="12" sm="3">
+                    <MudTextField @bind-Value="NuevaIp" Label="Dirección IP Local" Variant="Variant.Outlined" Required="true" Placeholder="Ej: 192.168.1.11" />
+                </MudItem>
+
+                <MudItem xs="12" sm="3">
+                    <MudTextField @bind-Value="NuevaMac" Label="Dirección MAC Física" Variant="Variant.Outlined" Required="true" Placeholder="Ej: 00:1A:2B:3C:01:01" />
+                </MudItem>
+            </MudGrid>
+
+            <div class="d-flex justify-end mt-4">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save">
+                    @(IsSaving ? "Guardando..." : "Guardar Terminal")
+                </MudButton>
+            </div>
+        </EditForm>
+    </MudPaper>
+}
+
+<!-- Selector de Filtro de Aula y Tabla de PCs -->
+<MudTable Items="PCsFiltradas" Loading="IsLoading" Hover="true" Striped="true" Elevation="3" Class="rounded-lg">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6" Class="font-weight-bold">Terminales Registradas</MudText>
+        <MudSpacer />
+        <MudSelect T="int" Value="AulaFiltroId" ValueChanged="OnAulaFiltroChanged" Label="Filtrar por Aula" Variant="Variant.Outlined" Style="width: 240px;">
+            <MudSelectItem T="int" Value="0">Todas las Aulas</MudSelectItem>
+            @foreach (var aula in ListaAulas)
+            {
+                <MudSelectItem T="int" Value="@aula.Id">@aula.Nombre</MudSelectItem>
+            }
+        </MudSelect>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>AULA</MudTh>
+        <MudTh>HOSTNAME</MudTh>
+        <MudTh>DIRECCIÓN IP</MudTh>
+        <MudTh>DIRECCIÓN MAC</MudTh>
+        <MudTh>ESTADO ACTUAL</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Aula">
+            <MudText Typo="Typo.body2" Class="font-weight-bold" Color="Color.Secondary">@context.NombreAula</MudText>
+        </MudTd>
+        <MudTd DataLabel="Hostname">
+            <MudText Typo="Typo.body1" Class="font-weight-bold" Color="Color.Primary">@context.Hostname</MudText>
+        </MudTd>
+        <MudTd DataLabel="IP">@context.IpActual</MudTd>
+        <MudTd DataLabel="MAC">@context.MacAddress</MudTd>
+        <MudTd DataLabel="Estado">
+            <MudChip T="string" Color="@GetChipColor(context.EstadoActual)" Size="Size.Small">
+                @context.EstadoActual.ToString()
+            </MudChip>
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Typo="Typo.body1" Class="pa-4 text-center" Color="Color.Secondary">
+            ⚠️ No hay computadoras registradas. Usa el botón superior para agregar la primera.
+        </MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    private List<AulaDto> ListaAulas = [];
+    private List<AulaEstadoDto> MapaAulas = [];
+    private int AulaFiltroId = 0;
+    private bool IsLoading = true;
+    private bool MostrarModal = false;
+    private bool IsSaving = false;
+    private string? MensajeError;
+
+    private int NuevoAulaId = 0;
+    private string NuevoHostname = "";
+    private string NuevaIp = "192.168.1.10";
+    private string NuevaMac = "00:1A:2B:3C:01:01";
+
+    public record PcRowItem(string NombreAula, string Hostname, string IpActual, string MacAddress, Domain.Enums.EstadoComputadora EstadoActual);
+
+    private IEnumerable<PcRowItem> PCsFiltradas
+    {
+        get
+        {
+            var result = new List<PcRowItem>();
+            var aulas = AulaFiltroId == 0 ? MapaAulas : MapaAulas.Where(a => a.AulaId == AulaFiltroId);
+            foreach (var aula in aulas)
+            {
+                foreach (var pc in aula.Computadoras)
+                {
+                    result.Add(new PcRowItem(aula.Nombre, pc.Hostname, pc.IpActual, pc.MacAddress, pc.EstadoActual));
+                }
+            }
+            return result;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatosAsync();
+    }
+
+    private async Task CargarDatosAsync()
+    {
+        IsLoading = true;
+        ListaAulas = await ApiClient.GetAulasAsync();
+        MapaAulas = await ApiClient.GetMapaAulasAsync();
+        IsLoading = false;
+    }
+
+    private void OnAulaFiltroChanged(int id)
+    {
+        AulaFiltroId = id;
+    }
+
+    private void ToggleModal()
+    {
+        MostrarModal = !MostrarModal;
+        MensajeError = null;
+    }
+
+    private async Task CrearComputadoraAsync()
+    {
+        if (NuevoAulaId <= 0 || string.IsNullOrWhiteSpace(NuevoHostname) || string.IsNullOrWhiteSpace(NuevaIp) || string.IsNullOrWhiteSpace(NuevaMac))
+        {
+            MensajeError = "Por favor complete todos los campos obligatorios.";
+            return;
+        }
+
+        IsSaving = true;
+        MensajeError = null;
+
+        bool exito = await ApiClient.CreateComputadoraAsync(NuevoAulaId, NuevoHostname, NuevaIp, NuevaMac);
+
+        if (exito)
+        {
+            Snackbar.Add($"¡Terminal '{NuevoHostname}' registrada exitosamente!", Severity.Success);
+            NuevoHostname = "";
+            MostrarModal = false;
+            await CargarDatosAsync();
+        }
+        else
+        {
+            MensajeError = "No se pudo registrar la terminal. Verifica el formato de la IP/MAC o que el Hostname sea único.";
+        }
+
+        IsSaving = false;
+    }
+
+    private Color GetChipColor(Domain.Enums.EstadoComputadora estado) => estado switch
+    {
+        Domain.Enums.EstadoComputadora.EnUso => Color.Success,
+        Domain.Enums.EstadoComputadora.Disponible => Color.Default,
+        Domain.Enums.EstadoComputadora.Offline => Color.Error,
+        _ => Color.Default
+    };
+}
