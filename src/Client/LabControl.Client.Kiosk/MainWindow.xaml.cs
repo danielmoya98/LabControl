@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using Microsoft.AspNetCore.SignalR.Client;
 using LabControl.Client.Kiosk.Services;
 using LabControl.Domain.Enums;
@@ -23,6 +24,7 @@ public partial class MainWindow : Window
     private string? _emailSesionActual;
     private DispatcherTimer? _heartbeatTimer;
     private OfflineSyncWorker? _offlineSyncWorker;
+    private readonly List<SecondaryMonitorBlockerWindow> _secondaryBlockers = new();
 
     public MainWindow()
     {
@@ -35,14 +37,63 @@ public partial class MainWindow : Window
         // Instalar bloqueo a bajo nivel (Alt+Tab, WinKey, Ctrl+Esc, Alt+F4)
         WindowsHookManager.InstallHook();
         TaskManagerHelper.DisableTaskManager();
+
+        // Bloquear todas las pantallas secundarias conectadas al equipo
+        BloquearPantallasSecundarias();
+        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
     }
 
     private void OnWindowClosed(object sender, EventArgs e)
     {
+        SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        CerrarPantallasSecundarias();
+
         // Garantizar liberación de recursos del sistema al cerrar
         WindowsHookManager.UninstallHook();
         TaskManagerHelper.EnableTaskManager();
         _offlineSyncWorker?.Dispose();
+    }
+
+    private void BloquearPantallasSecundarias()
+    {
+        CerrarPantallasSecundarias();
+
+        try
+        {
+            var monitors = DisplayMonitorHelper.GetAllMonitors();
+            foreach (var mon in monitors)
+            {
+                if (mon.IsPrimary) continue;
+
+                var blocker = new SecondaryMonitorBlockerWindow(mon, this);
+                blocker.Show();
+                _secondaryBlockers.Add(blocker);
+            }
+        }
+        catch
+        {
+            // Silencioso
+        }
+    }
+
+    private void CerrarPantallasSecundarias()
+    {
+        foreach (var blocker in _secondaryBlockers)
+        {
+            try { blocker.Close(); } catch { }
+        }
+        _secondaryBlockers.Clear();
+    }
+
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (this.IsVisible)
+            {
+                BloquearPantallasSecundarias();
+            }
+        });
     }
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
@@ -76,13 +127,16 @@ public partial class MainWindow : Window
 
         if (_config == null)
         {
-            // Redirigir a configuración si no existe
-            WindowsHookManager.UninstallHook();
-            TaskManagerHelper.EnableTaskManager();
-            var setupWindow = new SetupWindow();
-            setupWindow.Show();
-            this.Close();
-            return;
+            // Auto-configuración transparente y silenciosa apuntando a la IP central por defecto
+            _config = new ConfigModel
+            {
+                ApiBaseUrl = "http://192.168.50.132:5256/",
+                AulaId = 1,
+                AulaNombre = "Laboratorio Central",
+                Hostname = SystemInfoService.GetHostname(),
+                MacAddress = SystemInfoService.GetMacAddress()
+            };
+            LocalStorageService.SaveConfig(_config);
         }
 
         _apiService = new KioskApiService(_config.ApiBaseUrl);
@@ -313,7 +367,7 @@ public partial class MainWindow : Window
 
         if (_apiService == null || _config == null)
         {
-            _apiService = new KioskApiService(_config?.ApiBaseUrl ?? "http://localhost:5256/");
+            _apiService = new KioskApiService(_config?.ApiBaseUrl ?? "http://192.168.50.132:5256/");
         }
 
         _fechaInicioSesion = DateTime.UtcNow;
@@ -341,9 +395,10 @@ public partial class MainWindow : Window
                 _config.ComputadoraId = res.ComputadoraId;
             }
 
-            // Liberar hooks y ocultar ventana de bloqueo
+            // Liberar hooks y ocultar ventanas de bloqueo (pantalla principal y secundarias)
             WindowsHookManager.UninstallHook();
             TaskManagerHelper.EnableTaskManager();
+            CerrarPantallasSecundarias();
             this.Hide();
 
             // Abrir widget flotante con cronómetro en vivo
@@ -374,9 +429,10 @@ public partial class MainWindow : Window
                     _sesionOfflineId = offlineId;
                     _sesionActualId = null;
 
-                    // Liberar hooks y ocultar pantalla de bloqueo
+                    // Liberar hooks y ocultar pantallas de bloqueo (principal y secundarias)
                     WindowsHookManager.UninstallHook();
                     TaskManagerHelper.EnableTaskManager();
+                    CerrarPantallasSecundarias();
                     this.Hide();
 
                     // Iniciar widget con límite por defecto de 90 minutos
@@ -388,15 +444,15 @@ public partial class MainWindow : Window
                     );
                     _sessionWidget.Show();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    TxtAlert.Text = $"❌ Error al iniciar sesión en modo offline: {ex.Message}";
+                    TxtAlert.Text = "⚠️ Error temporal al validar credenciales locales. Contacte al encargado.";
                     AlertBorder.Visibility = Visibility.Visible;
                 }
             }
             else
             {
-                TxtAlert.Text = "❌ No hay conexión con el servidor y la terminal no está configurada.";
+                TxtAlert.Text = "⚠️ Servicio de laboratorio no disponible en este momento. Intente en unos minutos.";
                 AlertBorder.Visibility = Visibility.Visible;
             }
         }
@@ -475,6 +531,7 @@ public partial class MainWindow : Window
 
             WindowsHookManager.InstallHook();
             TaskManagerHelper.DisableTaskManager();
+            BloquearPantallasSecundarias();
 
             TxtEmail.Text = "";
             TxtAlert.Text = "ℹ️ La sesión ha concluido. Terminal bloqueada.";

@@ -5,9 +5,9 @@ namespace LabControl.Client.Kiosk.Services;
 
 public class ConfigModel
 {
-    public string ApiBaseUrl { get; set; } = "http://localhost:5256/";
-    public int AulaId { get; set; }
-    public string AulaNombre { get; set; } = "";
+    public string ApiBaseUrl { get; set; } = "http://192.168.50.132:5256/";
+    public int AulaId { get; set; } = 1;
+    public string AulaNombre { get; set; } = "Laboratorio";
     public int ComputadoraId { get; set; }
     public string Hostname { get; set; } = "";
     public string MacAddress { get; set; } = "";

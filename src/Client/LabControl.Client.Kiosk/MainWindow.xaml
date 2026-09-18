@@ -41,26 +41,16 @@
                             </Button.Resources>
                         </Button>
 
-                        <!-- Footer -->
+                        <!-- Footer Limpio Institucional para Estudiantes -->
                         <Border Margin="0,20,0,0" Padding="0,12,0,0" BorderBrush="#334155" BorderThickness="0,1,0,0">
-                            <Grid>
-                                <TextBlock x:Name="TxtSignalRStatus" Text="● SignalR Conectado" FontSize="11" Foreground="#22C55E" HorizontalAlignment="Left"/>
-                                <TextBlock x:Name="TxtIpMac" Text="IP: ... | MAC: ..." FontSize="11" Foreground="#64748B" HorizontalAlignment="Right"/>
-                            </Grid>
+                            <TextBlock Text="Universidad del Valle — Sistema Centralizado de Cómputo" FontSize="11" Foreground="#64748B" HorizontalAlignment="Center"/>
                         </Border>
 
-                        <Grid Margin="0,14,0,0">
-                            <TextBlock HorizontalAlignment="Left">
-                                <Hyperlink Click="OnSoporteTecnicoClick" Foreground="#64748B" TextDecorations="None">
-                                    <Run Text="🛡️ Soporte Técnico (Ctrl+Shift+F12)"/>
-                                </Hyperlink>
-                            </TextBlock>
-                            <TextBlock HorizontalAlignment="Right">
-                                <Hyperlink Click="OnReconfigurarTerminalClick" Foreground="#64748B" TextDecorations="None">
-                                    <Run Text="⚙️ Reconfigurar"/>
-                                </Hyperlink>
-                            </TextBlock>
-                        </Grid>
+                        <!-- Elementos técnicos ocultos para el estudiante (mantenimiento disponible con Ctrl+Shift+F12) -->
+                        <StackPanel Visibility="Collapsed">
+                            <TextBlock x:Name="TxtSignalRStatus" Text=""/>
+                            <TextBlock x:Name="TxtIpMac" Text=""/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </Grid>

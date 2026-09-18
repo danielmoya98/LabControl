@@ -28,7 +28,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="TxtApiUrl" Grid.Column="0" Text="http://localhost:5256/" FontSize="14" Padding="8,6" Background="#0F172A" Foreground="#FFFFFF" BorderBrush="#475569"/>
+                    <TextBox x:Name="TxtApiUrl" Grid.Column="0" Text="http://192.168.50.132:5256/" FontSize="14" Padding="8,6" Background="#0F172A" Foreground="#FFFFFF" BorderBrush="#475569"/>
                     <Button Grid.Column="1" Content="🔄 Conectar y Leer Aulas" Margin="10,0,0,0" Padding="12,6" Background="#6366F1" Foreground="#FFFFFF" FontWeight="Bold" Click="OnCargarAulasClick"/>
                 </Grid>
 
