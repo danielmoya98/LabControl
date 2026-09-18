@@ -262,12 +262,16 @@ GO
 
 ---
 
-## 7. Plan de Trabajo e Hitos de Implementación
+## 7. Plan de Trabajo e Hitos de Implementación (Fases 1 a 6)
 
-| Hito | Alcance Técnico | Entregables |
+Para el detalle técnico exhaustivo de cada fase y entregables, consultar [`docs/roadmap.md`](file:///d:/PROYECTOS/LAB-CONTROL/LabControl/docs/roadmap.md).
+
+| Fase | Alcance Técnico Principal | Estado |
 | :--- | :--- | :--- |
-| **Hito 1: Núcleo del Agente Kiosk** | Desarrollo de la UI en WPF, enganches de teclado Win32 Hooks, validador Regex `@est.univalle.edu` y SQLite local. | Instalador `.msi` ejecutable capaz de bloquear/desbloquear una PC aislada. |
-| **Hito 2: Servidor API & SignalR Hub** | Creación de base de datos SQL Server, endpoints de autenticación/sincronización y Hub de SignalR para estados en vivo. | Backend funcional en red local con endpoints documentados en Swagger. |
-| **Hito 3: Panel Web Administrativo** | Interfaz Blazor / Dashboard interactivo con el mapa de las 3 aulas, visualización en vivo de estados y botones de control remoto. | Panel accesible vía navegador dentro de la LAN universitaria. |
-| **Hito 4: Motor de Horarios y Notificaciones** | Implementación del timer regresivo en el cliente con popups a 10m, 5m y 1m, más cierre forzado en recreos. | Sincronización horaria completa cliente-servidor verificada. |
-| **Hito 5: Pruebas de Carga, Modo Offline y Despliegue Piloto** | Simulación de corte de red en 1 aula completa (30 PCs), sincronización posterior por lotes y generación de reportes en PDF/Excel. | Despliegue final en las 3 aulas de cómputo. |
+| **Fase 1: Fundaciones, Seeder y CRUDs** | Modelado de dominio, base de datos PostgreSQL, seeder real con 3 aulas (A-302, A-303, A-308) y 122 horarios/recreos, y endpoints CRUD de administración. | ✅ **Completada** |
+| **Fase 2: SignalR, Heartbeats y Control Remoto** | Hub multi-canal dúplex, reporte continuo de latidos (25s), monitor en segundo plano de desconexiones (>2m) y comandos remotos de deslogueo/alertas. | ✅ **Completada** |
+| **Fase 3: Refinamiento del WebAdmin UX** | Grilla interactiva MudBlazor con código de colores (Verde=Disponible, Azul=En Uso, Rojo=Offline, Gris=Bloqueada), menú contextual de clic derecho y módulo de auditoría con exportación a Excel/CSV. | 🟠 **Siguiente** |
+| **Fase 4: Blindaje y Resiliencia del Kiosk** | Hooks de bajo nivel Win32 (`WH_KEYBOARD_LL`) para bloquear Alt+Tab, Alt+F4, teclas Windows, bloqueo de Task Manager, pantalla TopMost multi-monitor, avisos flotantes (T-10m, T-5m, T-1m) y proceso Watchdog. | 🔵 **Planificada** |
+| **Fase 5: Seguridad, Rendimiento y Carga** | Hardening de autenticación por API Key/Token de máquina, rate limiting en LAN y simulación de carga concurrente con arnés para ~100 terminales SignalR. | 🟣 **Planificada** |
+| **Fase 6: Despliegue, Empaquetado y Producción** | Empaquetado en contenedores Docker Compose (PostgreSQL persistente, API HTTPS, WebAdmin), instalador desatendido (.msi/PowerShell) y despliegue piloto controlado en aulas. | 🚀 **Planificada** |
+

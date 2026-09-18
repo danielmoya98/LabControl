@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using LabControl.Api.Hubs;
 using LabControl.Api.Middlewares;
+using LabControl.Api.Services;
 using LabControl.Application;
+using LabControl.Application.Common.Interfaces;
 using LabControl.Infrastructure;
 using LabControl.Infrastructure.Identity;
 using LabControl.Infrastructure.Persistence;
@@ -25,9 +27,12 @@ builder.Host.UseSerilog();
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// 3. Controllers & SignalR
+// 3. Controllers & SignalR (con servicio real conectado al Hub)
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
+builder.Services.AddScoped<ISignalRNotificationService, SignalRNotificationService>();
+builder.Services.AddHostedService<HeartbeatMonitorBackgroundService>();
+builder.Services.AddHostedService<HorarioKickoutBackgroundService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -77,6 +82,12 @@ using (var scope = app.Services.CreateScope())
     {
         Log.Error(ex, "Ocurrió un error al sembrar los datos iniciales en la base de datos.");
     }
+}
+
+if (args.Contains("--seed-only"))
+{
+    Log.Information("Sembrado de datos completado exitosamente. Cerrando proceso.");
+    return;
 }
 
 // Pipeline de Middleware

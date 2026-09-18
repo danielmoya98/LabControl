@@ -5,13 +5,16 @@
         WindowState="Maximized"
         WindowStyle="None"
         Topmost="True"
-        Background="#090D16">
+        Background="#090D16"
+        PreviewKeyDown="OnWindowPreviewKeyDown"
+        Loaded="OnWindowLoaded"
+        Closed="OnWindowClosed">
     <Grid>
         <!-- Fondo Decorativo -->
         <Border Margin="0" Background="#090D16">
             <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
                 <!-- Tarjeta de Login Glassmorphic -->
-                <Border Width="450" Padding="35" Background="#1E293B" CornerRadius="20" BorderBrush="#334155" BorderThickness="1">
+                <Border Width="460" Padding="35" Background="#1E293B" CornerRadius="20" BorderBrush="#334155" BorderThickness="1">
                     <StackPanel>
                         <!-- Logo & Titulo -->
                         <TextBlock Text="🔒 TERMINAL BLOQUEADA" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" HorizontalAlignment="Center"/>
@@ -36,6 +39,19 @@
                                 <TextBlock x:Name="TxtIpMac" Text="IP: ... | MAC: ..." FontSize="11" Foreground="#64748B" HorizontalAlignment="Right"/>
                             </Grid>
                         </Border>
+
+                        <Grid Margin="0,14,0,0">
+                            <TextBlock HorizontalAlignment="Left">
+                                <Hyperlink Click="OnSoporteTecnicoClick" Foreground="#64748B" TextDecorations="None">
+                                    <Run Text="🛡️ Soporte Técnico (Ctrl+Shift+F12)"/>
+                                </Hyperlink>
+                            </TextBlock>
+                            <TextBlock HorizontalAlignment="Right">
+                                <Hyperlink Click="OnReconfigurarTerminalClick" Foreground="#64748B" TextDecorations="None">
+                                    <Run Text="⚙️ Reconfigurar"/>
+                                </Hyperlink>
+                            </TextBlock>
+                        </Grid>
                     </StackPanel>
                 </Border>
             </Grid>

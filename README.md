@@ -129,7 +129,8 @@ dotnet publish src/Client/LabControl.Client.Kiosk/LabControl.Client.Kiosk.csproj
 
 ---
 
-## 📄 Documentación Técnica Adicional
+## 📄 Documentación Técnica y Hoja de Ruta
 
-* [`docs/PRD.md`](file:///home/daniel/.NET-LABS/docs/PRD.md) - Product Requirement Document oficial v1.0.
-* [`docs/architecture.md`](file:///home/daniel/.NET-LABS/docs/architecture.md) - Especificación de Arquitectura de Software y flujo SignalR.
+* [`docs/roadmap.md`](file:///d:/PROYECTOS/LAB-CONTROL/LabControl/docs/roadmap.md) - **Hoja de Ruta Oficial (Fases 1 a 6)** con el estado de avance técnico.
+* [`docs/PRD.md`](file:///d:/PROYECTOS/LAB-CONTROL/LabControl/docs/PRD.md) - Product Requirement Document oficial v1.0.
+* [`docs/architecture.md`](file:///d:/PROYECTOS/LAB-CONTROL/LabControl/docs/architecture.md) - Especificación de Arquitectura de Software y flujos SignalR.

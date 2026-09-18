@@ -11,6 +11,7 @@ public class ConfigModel
     public int ComputadoraId { get; set; }
     public string Hostname { get; set; } = "";
     public string MacAddress { get; set; } = "";
+    public string ClaveTecnico { get; set; } = "AdminLab@2026";
 }
 
 public static class LocalStorageService

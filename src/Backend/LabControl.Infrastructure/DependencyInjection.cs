@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddScoped<ISignalRNotificationService, SignalRNotificationService>();
+        services.AddScoped<IReporteExcelService, ReporteExcelService>();
 
         var jwtSettings = new JwtSettings();
         configuration.GetSection(JwtSettings.SectionName).Bind(jwtSettings);

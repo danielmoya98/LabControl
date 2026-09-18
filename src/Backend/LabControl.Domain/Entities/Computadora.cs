@@ -72,4 +72,14 @@ public class Computadora : AggregateRoot
         EstadoActual = nuevoEstado;
         FechaModificacionUtc = DateTime.UtcNow;
     }
+
+    public void Update(int aulaId, string hostname, IpAddress ip, MacAddress mac, EstadoComputadora? nuevoEstado = null)
+    {
+        if (aulaId > 0) AulaId = aulaId;
+        if (!string.IsNullOrWhiteSpace(hostname)) Hostname = hostname.Trim().ToUpperInvariant();
+        IpActual = ip.Value;
+        MacAddress = mac.Value;
+        if (nuevoEstado.HasValue) EstadoActual = nuevoEstado.Value;
+        FechaModificacionUtc = DateTime.UtcNow;
+    }
 }

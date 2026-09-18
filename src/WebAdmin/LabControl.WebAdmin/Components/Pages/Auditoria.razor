@@ -1,39 +1,411 @@
 @page "/auditoria"
+@using LabControl.WebAdmin.Services
+@using LabControl.Application.Features.Sesiones.Queries.GetSesionesAuditoria
+@using LabControl.Application.Common.Interfaces
+@using LabControl.Application.Features.Aulas.Commands.CreateAula
+@using LabControl.Domain.Enums
+@inject LabApiClient ApiClient
+@inject ISnackbar Snackbar
 
 <PageTitle>Auditoría y Reportes — Control de Laboratorios</PageTitle>
 
-<div class="dashboard-container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h1 style="font-size: 1.5rem; font-weight: 700;">📋 Módulo de Auditoría y Reportes</h1>
-        <button class="btn-action">📥 Exportar a PDF / Excel</button>
+<!-- ENCABEZADO Y ACCIONES DE EXPORTACIÓN -->
+<div class="d-flex justify-space-between align-center mb-6 flex-wrap gap-4">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">📋 Módulo de Auditoría y Reportes</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Registro histórico de accesos a terminales, duraciones y exportación para jefatura académica
+        </MudText>
     </div>
-
-    <div class="stat-card" style="margin-bottom: 2rem;">
-        <div style="font-weight: 600; margin-bottom: 1rem;">🔍 Filtros de Búsqueda</div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-            <div>
-                <label class="form-label">Rango de Fechas</label>
-                <input type="date" class="form-input" />
-            </div>
-            <div>
-                <label class="form-label">Aula</label>
-                <select class="form-input">
-                    <option value="">Todas las Aulas</option>
-                    <option value="1">Aula 1</option>
-                    <option value="2">Aula 2</option>
-                    <option value="3">Aula 3</option>
-                </select>
-            </div>
-            <div>
-                <label class="form-label">Estudiante (@@est.univalle.edu)</label>
-                <input type="text" class="form-input" placeholder="correo@est.univalle.edu" />
-            </div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-            📄 No se encontraron registros de auditoría para los filtros seleccionados.
-        </div>
+    <div class="d-flex gap-2 align-center">
+        <MudButton Href="@GetExcelExportUrl()"
+                   Target="_blank"
+                   Variant="Variant.Filled"
+                   Color="Color.Success"
+                   StartIcon="@Icons.Material.Filled.TableChart">
+            Exportar a Excel (.xlsx)
+        </MudButton>
+        <MudButton Href="@GetCsvExportUrl()"
+                   Target="_blank"
+                   Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.FileDownload">
+            Exportar a CSV
+        </MudButton>
     </div>
 </div>
+
+<!-- KPI CARDS (RESUMEN DE AUDITORÍA) -->
+<MudGrid Class="mb-6">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex align-center justify-space-between" Elevation="2" Style="border-left: 4px solid #3b82f6; background: #1e293b;">
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">TOTAL SESIONES</MudText>
+                <MudText Typo="Typo.h5" Class="font-weight-bold">@(_resultado?.TotalRegistros.ToString("N0") ?? "0")</MudText>
+            </div>
+            <MudAvatar Color="Color.Info" Variant="Variant.Filled">
+                <MudIcon Icon="@Icons.Material.Filled.Timeline" />
+            </MudAvatar>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex align-center justify-space-between" Elevation="2" Style="border-left: 4px solid #22c55e; background: #1e293b;">
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">HORAS-MÁQUINA</MudText>
+                <MudText Typo="Typo.h5" Class="font-weight-bold">
+                    @(((_resultado?.TotalMinutosUso ?? 0) / 60.0).ToString("F1")) hrs
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@(_resultado?.TotalMinutosUso.ToString("N0") ?? "0") minutos</MudText>
+            </div>
+            <MudAvatar Color="Color.Success" Variant="Variant.Filled">
+                <MudIcon Icon="@Icons.Material.Filled.AccessTime" />
+            </MudAvatar>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex align-center justify-space-between" Elevation="2" Style="border-left: 4px solid #8b5cf6; background: #1e293b;">
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">ESTUDIANTES ÚNICOS</MudText>
+                <MudText Typo="Typo.h5" Class="font-weight-bold">@(_resultado?.TotalEstudiantesUnicos.ToString("N0") ?? "0")</MudText>
+            </div>
+            <MudAvatar Color="Color.Secondary" Variant="Variant.Filled">
+                <MudIcon Icon="@Icons.Material.Filled.School" />
+            </MudAvatar>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex align-center justify-space-between" Elevation="2" Style="border-left: 4px solid #f59e0b; background: #1e293b;">
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">PÁGINAS / TOTAL</MudText>
+                <MudText Typo="Typo.h5" Class="font-weight-bold">
+                    @(_resultado?.PaginaActual ?? 1) / @(Math.Max(_resultado?.TotalPaginas ?? 1, 1))
+                </MudText>
+            </div>
+            <MudAvatar Color="Color.Warning" Variant="Variant.Filled">
+                <MudIcon Icon="@Icons.Material.Filled.MenuBook" />
+            </MudAvatar>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<!-- PANEL DE FILTROS -->
+<MudCard Class="mb-6" Elevation="2" Style="background: #1e293b;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6" Class="d-flex align-center font-weight-bold">
+                <MudIcon Icon="@Icons.Material.Filled.FilterAlt" Class="mr-2" Color="Color.Primary" />
+                Filtros de Búsqueda y Segmentación
+            </MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <MudDateRangePicker @bind-DateRange="_dateRange"
+                                    Label="Rango de Fechas"
+                                    Variant="Variant.Outlined"
+                                    Clearable="true"
+                                    PlaceholderStart="Desde"
+                                    PlaceholderEnd="Hasta" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="2">
+                <MudSelect T="int?" @bind-Value="_filtroAulaId" Label="Aula" Variant="Variant.Outlined">
+                    <MudSelectItem T="int?" Value="@((int?)null)">🏢 Todas</MudSelectItem>
+                    @foreach (var aula in _aulas)
+                    {
+                        <MudSelectItem T="int?" Value="@aula.Id">@aula.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField @bind-Value="_filtroEstudiante"
+                              Label="Estudiante (Email)"
+                              Variant="Variant.Outlined"
+                              Placeholder="correo@est.univalle.edu"
+                              Clearable="true"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField @bind-Value="_filtroHostname"
+                              Label="Terminal / Hostname"
+                              Variant="Variant.Outlined"
+                              Placeholder="Ej. LAB1-PC01"
+                              Clearable="true"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Computer" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="TipoCierreSesion?" @bind-Value="_filtroTipoCierre" Label="Tipo de Cierre" Variant="Variant.Outlined" Clearable="true">
+                    <MudSelectItem T="TipoCierreSesion?" Value="@((TipoCierreSesion?)null)">Todos los cierres</MudSelectItem>
+                    <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.Manual">🚪 Manual (Estudiante)</MudSelectItem>
+                    <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.FinPeriodo">🔔 Fin de Período</MudSelectItem>
+                    <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.Recreo">☕ Recreo</MudSelectItem>
+                    <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.RelevoForzado">🔄 Relevo Forzado</MudSelectItem>
+                    <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.AdminRemoto">🛡️ Admin Remoto</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="int" @bind-Value="_tamanioPagina" Label="Registros por Página" Variant="Variant.Outlined">
+                    <MudSelectItem T="int" Value="25">25 filas</MudSelectItem>
+                    <MudSelectItem T="int" Value="50">50 filas</MudSelectItem>
+                    <MudSelectItem T="int" Value="100">100 filas</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="12" md="6" Class="d-flex align-center justify-end gap-2 mt-2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Clear"
+                           OnClick="LimpiarFiltrosAsync">
+                    Limpiar
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.FilterList"
+                           OnClick="() => CargarAuditoriaAsync(1)"
+                           Disabled="_cargando">
+                    Aplicar Filtros
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+<!-- TABLA DE HISTORIAL DE AUDITORÍA -->
+<MudTable Items="@_sesiones"
+          Dense="true"
+          Hover="true"
+          Bordered="true"
+          Striped="true"
+          Loading="@_cargando"
+          LoadingProgressColor="Color.Primary"
+          Elevation="2"
+          Style="background: #1e293b;">
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Terminal</MudTh>
+        <MudTh>Aula</MudTh>
+        <MudTh>Estudiante</MudTh>
+        <MudTh>Fecha Inicio</MudTh>
+        <MudTh>Fecha Fin</MudTh>
+        <MudTh>Duración</MudTh>
+        <MudTh>Tipo de Cierre</MudTh>
+        <MudTh>Sincronización</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID">#@context.SesionId</MudTd>
+        <MudTd DataLabel="Terminal">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Dark" Icon="@Icons.Material.Filled.Computer">
+                @context.Hostname
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Aula">
+            <MudText Typo="Typo.body2" Class="font-weight-medium">@context.NombreAula</MudText>
+        </MudTd>
+        <MudTd DataLabel="Estudiante">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" Icon="@Icons.Material.Filled.School">
+                @context.EmailEstudiante
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Fecha Inicio">
+            <MudText Typo="Typo.body2">@context.FechaHoraInicio.ToString("dd/MM/yyyy HH:mm:ss")</MudText>
+        </MudTd>
+        <MudTd DataLabel="Fecha Fin">
+            @if (context.FechaHoraFin.HasValue)
+            {
+                <MudText Typo="Typo.body2">@context.FechaHoraFin.Value.ToString("dd/MM/yyyy HH:mm:ss")</MudText>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">🟢 Sesión Activa</MudChip>
+            }
+        </MudTd>
+        <MudTd DataLabel="Duración">
+            @if (context.DuracionMinutos.HasValue)
+            {
+                <MudText Typo="Typo.body2" Class="font-weight-bold">@context.DuracionMinutos.Value min</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Tipo de Cierre">
+            <MudChip T="string" Size="Size.Small" Color="@GetColorTipoCierre(context.TipoCierre)" Variant="Variant.Filled">
+                @GetTextoTipoCierre(context.TipoCierre)
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Sincronización">
+            @if (context.SyncStatus == SyncStatus.Online)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text" Icon="@Icons.Material.Filled.CheckCircle">
+                    Online
+                </MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.SyncProblem">
+                    Offline Sync
+                </MudChip>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <div class="pa-8 text-center" style="color: var(--mud-palette-text-secondary);">
+            <MudIcon Icon="@Icons.Material.Filled.FindInPage" Style="font-size: 3rem; opacity: 0.5;" Class="mb-2" />
+            <MudText Typo="Typo.h6">No se encontraron registros de auditoría</MudText>
+            <MudText Typo="Typo.body2">Pruebe ajustando el rango de fechas o limpiando los filtros.</MudText>
+        </div>
+    </NoRecordsContent>
+</MudTable>
+
+<!-- CONTROLES DE PAGINACIÓN -->
+<div class="d-flex justify-space-between align-center mt-4 px-2">
+    <MudText Typo="Typo.body2" Color="Color.Secondary">
+        Mostrando página @(_resultado?.PaginaActual ?? 1) de @(Math.Max(_resultado?.TotalPaginas ?? 1, 1)) (@(_resultado?.TotalRegistros ?? 0) registros en total)
+    </MudText>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.ChevronLeft"
+                   Disabled="@(_paginaActual <= 1 || _cargando)"
+                   OnClick="() => CargarAuditoriaAsync(_paginaActual - 1)">
+            Anterior
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   EndIcon="@Icons.Material.Filled.ChevronRight"
+                   Disabled="@(_paginaActual >= (_resultado?.TotalPaginas ?? 1) || _cargando)"
+                   OnClick="() => CargarAuditoriaAsync(_paginaActual + 1)">
+            Siguiente
+        </MudButton>
+    </div>
+</div>
+
+@code {
+    private List<AulaDto> _aulas = new();
+    private List<SesionAuditoriaDto> _sesiones = new();
+    private ResultadoAuditoriaDto? _resultado;
+    private bool _cargando = false;
+
+    // Modelos de Filtro
+    private DateRange? _dateRange;
+    private int? _filtroAulaId;
+    private string? _filtroEstudiante;
+    private string? _filtroHostname;
+    private TipoCierreSesion? _filtroTipoCierre;
+    private int _paginaActual = 1;
+    private int _tamanioPagina = 25;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cargando = true;
+        try
+        {
+            _aulas = await ApiClient.GetAulasAsync();
+            await CargarAuditoriaAsync(1);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al inicializar auditoría: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task CargarAuditoriaAsync(int nuevaPagina = 1)
+    {
+        _cargando = true;
+        _paginaActual = nuevaPagina;
+
+        DateTime? fechaInicio = _dateRange?.Start?.Date;
+        DateTime? fechaFin = _dateRange?.End?.Date.AddDays(1).AddTicks(-1);
+
+        _resultado = await ApiClient.GetAuditoriaSesionesAsync(
+            fechaInicio: fechaInicio,
+            fechaFin: fechaFin,
+            aulaId: _filtroAulaId,
+            emailEstudiante: _filtroEstudiante,
+            hostname: _filtroHostname,
+            tipoCierre: _filtroTipoCierre,
+            pagina: _paginaActual,
+            tamanioPagina: _tamanioPagina
+        );
+
+        _sesiones = _resultado?.Sesiones ?? new List<SesionAuditoriaDto>();
+        _cargando = false;
+    }
+
+    private async Task LimpiarFiltrosAsync()
+    {
+        _dateRange = null;
+        _filtroAulaId = null;
+        _filtroEstudiante = null;
+        _filtroHostname = null;
+        _filtroTipoCierre = null;
+        _paginaActual = 1;
+        _tamanioPagina = 25;
+        await CargarAuditoriaAsync(1);
+    }
+
+    private string GetExcelExportUrl()
+    {
+        DateTime? fechaInicio = _dateRange?.Start?.Date;
+        DateTime? fechaFin = _dateRange?.End?.Date.AddDays(1).AddTicks(-1);
+
+        return ApiClient.GetExportarExcelUrl(
+            fechaInicio: fechaInicio,
+            fechaFin: fechaFin,
+            aulaId: _filtroAulaId,
+            emailEstudiante: _filtroEstudiante,
+            hostname: _filtroHostname,
+            tipoCierre: _filtroTipoCierre
+        );
+    }
+
+    private string GetCsvExportUrl()
+    {
+        DateTime? fechaInicio = _dateRange?.Start?.Date;
+        DateTime? fechaFin = _dateRange?.End?.Date.AddDays(1).AddTicks(-1);
+
+        return ApiClient.GetExportarCsvUrl(
+            fechaInicio: fechaInicio,
+            fechaFin: fechaFin,
+            aulaId: _filtroAulaId,
+            emailEstudiante: _filtroEstudiante,
+            hostname: _filtroHostname,
+            tipoCierre: _filtroTipoCierre
+        );
+    }
+
+    private Color GetColorTipoCierre(TipoCierreSesion? tipo) => tipo switch
+    {
+        TipoCierreSesion.Manual => Color.Success,
+        TipoCierreSesion.FinPeriodo => Color.Info,
+        TipoCierreSesion.Recreo => Color.Warning,
+        TipoCierreSesion.RelevoForzado => Color.Warning,
+        TipoCierreSesion.AdminRemoto => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetTextoTipoCierre(TipoCierreSesion? tipo) => tipo switch
+    {
+        TipoCierreSesion.Manual => "Manual",
+        TipoCierreSesion.FinPeriodo => "Fin de Período",
+        TipoCierreSesion.Recreo => "Recreo",
+        TipoCierreSesion.RelevoForzado => "Relevo Forzado",
+        TipoCierreSesion.AdminRemoto => "Admin Remoto",
+        _ => "Activa"
+    };
+}

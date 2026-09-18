@@ -17,28 +17,74 @@
         <MudText Typo="Typo.h5" Class="font-weight-bold">📊 Mapa de Laboratorios en Tiempo Real</MudText>
         <MudText Typo="Typo.body2" Color="Color.Secondary">Supervisión y control de terminales activas vía WebSockets</MudText>
     </div>
-    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CargarDatosAsync">
-        Refrescar
-    </MudButton>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Campaign" OnClick="OpenMensajeDialog">
+            Transmitir Alerta
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.PowerSettingsNew" OnClick="ConfirmarCierreMasivoAulaAsync" Disabled="@(!Aulas.Any())">
+            Desloguear Aula
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CargarDatosAsync">
+            Refrescar
+        </MudButton>
+    </div>
 </div>
+
+<!-- Modal Centrado para Transmitir Mensaje / Alerta -->
+<MudDialog @bind-Visible="MostrarModalMensaje" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Warning">
+            <MudIcon Icon="@Icons.Material.Filled.Campaign" Class="mr-2" /> Transmitir Mensaje a Terminales
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            El mensaje aparecerá como una ventana emergente en pantalla completa sobre las terminales seleccionadas.
+        </MudText>
+
+        <MudGrid>
+            <MudItem xs="12">
+                <MudSelect T="int" @bind-Value="DestinoAulaId" Label="Destinatario" Variant="Variant.Outlined" FullWidth="true">
+                    <MudSelectItem T="int" Value="0">📢 Todas las Aulas (Transmisión Global)</MudSelectItem>
+                    @foreach (var aula in Aulas)
+                    {
+                        <MudSelectItem T="int" Value="@aula.AulaId">🏢 @aula.Nombre (@aula.Computadoras.Count PCs)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudTextField @bind-Value="MensajeTexto" Label="Contenido del Mensaje" Variant="Variant.Outlined" 
+                              Lines="3" Placeholder="Ej: Estimados estudiantes, el laboratorio cerrará en 10 minutos. Por favor guarden sus trabajos." Required="true" FullWidth="true" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalMensaje = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Warning" Disabled="@(string.IsNullOrWhiteSpace(MensajeTexto) || IsSendingMessage)" 
+                   StartIcon="@Icons.Material.Filled.Send" OnClick="EnviarMensajeAsync">
+            @(IsSendingMessage ? "Transmitiendo..." : "Enviar Mensaje")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 <!-- Tarjetas de Estadísticas Globales (KPIs) -->
 <MudGrid Class="mb-6">
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Elevation="3" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
             <div>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">TOTAL PCS</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">TOTAL TERMINALES</MudText>
                 <MudText Typo="Typo.h4" Class="font-weight-bold">@TotalPcs</MudText>
             </div>
-            <MudIcon Icon="@Icons.Material.Filled.Computer" Color="Color.Info" Size="Size.Large" />
+            <MudIcon Icon="@Icons.Material.Filled.Computer" Color="Color.Primary" Size="Size.Large" />
         </MudPaper>
     </MudItem>
 
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Elevation="3" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
             <div>
-                <MudText Typo="Typo.caption" Color="Color.Success">EN USO</MudText>
-                <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Success">@TotalEnUso</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Success">🟢 DISPONIBLES</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Success">@TotalDisponibles</MudText>
             </div>
             <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" />
         </MudPaper>
@@ -47,17 +93,17 @@
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Elevation="3" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
             <div>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">DISPONIBLES</MudText>
-                <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Default">@TotalDisponibles</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Info">🔵 EN USO</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Info">@TotalEnUso</MudText>
             </div>
-            <MudIcon Icon="@Icons.Material.Filled.DesktopAccessDisabled" Color="Color.Default" Size="Size.Large" />
+            <MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Info" Size="Size.Large" />
         </MudPaper>
     </MudItem>
 
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Elevation="3" Class="pa-4 rounded-lg d-flex align-center justify-space-between">
             <div>
-                <MudText Typo="Typo.caption" Color="Color.Error">INACTIVAS / OFFLINE</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Error">🔴 INACTIVAS / OFFLINE</MudText>
                 <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Error">@TotalOffline</MudText>
             </div>
             <MudIcon Icon="@Icons.Material.Filled.PowerOff" Color="Color.Error" Size="Size.Large" />
@@ -68,7 +114,7 @@
 <!-- Pestañas de Aulas & Grilla de Computadoras -->
 @if (Aulas.Any())
 {
-    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Surface">
+    <MudTabs @bind-ActivePanelIndex="ActiveTabIndex" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Surface">
         @foreach (var aula in Aulas)
         {
             <MudTabPanel Text="@($"{aula.Nombre} ({aula.Computadoras.Count} PCs)")" Icon="@Icons.Material.Filled.MeetingRoom" Class="pa-6">
@@ -76,33 +122,87 @@
                     @foreach (var pc in aula.Computadoras)
                     {
                         <MudItem xs="12" sm="6" md="4" lg="3">
-                            <MudCard Elevation="4" Class="rounded-lg" Style="@GetEstiloBordeCard(pc.EstadoActual)">
-                                <MudCardHeader>
-                                    <CardHeaderContent>
-                                        <MudText Typo="Typo.h6" Class="font-weight-bold">@pc.Hostname</MudText>
-                                    </CardHeaderContent>
-                                    <CardHeaderActions>
-                                        <MudChip T="string" Color="@GetChipColor(pc.EstadoActual)" Size="Size.Small">
-                                            @pc.EstadoActual.ToString()
-                                        </MudChip>
-                                    </CardHeaderActions>
-                                </MudCardHeader>
-                                <MudCardContent>
-                                    <MudText Typo="Typo.body2"><strong>IP:</strong> @pc.IpActual</MudText>
-                                    <MudText Typo="Typo.body2"><strong>MAC:</strong> @pc.MacAddress</MudText>
-                                    @if (!string.IsNullOrEmpty(pc.EmailEstudianteActual))
+                            <div @oncontextmenu="@(() => AbrirMenuContextual(pc))" @oncontextmenu:preventDefault="true" style="cursor: context-menu; height: 100%;">
+                                <MudCard Elevation="4" Class="rounded-lg mud-hover" Style="@($"{GetEstiloBordeCard(pc.EstadoActual)}; height: 100%;")">
+                                    <MudCardHeader Class="pb-2">
+                                        <CardHeaderContent>
+                                            <MudText Typo="Typo.h6" Class="font-weight-bold">@pc.Hostname</MudText>
+                                        </CardHeaderContent>
+                                        <CardHeaderActions>
+                                            <MudChip T="string" Color="@GetChipColor(pc.EstadoActual)" Size="Size.Small" Class="font-weight-bold">
+                                                @GetEstadoTexto(pc.EstadoActual)
+                                            </MudChip>
+                                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AriaLabel="Opciones">
+                                                @if (pc.EstadoActual == EstadoComputadora.EnUso)
+                                                {
+                                                    <MudMenuItem Icon="@Icons.Material.Filled.Block" IconColor="Color.Error" OnClick="() => ConfirmarCierreForzadoAsync(pc.Hostname)">
+                                                        Desloguear Sesión
+                                                    </MudMenuItem>
+                                                }
+                                                <MudMenuItem Icon="@Icons.Material.Filled.Chat" IconColor="Color.Warning" OnClick="() => AbrirMensajeDirecto(pc.Hostname)">
+                                                    Enviar Mensaje Directo
+                                                </MudMenuItem>
+                                                <MudMenuItem Icon="@Icons.Material.Filled.ContentCopy" OnClick="@(() => CopiarAlPortapapeles(pc.IpActual, "IP"))">
+                                                    Copiar IP
+                                                </MudMenuItem>
+                                                <MudMenuItem Icon="@Icons.Material.Filled.Fingerprint" OnClick="@(() => CopiarAlPortapapeles(pc.MacAddress, "MAC"))">
+                                                    Copiar MAC
+                                                </MudMenuItem>
+                                                <MudMenuItem Icon="@Icons.Material.Filled.Info" IconColor="Color.Info" OnClick="() => AbrirDetallesPc(pc)">
+                                                    Detalles Técnicos
+                                                </MudMenuItem>
+                                            </MudMenu>
+                                        </CardHeaderActions>
+                                    </MudCardHeader>
+
+                                <MudCardContent Class="py-2">
+                                    <div class="d-flex align-center justify-space-between mb-1">
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary"><strong>IP:</strong> @pc.IpActual</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@pc.MacAddress</MudText>
+                                    </div>
+
+                                    @if (pc.EstadoActual == EstadoComputadora.EnUso)
                                     {
-                                        <MudText Typo="Typo.body2" Color="Color.Success" Class="mt-2 font-weight-bold">
-                                            👤 @pc.EmailEstudianteActual
-                                        </MudText>
+                                        <div class="pa-2 rounded mt-2" style="background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3);">
+                                            <MudText Typo="Typo.body2" Color="Color.Info" Class="font-weight-bold text-truncate">
+                                                👤 @pc.EmailEstudianteActual
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Info">
+                                                ⏱️ @CalcularTiempoTranscurrido(pc.HoraInicioSesion)
+                                            </MudText>
+                                        </div>
+                                    }
+                                    else if (pc.EstadoActual == EstadoComputadora.Disponible)
+                                    {
+                                        <div class="pa-2 rounded mt-2" style="background: rgba(34, 197, 94, 0.08); border: 1px dashed rgba(34, 197, 94, 0.3);">
+                                            <MudText Typo="Typo.caption" Color="Color.Success">
+                                                🟢 Lista para recibir estudiante
+                                            </MudText>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="pa-2 rounded mt-2" style="background: rgba(239, 68, 68, 0.08); border: 1px dashed rgba(239, 68, 68, 0.3);">
+                                            <MudText Typo="Typo.caption" Color="Color.Error">
+                                                🔴 Sin señal (>2m sin heartbeat)
+                                            </MudText>
+                                        </div>
                                     }
                                 </MudCardContent>
-                                <MudCardActions Class="justify-end">
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.Block" OnClick="() => ConfirmarCierreForzadoAsync(pc.Hostname)">
-                                        Desloguear
+
+                                <MudCardActions Class="justify-space-between pt-1">
+                                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Chat" OnClick="() => AbrirMensajeDirecto(pc.Hostname)">
+                                        Mensaje
                                     </MudButton>
+                                    @if (pc.EstadoActual == EstadoComputadora.EnUso)
+                                    {
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.Block" OnClick="() => ConfirmarCierreForzadoAsync(pc.Hostname)">
+                                            Desloguear
+                                        </MudButton>
+                                    }
                                 </MudCardActions>
-                            </MudCard>
+                                </MudCard>
+                            </div>
                         </MudItem>
                     }
                 </MudGrid>
@@ -122,10 +222,124 @@ else
     </MudAlert>
 }
 
+<!-- Modal Menú Contextual Rápido (Clic Derecho) -->
+<MudDialog @bind-Visible="MostrarModalContextual" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Primary">
+            <MudIcon Icon="@Icons.Material.Filled.Computer" Class="mr-2" /> Opciones de Terminal: @PcSeleccionada?.Hostname
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (PcSeleccionada != null)
+        {
+            <MudPaper Elevation="1" Class="pa-3 mb-4 rounded" Style="background: #1e293b;">
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">ESTADO ACTUAL</MudText>
+                        <div>
+                            <MudChip T="string" Color="@GetChipColor(PcSeleccionada.EstadoActual)" Size="Size.Small">
+                                @GetEstadoTexto(PcSeleccionada.EstadoActual)
+                            </MudChip>
+                        </div>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">TIEMPO TRANSCURRIDO</MudText>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold">
+                            @CalcularTiempoTranscurrido(PcSeleccionada.HoraInicioSesion)
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">USUARIO ACTUAL</MudText>
+                        <MudText Typo="Typo.body2">
+                            @(PcSeleccionada.EmailEstudianteActual ?? "Sin sesión activa")
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">DIRECCIÓN IP</MudText>
+                        <MudText Typo="Typo.body2">@PcSeleccionada.IpActual</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">DIRECCIÓN MAC</MudText>
+                        <MudText Typo="Typo.body2">@PcSeleccionada.MacAddress</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudStack Spacing="2">
+                @if (PcSeleccionada.EstadoActual == EstadoComputadora.EnUso)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" FullWidth="true" StartIcon="@Icons.Material.Filled.Block" 
+                               OnClick="async () => { MostrarModalContextual = false; await ConfirmarCierreForzadoAsync(PcSeleccionada.Hostname); }">
+                        Cerrar Sesión / Desloguear Inmediatamente
+                    </MudButton>
+                }
+                <MudButton Variant="Variant.Filled" Color="Color.Warning" FullWidth="true" StartIcon="@Icons.Material.Filled.Chat" 
+                           OnClick="() => { MostrarModalContextual = false; AbrirMensajeDirecto(PcSeleccionada.Hostname); }">
+                    Enviar Mensaje Directo a esta PC
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" FullWidth="true" StartIcon="@Icons.Material.Filled.ContentCopy" 
+                           OnClick="@(() => CopiarAlPortapapeles(PcSeleccionada.IpActual, "IP"))">
+                    Copiar Dirección IP
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" FullWidth="true" StartIcon="@Icons.Material.Filled.Fingerprint" 
+                           OnClick="@(() => CopiarAlPortapapeles(PcSeleccionada.MacAddress, "MAC"))">
+                    Copiar Dirección MAC
+                </MudButton>
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="() => MostrarModalContextual = false">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Modal Enviar Mensaje Directo a PC Específica -->
+<MudDialog @bind-Visible="MostrarModalMensajeDirecto" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Warning">
+            <MudIcon Icon="@Icons.Material.Filled.Chat" Class="mr-2" /> Enviar Mensaje a @TargetHostnameMensaje
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Este aviso aparecerá en una ventana emergente en pantalla completa sobre la terminal <strong>@TargetHostnameMensaje</strong>.
+        </MudText>
+        <MudTextField @bind-Value="MensajeDirectoTexto" Label="Contenido del Mensaje" Variant="Variant.Outlined" 
+                      Lines="3" Placeholder="Ej: Por favor acercarse al mostrador del encargado de laboratorio." Required="true" FullWidth="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalMensajeDirecto = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Warning" Disabled="@(string.IsNullOrWhiteSpace(MensajeDirectoTexto) || IsSendingMessage)" 
+                   StartIcon="@Icons.Material.Filled.Send" OnClick="EnviarMensajeDirectoAsync">
+            @(IsSendingMessage ? "Enviando..." : "Enviar Mensaje")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     private List<AulaEstadoDto> Aulas = [];
     private bool IsLoading = true;
     private bool IsSignalRConnected => SignalRService.IsConnected;
+    private int ActiveTabIndex = 0;
+
+    private bool MostrarModalMensaje = false;
+    private bool MostrarModalMensajeDirecto = false;
+    private bool MostrarModalContextual = false;
+    private bool IsSendingMessage = false;
+
+    private int DestinoAulaId = 0;
+    private string MensajeTexto = "";
+    private string TargetHostnameMensaje = "";
+    private string MensajeDirectoTexto = "";
+    private ComputadoraTarjetaDto? PcSeleccionada;
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseButton = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        Position = DialogPosition.Center
+    };
 
     private int TotalPcs => Aulas.Sum(a => a.Computadoras.Count);
     private int TotalEnUso => Aulas.Sum(a => a.Computadoras.Count(c => c.EstadoActual == EstadoComputadora.EnUso));
@@ -175,6 +389,89 @@ else
         }
     }
 
+    private void OpenMensajeDialog()
+    {
+        MensajeTexto = "";
+        DestinoAulaId = Aulas.ElementAtOrDefault(ActiveTabIndex)?.AulaId ?? 0;
+        MostrarModalMensaje = true;
+    }
+
+    private void AbrirMenuContextual(ComputadoraTarjetaDto pc)
+    {
+        PcSeleccionada = pc;
+        MostrarModalContextual = true;
+    }
+
+    private void AbrirMensajeDirecto(string hostname)
+    {
+        TargetHostnameMensaje = hostname;
+        MensajeDirectoTexto = "";
+        MostrarModalMensajeDirecto = true;
+    }
+
+    private void AbrirDetallesPc(ComputadoraTarjetaDto pc)
+    {
+        PcSeleccionada = pc;
+        MostrarModalContextual = true;
+    }
+
+    private void CopiarAlPortapapeles(string texto, string tipo)
+    {
+        Snackbar.Add($"📋 {tipo} copiada: {texto}", Severity.Info);
+    }
+
+    private string CalcularTiempoTranscurrido(DateTime? horaInicio)
+    {
+        if (!horaInicio.HasValue) return "Recién iniciada";
+        var diff = DateTime.UtcNow.Subtract(horaInicio.Value);
+        if (diff.TotalMinutes < 1) return "< 1 min";
+        if (diff.TotalHours < 1) return $"{Math.Floor(diff.TotalMinutes)} min transcurridos";
+        return $"{(int)diff.TotalHours}h {diff.Minutes}m transcurridos";
+    }
+
+    private async Task EnviarMensajeDirectoAsync()
+    {
+        if (string.IsNullOrWhiteSpace(MensajeDirectoTexto)) return;
+
+        IsSendingMessage = true;
+        bool exito = await ApiClient.EnviarMensajeAlertaAsync(MensajeDirectoTexto, hostname: TargetHostnameMensaje);
+
+        if (exito)
+        {
+            Snackbar.Add($"¡Mensaje enviado a la terminal '{TargetHostnameMensaje}'!", Severity.Success);
+            MostrarModalMensajeDirecto = false;
+        }
+        else
+        {
+            Snackbar.Add("No se pudo enviar el mensaje directo.", Severity.Error);
+        }
+
+        IsSendingMessage = false;
+    }
+
+    private async Task EnviarMensajeAsync()
+    {
+        if (string.IsNullOrWhiteSpace(MensajeTexto)) return;
+
+        IsSendingMessage = true;
+        bool exito = await ApiClient.EnviarMensajeAlertaAsync(
+            MensajeTexto,
+            null,
+            DestinoAulaId == 0 ? null : DestinoAulaId);
+
+        if (exito)
+        {
+            Snackbar.Add("¡Mensaje transmitido exitosamente a las terminales!", Severity.Success);
+            MostrarModalMensaje = false;
+        }
+        else
+        {
+            Snackbar.Add("No se pudo transmitir el mensaje. Verifique la conexión con el servidor.", Severity.Error);
+        }
+
+        IsSendingMessage = false;
+    }
+
     private async Task ConfirmarCierreForzadoAsync(string hostname)
     {
         bool? result = await DialogService.ShowMessageBoxAsync(
@@ -185,24 +482,65 @@ else
 
         if (result == true)
         {
-            Snackbar.Add($"Orden de cierre forzado enviada a {hostname}", Severity.Warning);
+            bool exito = await ApiClient.DesloguearTerminalAsync(hostname: hostname);
+            if (exito)
+            {
+                Snackbar.Add($"Orden de cierre forzado enviada a {hostname}", Severity.Warning);
+            }
+            else
+            {
+                Snackbar.Add($"No se pudo enviar la orden a {hostname}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ConfirmarCierreMasivoAulaAsync()
+    {
+        var aulaActual = Aulas.ElementAtOrDefault(ActiveTabIndex);
+        if (aulaActual == null) return;
+
+        bool? result = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Deslogueo de Aula Completa",
+            $"¿Estás seguro de cerrar todas las sesiones activas en el aula '{aulaActual.Nombre}' ({aulaActual.Computadoras.Count} PCs)?\nEsta acción bloqueará todas las terminales del aula.",
+            yesText: "Sí, Desloguear Aula", cancelText: "Cancelar"
+        );
+
+        if (result == true)
+        {
+            bool exito = await ApiClient.DesloguearTerminalAsync(aulaId: aulaActual.AulaId);
+            if (exito)
+            {
+                Snackbar.Add($"Orden de deslogueo enviada a todas las PCs del Aula '{aulaActual.Nombre}'.", Severity.Warning);
+            }
+            else
+            {
+                Snackbar.Add("No se pudo procesar el deslogueo del aula.", Severity.Error);
+            }
         }
     }
 
     private Color GetChipColor(EstadoComputadora estado) => estado switch
     {
-        EstadoComputadora.EnUso => Color.Success,
-        EstadoComputadora.Disponible => Color.Default,
-        EstadoComputadora.Offline => Color.Error,
-        _ => Color.Default
+        EstadoComputadora.Disponible => Color.Success, // 🟢 Verde
+        EstadoComputadora.EnUso => Color.Info,         // 🔵 Azul
+        EstadoComputadora.Offline => Color.Error,      // 🔴 Rojo
+        _ => Color.Dark                                // ⚪ Gris
+    };
+
+    private string GetEstadoTexto(EstadoComputadora estado) => estado switch
+    {
+        EstadoComputadora.Disponible => "Disponible",
+        EstadoComputadora.EnUso => "En Uso",
+        EstadoComputadora.Offline => "Offline",
+        _ => "Bloqueada"
     };
 
     private string GetEstiloBordeCard(EstadoComputadora estado) => estado switch
     {
-        EstadoComputadora.EnUso => "border-left: 4px solid #22c55e; background: #1e293b;",
-        EstadoComputadora.Disponible => "border-left: 4px solid #64748b; background: #1e293b;",
-        EstadoComputadora.Offline => "border-left: 4px solid #ef4444; background: #1e293b;",
-        _ => "border-left: 4px solid #64748b; background: #1e293b;"
+        EstadoComputadora.Disponible => "border-left: 5px solid #22c55e; background: #1e293b;", // Verde
+        EstadoComputadora.EnUso => "border-left: 5px solid #3b82f6; background: #1e293b;",      // Azul
+        EstadoComputadora.Offline => "border-left: 5px solid #ef4444; background: #1e293b;",    // Rojo
+        _ => "border-left: 5px solid #64748b; background: #1e293b;"                             // Gris
     };
 
     public async ValueTask DisposeAsync()

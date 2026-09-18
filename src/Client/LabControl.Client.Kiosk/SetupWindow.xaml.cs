@@ -14,6 +14,7 @@ public partial class SetupWindow : Window
     {
         InitializeComponent();
         CargarEspecificacionesHardware();
+        Loaded += (s, e) => OnCargarAulasClick(this, new RoutedEventArgs());
     }
 
     private void CargarEspecificacionesHardware()

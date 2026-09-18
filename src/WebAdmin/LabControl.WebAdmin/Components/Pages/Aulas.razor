@@ -4,24 +4,26 @@
 @using LabControl.WebAdmin.Services
 @inject LabApiClient ApiClient
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <PageTitle>Gestión de Aulas — Control de Laboratorios</PageTitle>
 
 <div class="d-flex justify-space-between align-center mb-6">
     <div>
         <MudText Typo="Typo.h5" Class="font-weight-bold">🏢 Gestión de Aulas y Laboratorios</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">Crea y administra las aulas del centro de cómputo</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Crea, edita y administra las aulas del centro de cómputo</MudText>
     </div>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
         Crear Nueva Aula
     </MudButton>
 </div>
 
-<!-- Modal Centrado para Crear Aula -->
+<!-- Modal Centrado para Crear / Editar Aula -->
 <MudDialog @bind-Visible="MostrarModal" Options="_dialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Primary">
-            <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Class="mr-2" /> Registrar Nueva Aula
+            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.MeetingRoom)" Class="mr-2" />
+            @(IsEditMode ? $"Editar Aula: {NuevoNombre}" : "Registrar Nueva Aula")
         </MudText>
     </TitleContent>
     <DialogContent>
@@ -30,24 +32,30 @@
             <MudAlert Severity="Severity.Error" Class="mb-4">@MensajeError</MudAlert>
         }
 
-        <EditForm Model="this" OnValidSubmit="CrearAulaAsync">
+        <EditForm Model="this" OnValidSubmit="GuardarAulaAsync">
             <MudGrid>
                 <MudItem xs="12">
-                    <MudTextField @bind-Value="NuevoNombre" Label="Nombre del Aula" Variant="Variant.Outlined" Required="true" Placeholder="Ej: Aula 302" FullWidth="true" />
+                    <MudTextField @bind-Value="NuevoNombre" Label="Nombre del Aula" Variant="Variant.Outlined" Required="true" Placeholder="Ej: A-302" FullWidth="true" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudNumericField @bind-Value="NuevaCapacidad" Label="Capacidad (Nº de PCs)" Variant="Variant.Outlined" Required="true" Min="1" FullWidth="true" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="NuevoPabellon" Label="Pabellón / Ubicación" Variant="Variant.Outlined" Placeholder="Ej: Pabellón A" FullWidth="true" />
+                    <MudTextField @bind-Value="NuevoPabellon" Label="Pabellón / Ubicación" Variant="Variant.Outlined" Placeholder="Ej: Bloque A - Piso 2" FullWidth="true" />
                 </MudItem>
+                @if (IsEditMode)
+                {
+                    <MudItem xs="12">
+                        <MudSwitch @bind-Value="NuevoActivo" Label="Aula Activa" Color="Color.Success" />
+                    </MudItem>
+                }
             </MudGrid>
         </EditForm>
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDialog">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="CrearAulaAsync">
-            @(IsSaving ? "Guardando..." : "Guardar Aula")
+        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="GuardarAulaAsync">
+            @(IsSaving ? "Guardando..." : (IsEditMode ? "Actualizar Aula" : "Guardar Aula"))
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -61,6 +69,7 @@
         <MudTh>PABELLÓN</MudTh>
         <MudTh>PCS ASIGNADAS</MudTh>
         <MudTh>ESTADO</MudTh>
+        <MudTh Style="text-align: right;">ACCIONES</MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="ID">#@context.Id</MudTd>
@@ -75,6 +84,10 @@
                 @(context.Activo ? "Activa" : "Inactiva")
             </MudChip>
         </MudTd>
+        <MudTd DataLabel="Acciones" Style="text-align: right;">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" aria-label="Editar Aula" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => ConfirmarEliminarAulaAsync(context))" aria-label="Eliminar Aula" />
+        </MudTd>
     </RowTemplate>
     <NoRecordsContent>
         <MudText Typo="Typo.body1" Class="pa-4 text-center" Color="Color.Secondary">
@@ -88,11 +101,14 @@
     private bool IsLoading = true;
     private bool MostrarModal = false;
     private bool IsSaving = false;
+    private bool IsEditMode = false;
+    private int AulaIdSeleccionada = 0;
     private string? MensajeError;
 
     private string NuevoNombre = "";
-    private int NuevaCapacidad = 35;
-    private string? NuevoPabellon = "Pabellón A";
+    private int NuevaCapacidad = 26;
+    private string? NuevoPabellon = "Bloque A - Piso 2";
+    private bool NuevoActivo = true;
 
     private readonly DialogOptions _dialogOptions = new()
     {
@@ -116,6 +132,24 @@
 
     private void OpenCreateDialog()
     {
+        IsEditMode = false;
+        AulaIdSeleccionada = 0;
+        NuevoNombre = "";
+        NuevaCapacidad = 26;
+        NuevoPabellon = "Bloque A - Piso 2";
+        NuevoActivo = true;
+        MensajeError = null;
+        MostrarModal = true;
+    }
+
+    private void OpenEditDialog(AulaDto aula)
+    {
+        IsEditMode = true;
+        AulaIdSeleccionada = aula.Id;
+        NuevoNombre = aula.Nombre;
+        NuevaCapacidad = aula.Capacidad;
+        NuevoPabellon = aula.Pabellon;
+        NuevoActivo = aula.Activo;
         MensajeError = null;
         MostrarModal = true;
     }
@@ -125,7 +159,7 @@
         MostrarModal = false;
     }
 
-    private async Task CrearAulaAsync()
+    private async Task GuardarAulaAsync()
     {
         if (string.IsNullOrWhiteSpace(NuevoNombre) || NuevaCapacidad <= 0)
         {
@@ -136,21 +170,49 @@
         IsSaving = true;
         MensajeError = null;
 
-        bool exito = await ApiClient.CreateAulaAsync(NuevoNombre, NuevaCapacidad, NuevoPabellon);
+        bool exito;
+        if (IsEditMode)
+        {
+            exito = await ApiClient.UpdateAulaAsync(AulaIdSeleccionada, NuevoNombre, NuevaCapacidad, NuevoPabellon, NuevoActivo);
+        }
+        else
+        {
+            exito = await ApiClient.CreateAulaAsync(NuevoNombre, NuevaCapacidad, NuevoPabellon);
+        }
 
         if (exito)
         {
-            Snackbar.Add($"¡Aula '{NuevoNombre}' registrada exitosamente!", Severity.Success);
-            NuevoNombre = "";
-            NuevaCapacidad = 35;
+            Snackbar.Add(IsEditMode ? $"¡Aula '{NuevoNombre}' actualizada exitosamente!" : $"¡Aula '{NuevoNombre}' registrada exitosamente!", Severity.Success);
             MostrarModal = false;
             await CargarAulasAsync();
         }
         else
         {
-            MensajeError = "No se pudo crear el aula. Verifica que el servidor API esté disponible.";
+            MensajeError = IsEditMode ? "No se pudo actualizar el aula. Verifique que no exista otra con el mismo nombre." : "No se pudo crear el aula. Verifica que el servidor API esté disponible.";
         }
 
         IsSaving = false;
+    }
+
+    private async Task ConfirmarEliminarAulaAsync(AulaDto aula)
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Eliminación",
+            $"¿Está seguro que desea dar de baja el aula '{aula.Nombre}'?\nSi tiene computadoras asignadas, se desactivará lógicamente.",
+            yesText: "Sí, Eliminar", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            bool exito = await ApiClient.DeleteAulaAsync(aula.Id, softDelete: true);
+            if (exito)
+            {
+                Snackbar.Add($"Aula '{aula.Nombre}' procesada exitosamente.", Severity.Info);
+                await CargarAulasAsync();
+            }
+            else
+            {
+                Snackbar.Add("No se pudo eliminar el aula. Verifique la conexión con la API.", Severity.Error);
+            }
+        }
     }
 }

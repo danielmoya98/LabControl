@@ -45,4 +45,33 @@ public class BloqueHorario : BaseEntity
 
         return Result<BloqueHorario>.Success(bloque);
     }
+
+    public Result Update(
+        int aulaId,
+        DiaSemana diaSemana,
+        TimeSpan horaInicio,
+        TimeSpan horaFin,
+        bool esRecreo,
+        string? descripcion)
+    {
+        if (aulaId <= 0)
+        {
+            return Result.Failure(Error.Validation("BloqueHorario.AulaRequired", "Se requiere una aula válida."));
+        }
+
+        if (horaFin <= horaInicio)
+        {
+            return Result.Failure(Error.Validation("BloqueHorario.InvalidTimeRange", "La hora de fin debe ser posterior a la hora de inicio."));
+        }
+
+        AulaId = aulaId;
+        DiaSemana = diaSemana;
+        HoraInicio = horaInicio;
+        HoraFin = horaFin;
+        EsRecreo = esRecreo;
+        Descripcion = descripcion?.Trim();
+        FechaModificacionUtc = DateTime.UtcNow;
+
+        return Result.Success();
+    }
 }

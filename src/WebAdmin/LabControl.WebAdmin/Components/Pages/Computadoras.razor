@@ -2,9 +2,11 @@
 @using Microsoft.AspNetCore.Components.Web
 @using LabControl.Application.Features.Aulas.Commands.CreateAula
 @using LabControl.Application.Features.Computadoras.Queries.GetEstadoAulasMapa
+@using LabControl.Domain.Enums
 @using LabControl.WebAdmin.Services
 @inject LabApiClient ApiClient
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <PageTitle>Gestión de Terminales — Control de Laboratorios</PageTitle>
 
@@ -18,11 +20,12 @@
     </MudButton>
 </div>
 
-<!-- Modal Centrado para Registrar Computadora -->
+<!-- Modal Centrado para Registrar / Editar Computadora -->
 <MudDialog @bind-Visible="MostrarModal" Options="_dialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Primary">
-            <MudIcon Icon="@Icons.Material.Filled.Computer" Class="mr-2" /> Registrar Nueva Terminal
+            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.Computer)" Class="mr-2" />
+            @(IsEditMode ? $"Editar Terminal: {NuevoHostname}" : "Registrar Nueva Terminal")
         </MudText>
     </TitleContent>
     <DialogContent>
@@ -31,7 +34,7 @@
             <MudAlert Severity="Severity.Error" Class="mb-4">@MensajeError</MudAlert>
         }
 
-        <EditForm Model="this" OnValidSubmit="CrearComputadoraAsync">
+        <EditForm Model="this" OnValidSubmit="GuardarComputadoraAsync">
             <MudGrid>
                 <MudItem xs="12">
                     <MudSelect T="int" @bind-Value="NuevoAulaId" Label="Aula de Destino" Variant="Variant.Outlined" Required="true" FullWidth="true">
@@ -54,13 +57,24 @@
                 <MudItem xs="12" sm="6">
                     <MudTextField @bind-Value="NuevaMac" Label="Dirección MAC Física" Variant="Variant.Outlined" Required="true" Placeholder="Ej: 00:1A:2B:3C:01:01" FullWidth="true" />
                 </MudItem>
+
+                @if (IsEditMode)
+                {
+                    <MudItem xs="12">
+                        <MudSelect T="EstadoComputadora" @bind-Value="NuevoEstado" Label="Estado de la Terminal" Variant="Variant.Outlined" FullWidth="true">
+                            <MudSelectItem T="EstadoComputadora" Value="@EstadoComputadora.Disponible">Disponible</MudSelectItem>
+                            <MudSelectItem T="EstadoComputadora" Value="@EstadoComputadora.EnUso">En Uso</MudSelectItem>
+                            <MudSelectItem T="EstadoComputadora" Value="@EstadoComputadora.Offline">Offline</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                }
             </MudGrid>
         </EditForm>
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDialog">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="CrearComputadoraAsync">
-            @(IsSaving ? "Guardando..." : "Guardar Terminal")
+        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="GuardarComputadoraAsync">
+            @(IsSaving ? "Guardando..." : (IsEditMode ? "Actualizar Terminal" : "Guardar Terminal"))
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -84,6 +98,7 @@
         <MudTh>DIRECCIÓN IP</MudTh>
         <MudTh>DIRECCIÓN MAC</MudTh>
         <MudTh>ESTADO ACTUAL</MudTh>
+        <MudTh Style="text-align: right;">ACCIONES</MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="Aula">
@@ -98,6 +113,10 @@
             <MudChip T="string" Color="@GetChipColor(context.EstadoActual)" Size="Size.Small">
                 @context.EstadoActual.ToString()
             </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Acciones" Style="text-align: right;">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" aria-label="Editar Computadora" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => ConfirmarEliminarComputadoraAsync(context))" aria-label="Eliminar Computadora" />
         </MudTd>
     </RowTemplate>
     <NoRecordsContent>
@@ -114,12 +133,15 @@
     private bool IsLoading = true;
     private bool MostrarModal = false;
     private bool IsSaving = false;
+    private bool IsEditMode = false;
+    private int ComputadoraIdSeleccionada = 0;
     private string? MensajeError;
 
     private int NuevoAulaId = 0;
     private string NuevoHostname = "";
     private string NuevaIp = "192.168.1.10";
     private string NuevaMac = "00:1A:2B:3C:01:01";
+    private EstadoComputadora NuevoEstado = EstadoComputadora.Disponible;
 
     private readonly DialogOptions _dialogOptions = new()
     {
@@ -129,7 +151,7 @@
         Position = DialogPosition.Center
     };
 
-    public record PcRowItem(string NombreAula, string Hostname, string IpActual, string MacAddress, Domain.Enums.EstadoComputadora EstadoActual);
+    public record PcRowItem(int ComputadoraId, int AulaId, string NombreAula, string Hostname, string IpActual, string MacAddress, EstadoComputadora EstadoActual);
 
     private IEnumerable<PcRowItem> PCsFiltradas
     {
@@ -141,7 +163,7 @@
             {
                 foreach (var pc in aula.Computadoras)
                 {
-                    result.Add(new PcRowItem(aula.Nombre, pc.Hostname, pc.IpActual, pc.MacAddress, pc.EstadoActual));
+                    result.Add(new PcRowItem(pc.ComputadoraId, aula.AulaId, aula.Nombre, pc.Hostname, pc.IpActual, pc.MacAddress, pc.EstadoActual));
                 }
             }
             return result;
@@ -168,6 +190,26 @@
 
     private void OpenCreateDialog()
     {
+        IsEditMode = false;
+        ComputadoraIdSeleccionada = 0;
+        NuevoAulaId = ListaAulas.FirstOrDefault()?.Id ?? 0;
+        NuevoHostname = "";
+        NuevaIp = "192.168.1.10";
+        NuevaMac = "00:1A:2B:3C:01:01";
+        NuevoEstado = EstadoComputadora.Disponible;
+        MensajeError = null;
+        MostrarModal = true;
+    }
+
+    private void OpenEditDialog(PcRowItem pc)
+    {
+        IsEditMode = true;
+        ComputadoraIdSeleccionada = pc.ComputadoraId;
+        NuevoAulaId = pc.AulaId;
+        NuevoHostname = pc.Hostname;
+        NuevaIp = pc.IpActual;
+        NuevaMac = pc.MacAddress;
+        NuevoEstado = pc.EstadoActual;
         MensajeError = null;
         MostrarModal = true;
     }
@@ -177,7 +219,7 @@
         MostrarModal = false;
     }
 
-    private async Task CrearComputadoraAsync()
+    private async Task GuardarComputadoraAsync()
     {
         if (NuevoAulaId <= 0 || string.IsNullOrWhiteSpace(NuevoHostname) || string.IsNullOrWhiteSpace(NuevaIp) || string.IsNullOrWhiteSpace(NuevaMac))
         {
@@ -188,28 +230,60 @@
         IsSaving = true;
         MensajeError = null;
 
-        bool exito = await ApiClient.CreateComputadoraAsync(NuevoAulaId, NuevoHostname, NuevaIp, NuevaMac);
+        bool exito;
+        if (IsEditMode)
+        {
+            exito = await ApiClient.UpdateComputadoraAsync(
+                ComputadoraIdSeleccionada, NuevoAulaId, NuevoHostname, NuevaIp, NuevaMac, NuevoEstado);
+        }
+        else
+        {
+            exito = await ApiClient.CreateComputadoraAsync(NuevoAulaId, NuevoHostname, NuevaIp, NuevaMac);
+        }
 
         if (exito)
         {
-            Snackbar.Add($"¡Terminal '{NuevoHostname}' registrada exitosamente!", Severity.Success);
-            NuevoHostname = "";
+            Snackbar.Add(IsEditMode ? $"¡Terminal '{NuevoHostname}' actualizada exitosamente!" : $"¡Terminal '{NuevoHostname}' registrada exitosamente!", Severity.Success);
             MostrarModal = false;
             await CargarDatosAsync();
         }
         else
         {
-            MensajeError = "No se pudo registrar la terminal. Verifica el formato de la IP/MAC o que el Hostname sea único.";
+            MensajeError = IsEditMode
+                ? "No se pudo actualizar la terminal. Verifica los datos ingresados."
+                : "No se pudo registrar la terminal. Verifica el formato de la IP/MAC o que el Hostname sea único.";
         }
 
         IsSaving = false;
     }
 
-    private Color GetChipColor(Domain.Enums.EstadoComputadora estado) => estado switch
+    private async Task ConfirmarEliminarComputadoraAsync(PcRowItem pc)
     {
-        Domain.Enums.EstadoComputadora.EnUso => Color.Success,
-        Domain.Enums.EstadoComputadora.Disponible => Color.Default,
-        Domain.Enums.EstadoComputadora.Offline => Color.Error,
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Eliminación",
+            $"¿Está seguro que desea eliminar la terminal '{pc.Hostname}' ({pc.IpActual})?\nEsta acción cerrará cualquier sesión activa.",
+            yesText: "Sí, Eliminar", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            bool exito = await ApiClient.DeleteComputadoraAsync(pc.ComputadoraId);
+            if (exito)
+            {
+                Snackbar.Add($"Terminal '{pc.Hostname}' eliminada exitosamente.", Severity.Info);
+                await CargarDatosAsync();
+            }
+            else
+            {
+                Snackbar.Add("No se pudo eliminar la terminal. Verifique la conexión con el servidor.", Severity.Error);
+            }
+        }
+    }
+
+    private Color GetChipColor(EstadoComputadora estado) => estado switch
+    {
+        EstadoComputadora.EnUso => Color.Success,
+        EstadoComputadora.Disponible => Color.Default,
+        EstadoComputadora.Offline => Color.Error,
         _ => Color.Default
     };
 }

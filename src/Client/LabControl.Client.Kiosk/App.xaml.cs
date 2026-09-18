@@ -22,4 +22,11 @@ public partial class App : Application
             setupWindow.Show();
         }
     }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        WindowsHookManager.UninstallHook();
+        TaskManagerHelper.EnableTaskManager();
+        base.OnExit(e);
+    }
 }

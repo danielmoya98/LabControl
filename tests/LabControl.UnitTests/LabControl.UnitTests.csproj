@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Backend\LabControl.Application\LabControl.Application.csproj" />
     <ProjectReference Include="..\..\src\Backend\LabControl.Domain\LabControl.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Backend\LabControl.Infrastructure\LabControl.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
