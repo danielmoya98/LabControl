@@ -40,4 +40,20 @@ public class AulasController : ApiControllerBase
         var result = await Mediator.Send(new DeleteAulaCommand(id, softDelete), cancellationToken);
         return HandleResult(result);
     }
+
+    [HttpPost("{id:int}/apagar-todo")]
+    public async Task<IActionResult> ApagarAula(
+        int id,
+        [FromBody] LabControl.Api.Controllers.ComandoEnergiaRequest? request,
+        [FromServices] LabControl.Application.Common.Interfaces.ISignalRNotificationService notificationService,
+        [FromServices] LabControl.Application.Common.Interfaces.IApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var aula = await context.Aulas.FindAsync([id], cancellationToken);
+        if (aula == null) return NotFound(new { error = "Aula no encontrada." });
+
+        var motivo = string.IsNullOrWhiteSpace(request?.Motivo) ? $"Apagado masivo solicitado para el aula {aula.Nombre}" : request.Motivo;
+        await notificationService.SendComandoEnergiaAulaAsync(id, "SHUTDOWN", motivo, cancellationToken);
+        return Ok(new { message = $"Orden de apagado general transmitida al aula '{aula.Nombre}'." });
+    }
 }

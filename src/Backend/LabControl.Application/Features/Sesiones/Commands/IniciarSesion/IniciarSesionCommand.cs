@@ -140,8 +140,9 @@ public class IniciarSesionCommandHandler : IRequestHandler<IniciarSesionCommand,
         var nuevaSesion = nuevaSesionResult.Value;
         _context.SesionesUso.Add(nuevaSesion);
 
-        // 6. Actualizar estado de la computadora
+        // 6. Actualizar estado de la computadora y registrar último usuario para auditoría energética
         computadora.CambiarEstado(EstadoComputadora.EnUso);
+        computadora.RegistrarUltimoUsuario(emailResult.Value.Value);
 
         await _context.SaveChangesAsync(cancellationToken);
 

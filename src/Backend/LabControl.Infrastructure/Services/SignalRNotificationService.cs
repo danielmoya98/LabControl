@@ -40,4 +40,14 @@ public class SignalRNotificationService : ISignalRNotificationService
     {
         return Task.CompletedTask;
     }
+
+    public Task SendComandoEnergiaTerminalAsync(string targetHostname, string tipoComando, string motivo, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task SendComandoEnergiaAulaAsync(int aulaId, string tipoComando, string motivo, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
 }

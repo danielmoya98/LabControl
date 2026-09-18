@@ -56,4 +56,25 @@ public class ComputadorasController : ApiControllerBase
         var result = await Mediator.Send(new DeleteComputadoraCommand(id), cancellationToken);
         return HandleResult(result);
     }
+
+    [HttpPost("{id:int}/energia")]
+    public async Task<IActionResult> EnviarComandoEnergia(
+        int id,
+        [FromBody] ComandoEnergiaRequest request,
+        [FromServices] LabControl.Application.Common.Interfaces.ISignalRNotificationService notificationService,
+        [FromServices] LabControl.Application.Common.Interfaces.IApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var pc = await context.Computadoras.FindAsync([id], cancellationToken);
+        if (pc == null) return NotFound(new { error = "Computadora no encontrada." });
+
+        var cmd = request.TipoComando?.Trim().ToUpperInvariant() ?? "SHUTDOWN";
+        var motivo = string.IsNullOrWhiteSpace(request.Motivo) ? "Comando ejecutado desde Panel Administrativo" : request.Motivo;
+
+        await notificationService.SendComandoEnergiaTerminalAsync(pc.Hostname, cmd, motivo, cancellationToken);
+        return Ok(new { message = $"Comando {cmd} enviado a la terminal {pc.Hostname}." });
+    }
 }
+
+public record ComandoEnergiaRequest(string TipoComando, string? Motivo = null);
+

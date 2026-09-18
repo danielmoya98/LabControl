@@ -1,8 +1,8 @@
-﻿<Window x:Class="LabControl.Client.Kiosk.SessionWidgetWindow"
+<Window x:Class="LabControl.Client.Kiosk.SessionWidgetWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Sesión Activa - Univalle LabControl"
-        Width="380" Height="76"
+        Width="520" Height="78"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -23,9 +23,9 @@
             </Grid.ColumnDefinitions>
 
             <!-- Icono y Contador -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-                <TextBlock Text="⏱️" FontSize="20" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <TextBlock x:Name="TxtContador" Text="01:30:00" FontSize="20" FontWeight="Bold"
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                <TextBlock Text="⏱️" FontSize="18" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <TextBlock x:Name="TxtContador" Text="01:30:00" FontSize="18" FontWeight="Bold"
                            FontFamily="Consolas, Segoe UI" Foreground="#38BDF8" VerticalAlignment="Center"/>
             </StackPanel>
 
@@ -38,16 +38,28 @@
                            FontSize="10" Foreground="#94A3B8" Margin="0,2,0,0"/>
             </StackPanel>
 
-            <!-- Botón Cerrar Sesión -->
-            <Button Grid.Column="2" Content="Cerrar Sesión" Click="OnCerrarSesionClick"
-                    Height="32" Padding="12,0" Background="#EF4444" Foreground="#FFFFFF"
-                    FontSize="11" FontWeight="Bold" Cursor="Hand">
-                <Button.Resources>
-                    <Style TargetType="Border">
-                        <Setter Property="CornerRadius" Value="8"/>
-                    </Style>
-                </Button.Resources>
-            </Button>
+            <!-- Acciones: Cambiar Usuario & Finalizar y Apagar -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="Cambiar Usuario" Click="OnCerrarSesionClick"
+                        Height="32" Padding="8,0" Background="#334155" Foreground="#E2E8F0"
+                        FontSize="10" FontWeight="SemiBold" Cursor="Hand" Margin="0,0,6,0">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+
+                <Button Content="⏻ Finalizar y Apagar" Click="OnFinalizarYApagarClick"
+                        Height="32" Padding="10,0" Background="#DC2626" Foreground="#FFFFFF"
+                        FontSize="11" FontWeight="Bold" Cursor="Hand">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+            </StackPanel>
         </Grid>
     </Border>
 </Window>

@@ -33,6 +33,26 @@ public class ComputadoraConfiguration : IEntityTypeConfiguration<Computadora>
             .HasMaxLength(20)
             .IsRequired();
 
+        builder.Property(c => c.CpuModelo)
+            .HasMaxLength(150);
+
+        builder.Property(c => c.SistemaOperativo)
+            .HasMaxLength(150);
+
+        builder.Property(c => c.RamTotalGb);
+        builder.Property(c => c.DiscoTotalGb);
+        builder.Property(c => c.DiscoLibreGb);
+        builder.Property(c => c.UptimeHoras);
+        builder.Property(c => c.UltimaActualizacionHardwareUtc);
+
+        builder.Property(c => c.UltimoEstudianteEmail)
+            .HasMaxLength(150);
+
+        builder.Property(c => c.UltimoEstudianteNombre)
+            .HasMaxLength(150);
+
+        builder.Property(c => c.FechaUltimoUsoUtc);
+
         builder.HasMany(c => c.SesionesUso)
             .WithOne(s => s.Computadora)
             .HasForeignKey(s => s.ComputadoraId)

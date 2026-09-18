@@ -13,7 +13,13 @@ public record AutoRegistrarComputadoraCommand(
     int AulaId,
     string Hostname,
     string IpActual,
-    string MacAddress
+    string MacAddress,
+    string? CpuModelo = null,
+    int? RamTotalGb = null,
+    int? DiscoTotalGb = null,
+    int? DiscoLibreGb = null,
+    string? SistemaOperativo = null,
+    double? UptimeHoras = null
 ) : IRequest<Result<AutoRegistroResultadoDto>>;
 
 public record AutoRegistroResultadoDto(
@@ -80,6 +86,16 @@ public class AutoRegistrarComputadoraCommandHandler : IRequestHandler<AutoRegist
             computadora = pcResult.Value;
             _context.Computadoras.Add(computadora);
         }
+
+        // Actualizar especificaciones de hardware y salud reportadas por el agente Kiosk
+        computadora.ActualizarEspecificacionesHardware(
+            request.CpuModelo,
+            request.RamTotalGb,
+            request.DiscoTotalGb,
+            request.DiscoLibreGb,
+            request.SistemaOperativo,
+            request.UptimeHoras
+        );
 
         await _context.SaveChangesAsync(cancellationToken);
 

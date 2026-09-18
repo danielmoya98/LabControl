@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.RegularExpressions;
@@ -194,6 +195,15 @@ public partial class MainWindow : Window
                 });
             });
 
+            // Escuchar comandos de energía remota (Apagar / Reiniciar) emitidos por WebAdmin
+            _hubConnection.On<string, string>("RecibirComandoEnergia", (tipoComando, motivo) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    EjecutarComandoEnergia(tipoComando, motivo);
+                });
+            });
+
             await _hubConnection.StartAsync();
 
             Dispatcher.Invoke(() =>
@@ -245,12 +255,16 @@ public partial class MainWindow : Window
 
         var currentIp = SystemInfoService.GetLocalIpAddress();
 
-        // 1. Prioridad: enviar heartbeat vía SignalR WebSocket
+        // 1. Prioridad: enviar heartbeat vía SignalR WebSocket con telemetría en tiempo real
         if (_hubConnection != null && _hubConnection.State == HubConnectionState.Connected)
         {
             try
             {
-                await _hubConnection.InvokeAsync("EnviarHeartbeat", _config.Hostname, _config.MacAddress, currentIp);
+                var cpuUso = SystemInfoService.GetCpuUsagePercentage();
+                var (_, ramUso) = SystemInfoService.GetMemoryMetrics();
+                var (_, discoLibre) = SystemInfoService.GetDiskMetrics();
+
+                await _hubConnection.InvokeAsync("EnviarHeartbeatConTelemetria", _config.Hostname, _config.MacAddress, currentIp, cpuUso, ramUso, discoLibre);
                 return;
             }
             catch
@@ -475,5 +489,41 @@ public partial class MainWindow : Window
         var setupWindow = new SetupWindow();
         setupWindow.Show();
         this.Close();
+    }
+
+    private void OnApagarTerminalClick(object sender, RoutedEventArgs e)
+    {
+        var result = MessageBox.Show(
+            "¿Deseas apagar este equipo físico ahora?\n\nEsta acción apagará el computador sin requerir inicio de sesión.",
+            "Confirmar Apagado de Equipo", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Yes)
+        {
+            EjecutarComandoEnergia("SHUTDOWN", "Apagado manual desde pantalla de bloqueo");
+        }
+    }
+
+    private void EjecutarComandoEnergia(string tipoComando, string motivo)
+    {
+        try
+        {
+            // Cerrar sesión activa si existiera
+            _sessionWidget?.CerrarPorComandoRemoto();
+
+            var cmd = tipoComando?.Trim().ToUpperInvariant() == "RESTART"
+                ? "/r /t 0 /f"
+                : "/s /t 0 /f";
+
+            var psi = new ProcessStartInfo("shutdown.exe", cmd)
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            Process.Start(psi);
+        }
+        catch
+        {
+            // Fallback
+        }
     }
 }

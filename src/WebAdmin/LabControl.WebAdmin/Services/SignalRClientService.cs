@@ -9,6 +9,7 @@ public class SignalRClientService : IAsyncDisposable
     public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
 
     public event Action<int, string, EstadoComputadora, string?>? OnEstadoComputadoraCambiado;
+    public event Action<int, string, int, int, int>? OnTelemetriaRecibida;
 
     public async Task StartAsync(string hubUrl)
     {
@@ -24,6 +25,13 @@ public class SignalRClientService : IAsyncDisposable
             (computadoraId, hostname, nuevoEstado, emailEstudiante) =>
             {
                 OnEstadoComputadoraCambiado?.Invoke(computadoraId, hostname, nuevoEstado, emailEstudiante);
+            });
+
+        _hubConnection.On<int, string, int, int, int>(
+            "RecibirTelemetria",
+            (computadoraId, hostname, cpuUso, ramUso, discoLibreGb) =>
+            {
+                OnTelemetriaRecibida?.Invoke(computadoraId, hostname, cpuUso, ramUso, discoLibreGb);
             });
 
         try

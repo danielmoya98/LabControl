@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using LabControl.Application.Common.Interfaces;
 using LabControl.Domain.Common;
@@ -14,7 +14,14 @@ public record ComputadoraDetalleDto(
     string MacAddress,
     string EstadoActual,
     DateTime? UltimoHeartbeatUtc,
-    string? EmailEstudianteActivo
+    string? EmailEstudianteActivo,
+    string? CpuModelo = null,
+    int? RamTotalGb = null,
+    int? DiscoTotalGb = null,
+    int? DiscoLibreGb = null,
+    string? SistemaOperativo = null,
+    double? UptimeHoras = null,
+    DateTime? UltimaActualizacionHardwareUtc = null
 );
 
 public record GetComputadorasByAulaQuery(int AulaId) : IRequest<Result<List<ComputadoraDetalleDto>>>;
@@ -49,7 +56,14 @@ public class GetComputadorasByAulaQueryHandler : IRequestHandler<GetComputadoras
                 c.MacAddress,
                 c.EstadoActual.ToString(),
                 c.UltimoHeartbeatUtc,
-                sesionActiva?.EmailEstudiante
+                sesionActiva?.EmailEstudiante,
+                c.CpuModelo,
+                c.RamTotalGb,
+                c.DiscoTotalGb,
+                c.DiscoLibreGb,
+                c.SistemaOperativo,
+                c.UptimeHoras,
+                c.UltimaActualizacionHardwareUtc
             );
         }).ToList();
 

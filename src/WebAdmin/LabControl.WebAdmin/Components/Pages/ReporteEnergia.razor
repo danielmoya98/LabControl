@@ -1,0 +1,286 @@
+@page "/reporte-energia"
+@using Microsoft.AspNetCore.Components.Web
+@using LabControl.WebAdmin.Services
+@using LabControl.Application.Features.Aulas.Commands.CreateAula
+@inject LabApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Auditoría Energética — Control de Laboratorios</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <div>
+        <MudText Typo="Typo.h5" Class="font-weight-bold">⚡ Auditoría y Responsabilidad Energética</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Rastreo de computadoras desatendidas y estudiantes que no apagan los equipos tras clase</MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Search" OnClick="EvaluarEquiposAsync" Disabled="IsLoading">
+            Escanear Equipos Ahora
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Custom.FileFormats.FileExcel" OnClick="DescargarExcel" Disabled="@(Reporte == null || !Reporte.Incidentes.Any())">
+            Exportar Excel
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Custom.FileFormats.FileDocument" OnClick="DescargarCsv" Disabled="@(Reporte == null || !Reporte.Incidentes.Any())">
+            Exportar CSV
+        </MudButton>
+    </div>
+</div>
+
+<!-- KPIs Energéticos -->
+<MudGrid Class="mb-6">
+    <MudItem xs="12" sm="4">
+        <MudPaper Elevation="3" Class="pa-4 rounded-lg d-flex align-center justify-space-between" Style="background: #1e293b; border-left: 5px solid #f59e0b;">
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Warning" Class="font-weight-bold">HORAS DE ENERGÍA DESPERDICIADAS</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Warning">
+                    @(Reporte?.TotalHorasDesperdiciadas.ToString("N1") ?? "0.0") hrs
+                </MudText>
+            </div>
+            <MudIcon Icon="@Icons.Material.Filled.Bolt" Color="Color.Warning" Size="Size.Large" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="4">
+        <MudPaper Elevation="3" Class="pa-4 rounded-lg d-flex align-center justify-space-between" Style="background: #1e293b; border-left: 5px solid #ef4444;">
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Error" Class="font-weight-bold">INCIDENTES DE NO APAGADO</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Error">
+                    @(Reporte?.TotalIncidentes.ToString() ?? "0")
+                </MudText>
+            </div>
+            <MudIcon Icon="@Icons.Material.Filled.PowerOff" Color="Color.Error" Size="Size.Large" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="4">
+        <MudPaper Elevation="3" Class="pa-4 rounded-lg d-flex align-center justify-space-between" Style="background: #1e293b; border-left: 5px solid #3b82f6;">
+            <div>
+                <MudText Typo="Typo.caption" Color="Color.Info" Class="font-weight-bold">TERMINALES AFECTADAS</MudText>
+                <MudText Typo="Typo.h4" Class="font-weight-bold" Color="Color.Info">
+                    @(Reporte?.TotalEquiposAfectados.ToString() ?? "0")
+                </MudText>
+            </div>
+            <MudIcon Icon="@Icons.Material.Filled.Computer" Color="Color.Info" Size="Size.Large" />
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<!-- Top 5 Estudiantes con más infracciones -->
+@if (Reporte?.TopInfractores.Any() == true)
+{
+    <MudPaper Elevation="2" Class="pa-4 mb-6 rounded-lg" Style="background: #1e293b;">
+        <div class="d-flex align-center mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Leaderboard" Color="Color.Warning" Class="mr-2" />
+            <MudText Typo="Typo.h6" Class="font-weight-bold">Top Estudiantes Responsables de Equipos Dejados Encendidos</MudText>
+        </div>
+        <MudGrid>
+            @foreach (var infractor in Reporte.TopInfractores)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="2">
+                    <MudPaper Elevation="1" Class="pa-3 rounded text-center" Style="background: #0f172a; border-top: 3px solid #f59e0b;">
+                        <MudAvatar Color="Color.Warning" Variant="Variant.Outlined" Class="mb-2 mx-auto">
+                            <MudIcon Icon="@Icons.Material.Filled.PersonOff" />
+                        </MudAvatar>
+                        <MudTooltip Text="@infractor.EstudianteEmail">
+                            <MudText Typo="Typo.body2" Class="font-weight-bold text-truncate">
+                                @infractor.EstudianteEmail
+                            </MudText>
+                        </MudTooltip>
+                        <MudText Typo="Typo.caption" Color="Color.Error" Class="d-block font-weight-bold mt-1">
+                            @infractor.CantidadIncidentes incidentes
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @infractor.TotalHorasDesperdiciadas hrs encendido
+                        </MudText>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudPaper>
+}
+
+<!-- Barra de Filtros -->
+<MudPaper Elevation="2" Class="pa-4 mb-6 rounded-lg" Style="background: #1e293b;">
+    <MudGrid Spacing="2" Class="align-center">
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker @bind-Date="FiltroFechaInicio" Label="Fecha Inicio" Variant="Variant.Outlined" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker @bind-Date="FiltroFechaFin" Label="Fecha Fin" Variant="Variant.Outlined" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="int?" @bind-Value="FiltroAulaId" Label="Aula" Variant="Variant.Outlined" Clearable="true">
+                <MudSelectItem T="int?" Value="(int?)null">Todas las Aulas</MudSelectItem>
+                @foreach (var aula in AulasDisponibles)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)aula.Id)">@aula.Nombre</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudTextField @bind-Value="FiltroEmail" Label="Correo Estudiante" Variant="Variant.Outlined" Clearable="true" Placeholder="ej. m.perez@est.univalle.edu" />
+        </MudItem>
+        <MudItem xs="12" Class="d-flex justify-end gap-2 mt-2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FilterAlt" OnClick="CargarReporteAsync" Disabled="IsLoading">
+                Aplicar Filtros
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="LimpiarFiltrosAsync">
+                Limpiar
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<!-- Tabla de Incidentes de Auditoría -->
+<MudTable Items="@(Reporte?.Incidentes ?? [])" Dense="true" Hover="true" Striped="true" Loading="@IsLoading" Elevation="3" Class="rounded-lg">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">📋 Detalle de Infracciones y Equipos Olvidados</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="BusquedaRapida" Placeholder="Filtrar en tabla..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" Immediate="true" />
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Terminal</MudTh>
+        <MudTh>Aula</MudTh>
+        <MudTh>Último Estudiante (Responsable)</MudTh>
+        <MudTh>Fecha Detección</MudTh>
+        <MudTh>Horas Desperdiciadas</MudTh>
+        <MudTh>Motivo</MudTh>
+        <MudTh>Acción</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        @if (CumpleFiltroRapido(context))
+        {
+            <MudTd DataLabel="ID">#@context.Id</MudTd>
+            <MudTd DataLabel="Terminal">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Computer" Size="Size.Small" Class="mr-1" Color="Color.Primary" />
+                    <strong>@context.Hostname</strong>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Aula">@context.AulaNombre</MudTd>
+            <MudTd DataLabel="Último Estudiante">
+                <MudChip T="string" Color="Color.Default" Size="Size.Small" Icon="@Icons.Material.Filled.Person">
+                    @context.UltimoEstudianteEmail
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Fecha Detección">@context.FechaDeteccionUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudTd>
+            <MudTd DataLabel="Horas Desperdiciadas">
+                <MudChip T="string" Color="@(context.HorasInactivaEncendida > 4 ? Color.Error : Color.Warning)" Size="Size.Small" Class="font-weight-bold">
+                    ⚡ @context.HorasInactivaEncendida hrs
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Motivo">@context.MotivoInfraccion</MudTd>
+            <MudTd DataLabel="Acción">
+                <MudTooltip Text="Apagar Terminal Ahora">
+                    <MudIconButton Icon="@Icons.Material.Filled.PowerOff" Color="Color.Error" Size="Size.Small"
+                                   OnClick="() => ApagarPcDesdeReporteAsync(context)" />
+                </MudTooltip>
+            </MudTd>
+        }
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Typo="Typo.body2" Align="Align.Center" Class="pa-4">
+            ✅ ¡Excelente! No se registran terminales dejadas encendidas con los filtros seleccionados.
+        </MudText>
+    </NoRecordsContent>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private ReporteEnergiaModel? Reporte;
+    private List<AulaDto> AulasDisponibles = [];
+    private bool IsLoading = false;
+    private string BusquedaRapida = "";
+
+    private DateTime? FiltroFechaInicio;
+    private DateTime? FiltroFechaFin;
+    private int? FiltroAulaId;
+    private string? FiltroEmail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AulasDisponibles = await ApiClient.GetAulasAsync();
+        await CargarReporteAsync();
+    }
+
+    private async Task CargarReporteAsync()
+    {
+        IsLoading = true;
+        Reporte = await ApiClient.GetReporteEnergiaAsync(FiltroFechaInicio, FiltroFechaFin, FiltroAulaId, FiltroEmail);
+        IsLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task LimpiarFiltrosAsync()
+    {
+        FiltroFechaInicio = null;
+        FiltroFechaFin = null;
+        FiltroAulaId = null;
+        FiltroEmail = null;
+        await CargarReporteAsync();
+    }
+
+    private async Task EvaluarEquiposAsync()
+    {
+        IsLoading = true;
+        bool ok = await ApiClient.EvaluarEquiposEnergiaAsync();
+        if (ok)
+        {
+            Snackbar.Add("¡Escaneo energético completado!", Severity.Success);
+            await CargarReporteAsync();
+        }
+        else
+        {
+            Snackbar.Add("No se pudo completar el escaneo de auditoría.", Severity.Error);
+        }
+        IsLoading = false;
+    }
+
+    private bool CumpleFiltroRapido(RegistroEnergiaDetalleModel item)
+    {
+        if (string.IsNullOrWhiteSpace(BusquedaRapida)) return true;
+        var q = BusquedaRapida.Trim().ToLowerInvariant();
+        return item.Hostname.ToLowerInvariant().Contains(q) ||
+               item.AulaNombre.ToLowerInvariant().Contains(q) ||
+               item.UltimoEstudianteEmail.ToLowerInvariant().Contains(q) ||
+               item.MotivoInfraccion.ToLowerInvariant().Contains(q);
+    }
+
+    private void DescargarExcel()
+    {
+        var url = ApiClient.GetExportarEnergiaExcelUrl(FiltroFechaInicio, FiltroFechaFin, FiltroAulaId, FiltroEmail);
+        Navigation.NavigateTo(url, forceLoad: true);
+    }
+
+    private void DescargarCsv()
+    {
+        var url = ApiClient.GetExportarEnergiaCsvUrl(FiltroFechaInicio, FiltroFechaFin, FiltroAulaId, FiltroEmail);
+        Navigation.NavigateTo(url, forceLoad: true);
+    }
+
+    private async Task ApagarPcDesdeReporteAsync(RegistroEnergiaDetalleModel item)
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Apagado Remoto",
+            $"¿Deseas enviar la orden de apagado inmediato a la terminal '{item.Hostname}'?",
+            yesText: "Sí, Apagar", cancelText: "Cancelar"
+        );
+
+        if (confirm == true)
+        {
+            bool ok = await ApiClient.EnviarComandoEnergiaAsync(item.ComputadoraId, "SHUTDOWN", "Apagado por infracción energética");
+            if (ok)
+            {
+                Snackbar.Add($"Orden de apagado enviada a {item.Hostname}.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"No se pudo apagar {item.Hostname}.", Severity.Error);
+            }
+        }
+    }
+}

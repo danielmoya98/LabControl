@@ -33,6 +33,7 @@ builder.Services.AddSignalR();
 builder.Services.AddScoped<ISignalRNotificationService, SignalRNotificationService>();
 builder.Services.AddHostedService<HeartbeatMonitorBackgroundService>();
 builder.Services.AddHostedService<HorarioKickoutBackgroundService>();
+builder.Services.AddHostedService<AuditoriaEnergiaBackgroundService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

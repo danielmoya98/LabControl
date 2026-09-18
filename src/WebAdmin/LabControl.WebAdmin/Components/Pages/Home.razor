@@ -24,6 +24,9 @@
         <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.PowerSettingsNew" OnClick="ConfirmarCierreMasivoAulaAsync" Disabled="@(!Aulas.Any())">
             Desloguear Aula
         </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.PowerOff" OnClick="ConfirmarApagadoAulaAsync" Disabled="@(!Aulas.Any())">
+            Apagar Aula
+        </MudButton>
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CargarDatosAsync">
             Refrescar
         </MudButton>
@@ -148,8 +151,14 @@
                                                 <MudMenuItem Icon="@Icons.Material.Filled.Fingerprint" OnClick="@(() => CopiarAlPortapapeles(pc.MacAddress, "MAC"))">
                                                     Copiar MAC
                                                 </MudMenuItem>
-                                                <MudMenuItem Icon="@Icons.Material.Filled.Info" IconColor="Color.Info" OnClick="() => AbrirDetallesPc(pc)">
-                                                    Detalles Técnicos
+                                                <MudMenuItem Icon="@Icons.Material.Filled.Memory" IconColor="Color.Primary" OnClick="() => AbrirFichaTecnicaAsync(pc)">
+                                                    Ficha Técnica & Salud
+                                                </MudMenuItem>
+                                                <MudMenuItem Icon="@Icons.Material.Filled.PowerSettingsNew" IconColor="Color.Error" OnClick="() => ConfirmarApagadoPcAsync(pc)">
+                                                    Apagar Terminal
+                                                </MudMenuItem>
+                                                <MudMenuItem Icon="@Icons.Material.Filled.RestartAlt" IconColor="Color.Warning" OnClick="() => ConfirmarReinicioPcAsync(pc)">
+                                                    Reiniciar Terminal
                                                 </MudMenuItem>
                                             </MudMenu>
                                         </CardHeaderActions>
@@ -160,6 +169,29 @@
                                         <MudText Typo="Typo.body2" Color="Color.Secondary"><strong>IP:</strong> @pc.IpActual</MudText>
                                         <MudText Typo="Typo.caption" Color="Color.Secondary">@pc.MacAddress</MudText>
                                     </div>
+
+                                    @if (_telemetriaMap.TryGetValue(pc.ComputadoraId, out var telem))
+                                    {
+                                        <div class="d-flex gap-1 align-center flex-wrap my-1">
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" 
+                                                     Color="@(telem.CpuUso > 85 ? Color.Error : (telem.CpuUso > 65 ? Color.Warning : Color.Success))" 
+                                                     Class="px-1 py-0 font-weight-bold" Style="font-size: 0.75rem; height: 20px;">
+                                                CPU: @(telem.CpuUso)%
+                                            </MudChip>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" 
+                                                     Color="@(telem.RamUso > 85 ? Color.Error : Color.Info)" 
+                                                     Class="px-1 py-0 font-weight-bold" Style="font-size: 0.75rem; height: 20px;">
+                                                RAM: @(telem.RamUso)%
+                                            </MudChip>
+                                            @if (telem.DiscoLibreGb < 10)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
+                                                         Icon="@Icons.Material.Filled.Warning" Class="px-1 py-0 font-weight-bold" Style="font-size: 0.7rem; height: 20px;">
+                                                    @($"{telem.DiscoLibreGb}GB Libre")
+                                                </MudChip>
+                                            }
+                                        </div>
+                                    }
 
                                     @if (pc.EstadoActual == EstadoComputadora.EnUso)
                                     {
@@ -277,6 +309,18 @@ else
                            OnClick="() => { MostrarModalContextual = false; AbrirMensajeDirecto(PcSeleccionada.Hostname); }">
                     Enviar Mensaje Directo a esta PC
                 </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.Memory" 
+                           OnClick="async () => { MostrarModalContextual = false; if (PcSeleccionada != null) await AbrirFichaTecnicaAsync(PcSeleccionada); }">
+                    Ver Ficha Técnica & Diagnóstico
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true" StartIcon="@Icons.Material.Filled.PowerSettingsNew" 
+                           OnClick="async () => { MostrarModalContextual = false; if (PcSeleccionada != null) await ConfirmarApagadoPcAsync(PcSeleccionada); }">
+                    Apagar Equipo Físico (Shutdown)
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning" FullWidth="true" StartIcon="@Icons.Material.Filled.RestartAlt" 
+                           OnClick="async () => { MostrarModalContextual = false; if (PcSeleccionada != null) await ConfirmarReinicioPcAsync(PcSeleccionada); }">
+                    Reiniciar Equipo Físico (Reboot)
+                </MudButton>
                 <MudButton Variant="Variant.Outlined" Color="Color.Default" FullWidth="true" StartIcon="@Icons.Material.Filled.ContentCopy" 
                            OnClick="@(() => CopiarAlPortapapeles(PcSeleccionada.IpActual, "IP"))">
                     Copiar Dirección IP
@@ -346,11 +390,15 @@ else
     private int TotalDisponibles => Aulas.Sum(a => a.Computadoras.Count(c => c.EstadoActual == EstadoComputadora.Disponible));
     private int TotalOffline => Aulas.Sum(a => a.Computadoras.Count(c => c.EstadoActual == EstadoComputadora.Offline));
 
+    public record LiveTelemetria(int CpuUso, int RamUso, int DiscoLibreGb, DateTime UltimaLectura);
+    private readonly Dictionary<int, LiveTelemetria> _telemetriaMap = new();
+
     protected override async Task OnInitializedAsync()
     {
         await CargarDatosAsync();
 
         SignalRService.OnEstadoComputadoraCambiado += HandleEstadoComputadoraCambiado;
+        SignalRService.OnTelemetriaRecibida += HandleTelemetriaRecibida;
 
         string baseUrl = Configuration["ApiBaseUrl"] ?? "http://localhost:5256/";
         string hubUrl = baseUrl.TrimEnd('/') + "/hubs/laboratorio";
@@ -363,6 +411,15 @@ else
         Aulas = await ApiClient.GetMapaAulasAsync();
         IsLoading = false;
         StateHasChanged();
+    }
+
+    private void HandleTelemetriaRecibida(int computadoraId, string hostname, int cpuUso, int ramUso, int discoLibreGb)
+    {
+        InvokeAsync(() =>
+        {
+            _telemetriaMap[computadoraId] = new LiveTelemetria(cpuUso, ramUso, discoLibreGb, DateTime.UtcNow);
+            StateHasChanged();
+        });
     }
 
     private void HandleEstadoComputadoraCambiado(int computadoraId, string hostname, EstadoComputadora nuevoEstado, string? emailEstudiante)
@@ -381,7 +438,13 @@ else
                     nuevoEstado,
                     DateTime.UtcNow,
                     nuevoEstado == EstadoComputadora.EnUso ? emailEstudiante : null,
-                    nuevoEstado == EstadoComputadora.EnUso ? DateTime.UtcNow : null
+                    nuevoEstado == EstadoComputadora.EnUso ? DateTime.UtcNow : null,
+                    pc.CpuModelo,
+                    pc.RamTotalGb,
+                    pc.DiscoTotalGb,
+                    pc.DiscoLibreGb,
+                    pc.SistemaOperativo,
+                    pc.UptimeHoras
                 );
                 InvokeAsync(StateHasChanged);
                 break;
@@ -413,6 +476,16 @@ else
     {
         PcSeleccionada = pc;
         MostrarModalContextual = true;
+    }
+
+    private async Task AbrirFichaTecnicaAsync(ComputadoraTarjetaDto pc)
+    {
+        var parameters = new DialogParameters<FichaTecnicaDialog>
+        {
+            { x => x.Pc, pc }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+        await DialogService.ShowAsync<FichaTecnicaDialog>($"Ficha Técnica - {pc.Hostname}", parameters, options);
     }
 
     private void CopiarAlPortapapeles(string texto, string tipo)
@@ -519,6 +592,75 @@ else
         }
     }
 
+    private async Task ConfirmarApagadoPcAsync(ComputadoraTarjetaDto pc)
+    {
+        bool? result = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Apagado Remoto",
+            $"¿Deseas enviar la orden de apagado inmediato a la terminal '{pc.Hostname}' ({pc.IpActual})?\nEl equipo ejecutará 'shutdown' y se apagará por completo.",
+            yesText: "Sí, Apagar Equipo", cancelText: "Cancelar"
+        );
+
+        if (result == true)
+        {
+            bool exito = await ApiClient.EnviarComandoEnergiaAsync(pc.ComputadoraId, "SHUTDOWN", "Apagado manual desde WebAdmin");
+            if (exito)
+            {
+                Snackbar.Add($"Comando de apagado enviado a {pc.Hostname}.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"No se pudo enviar la orden de apagado a {pc.Hostname}.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ConfirmarReinicioPcAsync(ComputadoraTarjetaDto pc)
+    {
+        bool? result = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Reinicio Remoto",
+            $"¿Deseas reiniciar la terminal '{pc.Hostname}' ({pc.IpActual})?\nEl sistema operativo se reiniciará inmediatamente.",
+            yesText: "Sí, Reiniciar Equipo", cancelText: "Cancelar"
+        );
+
+        if (result == true)
+        {
+            bool exito = await ApiClient.EnviarComandoEnergiaAsync(pc.ComputadoraId, "RESTART", "Reinicio manual desde WebAdmin");
+            if (exito)
+            {
+                Snackbar.Add($"Comando de reinicio enviado a {pc.Hostname}.", Severity.Warning);
+            }
+            else
+            {
+                Snackbar.Add($"No se pudo enviar la orden de reinicio a {pc.Hostname}.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ConfirmarApagadoAulaAsync()
+    {
+        var aulaActual = Aulas.ElementAtOrDefault(ActiveTabIndex);
+        if (aulaActual == null) return;
+
+        bool? result = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Apagado de Aula Completa",
+            $"⚠️ ¡ATENCIÓN! Estás a punto de APAGAR todas las {aulaActual.Computadoras.Count} terminales del aula '{aulaActual.Nombre}'.\n¿Deseas continuar?",
+            yesText: "Sí, Apagar Todo el Aula", cancelText: "Cancelar"
+        );
+
+        if (result == true)
+        {
+            bool exito = await ApiClient.ApagarAulaCompletaAsync(aulaActual.AulaId, "Apagado masivo desde WebAdmin");
+            if (exito)
+            {
+                Snackbar.Add($"Orden de apagado masivo transmitida a todas las PCs del Aula '{aulaActual.Nombre}'.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("No se pudo enviar la orden de apagado al aula.", Severity.Error);
+            }
+        }
+    }
+
     private Color GetChipColor(EstadoComputadora estado) => estado switch
     {
         EstadoComputadora.Disponible => Color.Success, // 🟢 Verde
@@ -546,5 +688,6 @@ else
     public async ValueTask DisposeAsync()
     {
         SignalRService.OnEstadoComputadoraCambiado -= HandleEstadoComputadoraCambiado;
+        SignalRService.OnTelemetriaRecibida -= HandleTelemetriaRecibida;
     }
 }

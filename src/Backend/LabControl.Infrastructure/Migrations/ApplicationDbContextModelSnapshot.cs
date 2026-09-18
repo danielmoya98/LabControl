@@ -107,6 +107,16 @@ namespace LabControl.Infrastructure.Migrations
                     b.Property<int>("AulaId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CpuModelo")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<int?>("DiscoLibreGb")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("DiscoTotalGb")
+                        .HasColumnType("integer");
+
                     b.Property<string>("EstadoActual")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -116,6 +126,9 @@ namespace LabControl.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("FechaModificacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaUltimoUsoUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Hostname")
@@ -133,8 +146,29 @@ namespace LabControl.Infrastructure.Migrations
                         .HasMaxLength(17)
                         .HasColumnType("character varying(17)");
 
+                    b.Property<int?>("RamTotalGb")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SistemaOperativo")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime?>("UltimaActualizacionHardwareUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UltimoEstudianteEmail")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("UltimoEstudianteNombre")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
                     b.Property<DateTime?>("UltimoHeartbeatUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("UptimeHoras")
+                        .HasColumnType("double precision");
 
                     b.HasKey("Id");
 
@@ -147,6 +181,67 @@ namespace LabControl.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Computadoras", (string)null);
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.RegistroConsumoEnergia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AulaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ComputadoraId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaCreacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaDeteccionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaModificacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("HorasInactivaEncendida")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("MotivoInfraccion")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("Resuelto")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("SesionUsoId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UltimoEstudianteEmail")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("UltimoEstudianteNombre")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AulaId");
+
+                    b.HasIndex("ComputadoraId");
+
+                    b.HasIndex("FechaDeteccionUtc");
+
+                    b.HasIndex("SesionUsoId");
+
+                    b.HasIndex("UltimoEstudianteEmail");
+
+                    b.ToTable("RegistrosConsumoEnergia", (string)null);
                 });
 
             modelBuilder.Entity("LabControl.Domain.Entities.SesionUso", b =>
@@ -433,6 +528,32 @@ namespace LabControl.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Aula");
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.RegistroConsumoEnergia", b =>
+                {
+                    b.HasOne("LabControl.Domain.Entities.Aula", "Aula")
+                        .WithMany()
+                        .HasForeignKey("AulaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LabControl.Domain.Entities.Computadora", "Computadora")
+                        .WithMany()
+                        .HasForeignKey("ComputadoraId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LabControl.Domain.Entities.SesionUso", "SesionUso")
+                        .WithMany()
+                        .HasForeignKey("SesionUsoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Aula");
+
+                    b.Navigation("Computadora");
+
+                    b.Navigation("SesionUso");
                 });
 
             modelBuilder.Entity("LabControl.Domain.Entities.SesionUso", b =>

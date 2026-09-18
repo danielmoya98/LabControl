@@ -1,0 +1,18 @@
+﻿============================================================
+  LabControl Kiosk Client - Paquete de InstalaciÃ³n en Campus
+============================================================
+
+Este paquete contiene el cliente autÃ³nomo de bloqueo y control
+de laboratorios de computaciÃ³n de la Universidad del Valle.
+
+INSTRUCCIONES DE INSTALACIÃ“N:
+1. Haz clic derecho en 'Install-Kiosk.ps1' y selecciona 'Ejecutar con PowerShell'
+   (debe ejecutarse con permisos de Administrador).
+2. Se abrirÃ¡ automÃ¡ticamente la ventana de configuraciÃ³n:
+   - Introduce la URL del servidor central (ej: http://192.168.1.100:5256).
+   - Selecciona el aula a la que pertenece este equipo.
+   - Presiona 'Guardar y Bloquear'.
+3. Listo. El equipo iniciarÃ¡ automÃ¡ticamente bloqueado en cada reinicio.
+
+INSTRUCCIONES DE DESINSTALACIÃ“N:
+- Haz clic derecho en 'Uninstall-Kiosk.ps1' y selecciona 'Ejecutar con PowerShell'.

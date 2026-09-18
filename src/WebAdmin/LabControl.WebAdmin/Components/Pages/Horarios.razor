@@ -181,7 +181,7 @@ else if (_vistaGrilla)
                                         <MudChip T="string" Size="Size.Small" Color="@(bloque.EsRecreo ? Color.Warning : Color.Primary)" Variant="Variant.Text" Class="pa-0">
                                             @(bloque.EsRecreo ? "☕ Recreo" : "📚 Clase")
                                         </MudChip>
-                                        <MudText Typo="Typo.body2" Class="text-truncate" Title="@bloque.Descripcion">
+                                        <MudText Typo="Typo.body2" Class="text-truncate" title="@bloque.Descripcion">
                                             @(!string.IsNullOrWhiteSpace(bloque.Descripcion) ? bloque.Descripcion : "(Sin descripción)")
                                         </MudText>
                                     </div>

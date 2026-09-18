@@ -17,6 +17,12 @@ public class AutoRegistroRequest
     public string Hostname { get; set; } = "";
     public string IpActual { get; set; } = "";
     public string MacAddress { get; set; } = "";
+    public string? CpuModelo { get; set; }
+    public int? RamTotalGb { get; set; }
+    public int? DiscoTotalGb { get; set; }
+    public int? DiscoLibreGb { get; set; }
+    public string? SistemaOperativo { get; set; }
+    public double? UptimeHoras { get; set; }
 }
 
 public class AutoRegistroResponse
@@ -88,16 +94,29 @@ public class KioskApiService
         }
     }
 
-    public async Task<AutoRegistroResponse?> AutoRegistrarAsync(int aulaId, string hostname, string ipActual, string macAddress)
+    public async Task<AutoRegistroResponse?> AutoRegistrarAsync(
+        int aulaId,
+        string hostname,
+        string ipActual,
+        string macAddress,
+        HardwareInfoDto? hw = null)
     {
         try
         {
+            hw ??= SystemInfoService.GetHardwareInfo();
+
             var req = new AutoRegistroRequest
             {
                 AulaId = aulaId,
                 Hostname = hostname,
                 IpActual = ipActual,
-                MacAddress = macAddress
+                MacAddress = macAddress,
+                CpuModelo = hw.CpuModelo,
+                RamTotalGb = hw.RamTotalGb,
+                DiscoTotalGb = hw.DiscoTotalGb,
+                DiscoLibreGb = hw.DiscoLibreGb,
+                SistemaOperativo = hw.SistemaOperativo,
+                UptimeHoras = hw.UptimeHoras
             };
 
             var response = await _httpClient.PostAsJsonAsync("api/computadoras/auto-registro", req);

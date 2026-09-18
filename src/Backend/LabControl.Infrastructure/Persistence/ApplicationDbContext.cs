@@ -14,6 +14,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Computadora> Computadoras => Set<Computadora>();
     public DbSet<BloqueHorario> BloquesHorarios => Set<BloqueHorario>();
     public DbSet<SesionUso> SesionesUso => Set<SesionUso>();
+    public DbSet<RegistroConsumoEnergia> RegistrosConsumoEnergia => Set<RegistroConsumoEnergia>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

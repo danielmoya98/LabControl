@@ -77,4 +77,24 @@ public class LaboratorioHub : Hub<ILaboratorioClient>
             }
         }
     }
+
+    public async Task EnviarHeartbeatConTelemetria(string hostname, string macAddress, string ip, int cpuUso, int ramUso, int discoLibreGb)
+    {
+        await EnviarHeartbeat(hostname, macAddress, ip);
+
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+
+        var pc = await context.Computadoras.FirstOrDefaultAsync(c => c.Hostname == hostname.Trim().ToUpperInvariant());
+        if (pc != null)
+        {
+            if (pc.DiscoLibreGb != discoLibreGb)
+            {
+                pc.ActualizarEspecificacionesHardware(null, null, null, discoLibreGb, null, null);
+                await context.SaveChangesAsync();
+            }
+
+            await Clients.Group("PanelesAdmin").RecibirTelemetria(pc.Id, pc.Hostname, cpuUso, ramUso, discoLibreGb);
+        }
+    }
 }

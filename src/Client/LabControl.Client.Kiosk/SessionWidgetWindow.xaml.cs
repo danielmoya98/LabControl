@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 
@@ -79,13 +79,41 @@ public partial class SessionWidgetWindow : Window
 
     private void OnCerrarSesionClick(object sender, RoutedEventArgs e)
     {
-        var result = MessageBox.Show("¿Está seguro que desea cerrar su sesión y bloquear la terminal?",
-            "Confirmar Cierre de Sesión", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        var result = MessageBox.Show(
+            "¿Desea cerrar su sesión para permitir que otro estudiante ingrese?\n\nLa terminal permanecerá encendida y bloqueada.",
+            "Confirmar Cambio de Usuario", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
         if (result == MessageBoxResult.Yes)
         {
             _timer.Stop();
             CerrarYNotificar(1); // 1 = Manual
+        }
+    }
+
+    private void OnFinalizarYApagarClick(object sender, RoutedEventArgs e)
+    {
+        var result = MessageBox.Show(
+            "¿Desea finalizar su uso y apagar el equipo físico ahora?\n\nAl confirmar, su sesión se cerrará y la computadora se apagará para optimizar el consumo de energía.",
+            "Finalizar Clase y Apagar", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Yes)
+        {
+            _timer.Stop();
+            CerrarYNotificar(1); // 1 = Manual
+
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("shutdown.exe", "/s /t 2 /f")
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+                System.Diagnostics.Process.Start(psi);
+            }
+            catch
+            {
+                // Fallback
+            }
         }
     }
 

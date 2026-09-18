@@ -14,6 +14,20 @@ public class Computadora : AggregateRoot
     public EstadoComputadora EstadoActual { get; private set; } = EstadoComputadora.Disponible;
     public DateTime? UltimoHeartbeatUtc { get; private set; }
 
+    // Especificaciones de Hardware y Salud
+    public string? CpuModelo { get; private set; }
+    public int? RamTotalGb { get; private set; }
+    public int? DiscoTotalGb { get; private set; }
+    public int? DiscoLibreGb { get; private set; }
+    public string? SistemaOperativo { get; private set; }
+    public double? UptimeHoras { get; private set; }
+    public DateTime? UltimaActualizacionHardwareUtc { get; private set; }
+
+    // Auditoría de Responsabilidad Energética
+    public string? UltimoEstudianteEmail { get; private set; }
+    public string? UltimoEstudianteNombre { get; private set; }
+    public DateTime? FechaUltimoUsoUtc { get; private set; }
+
     private readonly List<SesionUso> _sesionesUso = [];
     public IReadOnlyCollection<SesionUso> SesionesUso => _sesionesUso.AsReadOnly();
 
@@ -67,10 +81,39 @@ public class Computadora : AggregateRoot
         }
     }
 
+    public void ActualizarEspecificacionesHardware(
+        string? cpuModelo,
+        int? ramTotalGb,
+        int? discoTotalGb,
+        int? discoLibreGb,
+        string? sistemaOperativo,
+        double? uptimeHoras)
+    {
+        if (!string.IsNullOrWhiteSpace(cpuModelo)) CpuModelo = cpuModelo.Trim();
+        if (ramTotalGb.HasValue && ramTotalGb.Value > 0) RamTotalGb = ramTotalGb.Value;
+        if (discoTotalGb.HasValue && discoTotalGb.Value > 0) DiscoTotalGb = discoTotalGb.Value;
+        if (discoLibreGb.HasValue && discoLibreGb.Value >= 0) DiscoLibreGb = discoLibreGb.Value;
+        if (!string.IsNullOrWhiteSpace(sistemaOperativo)) SistemaOperativo = sistemaOperativo.Trim();
+        if (uptimeHoras.HasValue && uptimeHoras.Value >= 0) UptimeHoras = Math.Round(uptimeHoras.Value, 1);
+        UltimaActualizacionHardwareUtc = DateTime.UtcNow;
+        FechaModificacionUtc = DateTime.UtcNow;
+    }
+
     public void CambiarEstado(EstadoComputadora nuevoEstado)
     {
         EstadoActual = nuevoEstado;
         FechaModificacionUtc = DateTime.UtcNow;
+    }
+
+    public void RegistrarUltimoUsuario(string email, string? nombre = null)
+    {
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            UltimoEstudianteEmail = email.Trim().ToLowerInvariant();
+            UltimoEstudianteNombre = nombre?.Trim();
+            FechaUltimoUsoUtc = DateTime.UtcNow;
+            FechaModificacionUtc = DateTime.UtcNow;
+        }
     }
 
     public void Update(int aulaId, string hostname, IpAddress ip, MacAddress mac, EstadoComputadora? nuevoEstado = null)

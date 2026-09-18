@@ -150,4 +150,127 @@ public class ReporteExcelService : IReporteExcelService
 
         return Encoding.UTF8.GetBytes(sb.ToString());
     }
+
+    public byte[] GenerarReporteEnergiaExcel(List<RegistroEnergiaExportDto> incidentes, string? subtituloFiltros = null)
+    {
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Auditoría Energética");
+
+        // 1. Encabezado Institucional
+        worksheet.Cell(1, 1).Value = "UNIVERSIDAD DEL VALLE — AUDITORÍA DE RESPONSABILIDAD ENERGÉTICA";
+        worksheet.Range(1, 1, 1, 7).Merge();
+        worksheet.Row(1).Height = 32;
+        var titleCell = worksheet.Cell(1, 1).Style;
+        titleCell.Font.Bold = true;
+        titleCell.Font.FontSize = 14;
+        titleCell.Font.FontColor = XLColor.White;
+        titleCell.Fill.BackgroundColor = XLColor.FromHtml("#DC2626"); // Red Alert
+        titleCell.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        titleCell.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+
+        // Subtítulo
+        string subtitulo = string.IsNullOrWhiteSpace(subtituloFiltros)
+            ? $"Reporte de Terminales No Apagadas | Generado el {DateTime.Now:dd/MM/yyyy HH:mm:ss} | Total: {incidentes.Count}"
+            : $"Filtros: {subtituloFiltros} | Generado el {DateTime.Now:dd/MM/yyyy HH:mm:ss} | Total: {incidentes.Count}";
+
+        worksheet.Cell(2, 1).Value = subtitulo;
+        worksheet.Range(2, 1, 2, 7).Merge();
+        worksheet.Row(2).Height = 20;
+        var subCell = worksheet.Cell(2, 1).Style;
+        subCell.Font.Italic = true;
+        subCell.Font.FontSize = 10;
+        subCell.Font.FontColor = XLColor.FromHtml("#475569");
+        subCell.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        subCell.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+
+        // 2. Cabeceras
+        string[] headers = 
+        {
+            "Nº Incidente", "Aula", "Terminal", "Último Usuario (Responsable)", 
+            "Fecha Detección", "Horas Desperdiciadas", "Motivo de Infracción"
+        };
+
+        for (int i = 0; i < headers.Length; i++)
+        {
+            var cell = worksheet.Cell(4, i + 1);
+            cell.Value = headers[i];
+            cell.Style.Font.Bold = true;
+            cell.Style.Font.FontSize = 11;
+            cell.Style.Font.FontColor = XLColor.White;
+            cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#334155");
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            cell.Style.Border.OutsideBorderColor = XLColor.FromHtml("#94A3B8");
+        }
+        worksheet.Row(4).Height = 24;
+
+        // 3. Filas de Datos
+        int filaActual = 5;
+        double totalHoras = 0;
+
+        foreach (var inc in incidentes)
+        {
+            totalHoras += inc.HorasInactivaEncendida;
+
+            worksheet.Cell(filaActual, 1).SetValue(inc.Id).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            worksheet.Cell(filaActual, 2).SetValue(inc.AulaNombre);
+            worksheet.Cell(filaActual, 3).SetValue(inc.Hostname).Style.Font.Bold = true;
+            worksheet.Cell(filaActual, 4).SetValue(inc.UltimoEstudianteEmail);
+            worksheet.Cell(filaActual, 5).SetValue(inc.FechaDeteccion.ToString("dd/MM/yyyy HH:mm")).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            worksheet.Cell(filaActual, 6).SetValue(inc.HorasInactivaEncendida).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+            worksheet.Cell(filaActual, 7).SetValue(inc.MotivoInfraccion);
+
+            var rowRange = worksheet.Range(filaActual, 1, filaActual, 7);
+            rowRange.Style.Border.OutsideBorder = XLBorderStyleValues.Hair;
+            rowRange.Style.Border.InsideBorder = XLBorderStyleValues.Hair;
+            rowRange.Style.Border.OutsideBorderColor = XLColor.FromHtml("#CBD5E1");
+
+            if (filaActual % 2 == 0)
+            {
+                rowRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#F8FAFC");
+            }
+
+            worksheet.Row(filaActual).Height = 20;
+            filaActual++;
+        }
+
+        // 4. Fila de Total
+        worksheet.Cell(filaActual, 1).Value = "TOTAL HORAS DESPERDICIADAS:";
+        worksheet.Range(filaActual, 1, filaActual, 5).Merge();
+        worksheet.Cell(filaActual, 1).Style.Font.Bold = true;
+        worksheet.Cell(filaActual, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+        worksheet.Cell(filaActual, 6).SetValue(Math.Round(totalHoras, 1));
+        worksheet.Cell(filaActual, 6).Style.Font.Bold = true;
+        worksheet.Cell(filaActual, 6).Style.Font.FontColor = XLColor.Red;
+        worksheet.Cell(filaActual, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+
+        var totalRange = worksheet.Range(filaActual, 1, filaActual, 7);
+        totalRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#E2E8F0");
+        totalRange.Style.Border.TopBorder = XLBorderStyleValues.Medium;
+        totalRange.Style.Border.BottomBorder = XLBorderStyleValues.Medium;
+        worksheet.Row(filaActual).Height = 24;
+
+        worksheet.Columns().AdjustToContents();
+
+        using var memoryStream = new MemoryStream();
+        workbook.SaveAs(memoryStream);
+        return memoryStream.ToArray();
+    }
+
+    public byte[] GenerarReporteEnergiaCsv(List<RegistroEnergiaExportDto> incidentes)
+    {
+        var sb = new StringBuilder();
+        sb.Append('\uFEFF'); // UTF-8 BOM
+        sb.AppendLine("ID_Incidente;Aula;Terminal;Ultimo_Estudiante;Fecha_Deteccion;Horas_Inactiva_Encendida;Motivo_Infraccion");
+
+        foreach (var inc in incidentes)
+        {
+            var fecha = inc.FechaDeteccion.ToString("yyyy-MM-dd HH:mm:ss");
+            sb.AppendLine($"{inc.Id};\"{inc.AulaNombre}\";\"{inc.Hostname}\";\"{inc.UltimoEstudianteEmail}\";{fecha};{inc.HorasInactivaEncendida};\"{inc.MotivoInfraccion}\"");
+        }
+
+        return Encoding.UTF8.GetBytes(sb.ToString());
+    }
 }

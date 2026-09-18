@@ -9,6 +9,7 @@ public interface IApplicationDbContext
     DbSet<Computadora> Computadoras { get; }
     DbSet<BloqueHorario> BloquesHorarios { get; }
     DbSet<SesionUso> SesionesUso { get; }
+    DbSet<RegistroConsumoEnergia> RegistrosConsumoEnergia { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

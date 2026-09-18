@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using LabControl.Application.Common.Interfaces;
@@ -92,10 +92,11 @@ public class FinalizarSesionCommandHandler : IRequestHandler<FinalizarSesionComm
         // 3. Finalizar sesión
         sesion.Finalizar(request.TipoCierre, DateTime.UtcNow);
 
-        // 4. Liberar computadora
+        // 4. Liberar computadora y registrar trazabilidad del último usuario
         if (sesion.Computadora != null)
         {
             sesion.Computadora.CambiarEstado(EstadoComputadora.Disponible);
+            sesion.Computadora.RegistrarUltimoUsuario(sesion.EmailEstudiante);
         }
 
         await _context.SaveChangesAsync(cancellationToken);

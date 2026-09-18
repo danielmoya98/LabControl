@@ -17,8 +17,21 @@ public record SesionAuditoriaDto(
     DateTime FechaSincronizacion
 );
 
+public record RegistroEnergiaExportDto(
+    int Id,
+    string AulaNombre,
+    string Hostname,
+    string UltimoEstudianteEmail,
+    string? UltimoEstudianteNombre,
+    DateTime FechaDeteccion,
+    double HorasInactivaEncendida,
+    string MotivoInfraccion
+);
+
 public interface IReporteExcelService
 {
     byte[] GenerarReporteAuditoriaExcel(List<SesionAuditoriaDto> sesiones, string? subtituloFiltros = null);
     byte[] GenerarReporteAuditoriaCsv(List<SesionAuditoriaDto> sesiones);
+    byte[] GenerarReporteEnergiaExcel(List<RegistroEnergiaExportDto> incidentes, string? subtituloFiltros = null);
+    byte[] GenerarReporteEnergiaCsv(List<RegistroEnergiaExportDto> incidentes);
 }

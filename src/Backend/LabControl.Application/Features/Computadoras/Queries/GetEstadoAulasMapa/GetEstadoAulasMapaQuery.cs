@@ -24,7 +24,13 @@ public record ComputadoraTarjetaDto(
     EstadoComputadora EstadoActual,
     DateTime? UltimoHeartbeat,
     string? EmailEstudianteActual,
-    DateTime? HoraInicioSesion
+    DateTime? HoraInicioSesion,
+    string? CpuModelo = null,
+    int? RamTotalGb = null,
+    int? DiscoTotalGb = null,
+    int? DiscoLibreGb = null,
+    string? SistemaOperativo = null,
+    double? UptimeHoras = null
 );
 
 public class GetEstadoAulasMapaQueryHandler : IRequestHandler<GetEstadoAulasMapaQuery, Result<List<AulaEstadoDto>>>
@@ -66,7 +72,13 @@ public class GetEstadoAulasMapaQueryHandler : IRequestHandler<GetEstadoAulasMapa
                     pc.EstadoActual,
                     pc.UltimoHeartbeatUtc,
                     sesion?.EmailEstudiante,
-                    sesion?.FechaHoraInicio
+                    sesion?.FechaHoraInicio,
+                    pc.CpuModelo,
+                    pc.RamTotalGb,
+                    pc.DiscoTotalGb,
+                    pc.DiscoLibreGb,
+                    pc.SistemaOperativo,
+                    pc.UptimeHoras
                 );
             }).ToList()
         )).ToList();

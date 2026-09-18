@@ -269,6 +269,32 @@ public class LabApiClient
         }
     }
 
+    public async Task<bool> EnviarComandoEnergiaAsync(int computadoraId, string tipoComando, string? motivo = null)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/computadoras/{computadoraId}/energia", new { TipoComando = tipoComando, Motivo = motivo });
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> ApagarAulaCompletaAsync(int aulaId, string? motivo = null)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/aulas/{aulaId}/apagar-todo", new { Motivo = motivo });
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public string GetExportarExcelUrl(
         DateTime? fechaInicio = null,
         DateTime? fechaFin = null,
@@ -326,4 +352,108 @@ public class LabApiClient
 
         return parameters.Count > 0 ? "?" + string.Join("&", parameters) : "";
     }
+
+    public async Task<ReporteEnergiaModel?> GetReporteEnergiaAsync(
+        DateTime? fechaInicio = null,
+        DateTime? fechaFin = null,
+        int? aulaId = null,
+        string? emailEstudiante = null)
+    {
+        try
+        {
+            var query = BuildEnergiaQueryString(fechaInicio, fechaFin, aulaId, emailEstudiante);
+            return await _httpClient.GetFromJsonAsync<ReporteEnergiaModel>($"api/energia/reporte{query}");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> EvaluarEquiposEnergiaAsync()
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync("api/energia/evaluar", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public string GetExportarEnergiaExcelUrl(
+        DateTime? fechaInicio = null,
+        DateTime? fechaFin = null,
+        int? aulaId = null,
+        string? emailEstudiante = null)
+    {
+        var baseUri = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "http://localhost:5256";
+        var query = BuildEnergiaQueryString(fechaInicio, fechaFin, aulaId, emailEstudiante);
+        return $"{baseUri}/api/energia/exportar/excel{query}";
+    }
+
+    public string GetExportarEnergiaCsvUrl(
+        DateTime? fechaInicio = null,
+        DateTime? fechaFin = null,
+        int? aulaId = null,
+        string? emailEstudiante = null)
+    {
+        var baseUri = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "http://localhost:5256";
+        var query = BuildEnergiaQueryString(fechaInicio, fechaFin, aulaId, emailEstudiante);
+        return $"{baseUri}/api/energia/exportar/csv{query}";
+    }
+
+    private static string BuildEnergiaQueryString(
+        DateTime? fechaInicio,
+        DateTime? fechaFin,
+        int? aulaId,
+        string? emailEstudiante)
+    {
+        var parameters = new List<string>();
+
+        if (fechaInicio.HasValue)
+            parameters.Add($"fechaInicio={Uri.EscapeDataString(fechaInicio.Value.ToString("yyyy-MM-ddTHH:mm:ss"))}");
+        if (fechaFin.HasValue)
+            parameters.Add($"fechaFin={Uri.EscapeDataString(fechaFin.Value.ToString("yyyy-MM-ddTHH:mm:ss"))}");
+        if (aulaId.HasValue && aulaId.Value > 0)
+            parameters.Add($"aulaId={aulaId.Value}");
+        if (!string.IsNullOrWhiteSpace(emailEstudiante))
+            parameters.Add($"emailEstudiante={Uri.EscapeDataString(emailEstudiante.Trim())}");
+
+        return parameters.Count > 0 ? "?" + string.Join("&", parameters) : "";
+    }
+}
+
+public class ReporteEnergiaModel
+{
+    public double TotalHorasDesperdiciadas { get; set; }
+    public int TotalIncidentes { get; set; }
+    public int TotalEquiposAfectados { get; set; }
+    public List<RankingInfractorModel> TopInfractores { get; set; } = [];
+    public List<RegistroEnergiaDetalleModel> Incidentes { get; set; } = [];
+}
+
+public class RankingInfractorModel
+{
+    public string EstudianteEmail { get; set; } = "";
+    public string? EstudianteNombre { get; set; }
+    public int CantidadIncidentes { get; set; }
+    public double TotalHorasDesperdiciadas { get; set; }
+}
+
+public class RegistroEnergiaDetalleModel
+{
+    public int Id { get; set; }
+    public int ComputadoraId { get; set; }
+    public string Hostname { get; set; } = "";
+    public int AulaId { get; set; }
+    public string AulaNombre { get; set; } = "";
+    public string UltimoEstudianteEmail { get; set; } = "";
+    public string? UltimoEstudianteNombre { get; set; }
+    public DateTime FechaDeteccionUtc { get; set; }
+    public double HorasInactivaEncendida { get; set; }
+    public string MotivoInfraccion { get; set; } = "";
+    public bool Resuelto { get; set; }
 }

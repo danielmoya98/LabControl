@@ -1,0 +1,162 @@
+@using LabControl.Application.Features.Computadoras.Queries.GetEstadoAulasMapa
+@using LabControl.Domain.Enums
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.Memory" Color="Color.Primary" Class="mr-2" Size="Size.Large" />
+            <div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold">Ficha Técnica &amp; Salud: @Pc.Hostname</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Inventario de Hardware y Diagnóstico de Terminal</MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <!-- Procesador -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-3 rounded-lg d-flex align-center" Style="background: #1e293b;">
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Class="mr-3">
+                        <MudIcon Icon="@Icons.Material.Filled.DeveloperBoard" />
+                    </MudAvatar>
+                    <div style="overflow: hidden;" title="@(Pc.CpuModelo ?? "No reportado")">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">PROCESADOR (CPU)</MudText>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold text-truncate">
+                            @(string.IsNullOrWhiteSpace(Pc.CpuModelo) ? "Pendiente de reporte" : Pc.CpuModelo)
+                        </MudText>
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Memoria RAM -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-3 rounded-lg d-flex align-center" Style="background: #1e293b;">
+                    <MudAvatar Color="Color.Tertiary" Variant="Variant.Filled" Class="mr-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Memory" />
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">MEMORIA RAM INSTALADA</MudText>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold">
+                            @(Pc.RamTotalGb.HasValue && Pc.RamTotalGb > 0 ? $"{Pc.RamTotalGb.Value} GB RAM Física" : "Pendiente")
+                        </MudText>
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Almacenamiento C: -->
+            <MudItem xs="12">
+                <MudPaper Elevation="2" Class="pa-3 rounded-lg" Style="background: #1e293b;">
+                    <div class="d-flex justify-space-between align-center mb-1">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Info" Class="mr-2" />
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">Unidad de Sistema (C:)</MudText>
+                        </div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @if (Pc.DiscoTotalGb.HasValue && Pc.DiscoLibreGb.HasValue && Pc.DiscoTotalGb.Value > 0)
+                            {
+                                <span>@(Pc.DiscoTotalGb.Value - Pc.DiscoLibreGb.Value) GB ocupados de @(Pc.DiscoTotalGb.Value) GB (@(Pc.DiscoLibreGb.Value) GB disponibles)</span>
+                            }
+                            else
+                            {
+                                <span>Sin datos de almacenamiento</span>
+                            }
+                        </MudText>
+                    </div>
+                    @if (Pc.DiscoTotalGb.HasValue && Pc.DiscoLibreGb.HasValue && Pc.DiscoTotalGb.Value > 0)
+                    {
+                        var usoPorc = (int)Math.Clamp(Math.Round(((double)(Pc.DiscoTotalGb.Value - Pc.DiscoLibreGb.Value) / Pc.DiscoTotalGb.Value) * 100), 0, 100);
+                        var barColor = usoPorc > 90 ? Color.Error : (usoPorc > 75 ? Color.Warning : Color.Success);
+                        <MudProgressLinear Color="@barColor" Value="@usoPorc" Class="my-2" Size="Size.Medium" Rounded="true">
+                            <MudText Typo="Typo.caption" Class="font-weight-bold" Style="color: white;">@($"{usoPorc}%")</MudText>
+                        </MudProgressLinear>
+                    }
+                    else
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+                    }
+                </MudPaper>
+            </MudItem>
+
+            <!-- Sistema Operativo & Uptime -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-3 rounded-lg d-flex align-center" Style="background: #1e293b;">
+                    <MudAvatar Color="Color.Secondary" Variant="Variant.Filled" Class="mr-3">
+                        <MudIcon Icon="@Icons.Material.Filled.LaptopWindows" />
+                    </MudAvatar>
+                    <div style="overflow: hidden;" title="@(Pc.SistemaOperativo ?? "Windows")">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">SISTEMA OPERATIVO</MudText>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold text-truncate">
+                            @(string.IsNullOrWhiteSpace(Pc.SistemaOperativo) ? "Microsoft Windows" : Pc.SistemaOperativo)
+                        </MudText>
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-3 rounded-lg d-flex align-center" Style="background: #1e293b;">
+                    <MudAvatar Color="@(Pc.UptimeHoras.GetValueOrDefault(0) > 12 ? Color.Warning : Color.Success)" Variant="Variant.Filled" Class="mr-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Timer" />
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">TIEMPO ENCENDIDO (UPTIME)</MudText>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold">
+                            @if (Pc.UptimeHoras.HasValue)
+                            {
+                                <span>@(Pc.UptimeHoras.Value) horas continuas</span>
+                            }
+                            else
+                            {
+                                <span>No disponible</span>
+                            }
+                        </MudText>
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Red & Estado -->
+            <MudItem xs="12">
+                <MudPaper Elevation="1" Class="pa-3 rounded-lg" Style="background: #0f172a;">
+                    <MudGrid>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">DIRECCIÓN IP</MudText>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">@Pc.IpActual</MudText>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">DIRECCIÓN MAC</MudText>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">@Pc.MacAddress</MudText>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">ESTADO EN TIEMPO REAL</MudText>
+                            <div>
+                                <MudChip T="string" Color="@GetChipColor(Pc.EstadoActual)" Size="Size.Small" Class="font-weight-bold">
+                                    @Pc.EstadoActual.ToString()
+                                </MudChip>
+                            </div>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public ComputadoraTarjetaDto Pc { get; set; } = default!;
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+
+    private Color GetChipColor(EstadoComputadora estado) => estado switch
+    {
+        EstadoComputadora.Disponible => Color.Success,
+        EstadoComputadora.EnUso => Color.Info,
+        EstadoComputadora.Offline => Color.Error,
+        _ => Color.Dark
+    };
+}
