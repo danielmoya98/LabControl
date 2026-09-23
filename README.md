@@ -1,4 +1,8 @@
+<<<<<<< HEAD
+---# 🖥️ Sistema de Gestión, Monitoreo y Control de Acceso para Laboratorios de Cómputo (Intranet)
+=======
 # 🖥️ LabControl — Sistema de Gestión, Monitoreo y Control de Acceso para Laboratorios de Cómputo (Intranet)
+>>>>>>> 0800a435ece4f09a99e429bbd9cf33c46470b922
 
 Sistema integral de gestión de acceso, monitoreo en tiempo real y control de sesiones para laboratorios de cómputo universitarios (**Universidad del Valle**). Diseñado para operar sobre la **Intranet Local (LAN)** administrando terminales distribuidas en aulas y laboratorios mediante mapas interactivos, control remoto por WebSockets (SignalR), detección institucional de roles por dominio (`@univalle.edu` / `@est.univalle.edu`), detección de sedes por segmento IP y gestión de horarios por períodos académicos (semestres).
 
