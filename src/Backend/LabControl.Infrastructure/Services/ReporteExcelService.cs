@@ -69,8 +69,8 @@ public class ReporteExcelService : IReporteExcelService
             worksheet.Cell(filaActual, 2).Value = s.NombreAula;
             worksheet.Cell(filaActual, 3).Value = s.Hostname;
             worksheet.Cell(filaActual, 4).Value = s.EmailEstudiante;
-            worksheet.Cell(filaActual, 5).Value = s.FechaHoraInicio.ToString("dd/MM/yyyy HH:mm:ss");
-            worksheet.Cell(filaActual, 6).Value = s.FechaHoraFin.HasValue ? s.FechaHoraFin.Value.ToString("dd/MM/yyyy HH:mm:ss") : "En curso...";
+            worksheet.Cell(filaActual, 5).Value = s.FechaHoraInicio.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss");
+            worksheet.Cell(filaActual, 6).Value = s.FechaHoraFin.HasValue ? s.FechaHoraFin.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") : "En curso...";
             worksheet.Cell(filaActual, 7).Value = s.DuracionMinutos.HasValue ? s.DuracionMinutos.Value : 0;
             worksheet.Cell(filaActual, 8).Value = s.TipoCierre.ToString();
             worksheet.Cell(filaActual, 9).Value = s.SyncStatus.ToString();

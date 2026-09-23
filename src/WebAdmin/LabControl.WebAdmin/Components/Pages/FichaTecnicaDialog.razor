@@ -139,11 +139,17 @@
         </MudGrid>
     </DialogContent>
     <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.History" OnClick="VerHistorial">
+            Ver Historial de Sesiones
+        </MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">Cerrar</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
@@ -151,6 +157,12 @@
     public ComputadoraTarjetaDto Pc { get; set; } = default!;
 
     private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+
+    private void VerHistorial()
+    {
+        MudDialog.Close();
+        NavigationManager.NavigateTo($"/auditoria?hostname={Uri.EscapeDataString(Pc.Hostname)}");
+    }
 
     private Color GetChipColor(EstadoComputadora estado) => estado switch
     {

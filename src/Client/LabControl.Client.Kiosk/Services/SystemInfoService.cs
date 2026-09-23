@@ -69,18 +69,60 @@ public static class SystemInfoService
     {
         try
         {
-            foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+            var allNics = NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
+                            n.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
+                .ToList();
+
+            static bool EsValida(byte[] bytes) =>
+                bytes.Length == 6 &&
+                bytes.Any(b => b != 0) &&
+                bytes.Any(b => b != 0xFF) &&
+                (bytes[0] & 0x01) == 0; // Descarta multicast y broadcast
+
+            static bool EsFisica(NetworkInterface nic)
             {
-                if (nic.OperationalStatus == OperationalStatus.Up &&
-                    nic.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
-                    nic.NetworkInterfaceType != NetworkInterfaceType.Tunnel)
+                var desc = (nic.Description ?? "").ToLowerInvariant();
+                var name = (nic.Name ?? "").ToLowerInvariant();
+                if (desc.Contains("virtual") || desc.Contains("vmware") || desc.Contains("hyper-v") ||
+                    desc.Contains("vethernet") || desc.Contains("virtualbox") || desc.Contains("bluetooth") ||
+                    desc.Contains("tailscale") || desc.Contains("zerotier") || desc.Contains("tap") ||
+                    desc.Contains("npcap") || desc.Contains("tunnel") || desc.Contains("wireguard") ||
+                    desc.Contains("fortinet") || desc.Contains("cisco") || desc.Contains("vpn") ||
+                    name.Contains("vethernet") || name.Contains("bluetooth") || name.Contains("loopback"))
                 {
-                    var bytes = nic.GetPhysicalAddress().GetAddressBytes();
-                    if (bytes.Length == 6)
-                    {
-                        return string.Join(":", bytes.Select(b => b.ToString("X2")));
-                    }
+                    return false;
                 }
+                return nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet ||
+                       nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211;
+            }
+
+            // 1. Prioridad: Tarjeta física Ethernet o Wi-Fi que esté conectada y activa (Up)
+            var physicalUp = allNics.FirstOrDefault(n => EsFisica(n) && n.OperationalStatus == OperationalStatus.Up && EsValida(n.GetPhysicalAddress().GetAddressBytes()));
+            if (physicalUp != null)
+            {
+                return string.Join(":", physicalUp.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2")));
+            }
+
+            // 2. Tarjeta física Ethernet o Wi-Fi (incluso si está desconectada temporalmente)
+            var physicalAny = allNics.FirstOrDefault(n => EsFisica(n) && EsValida(n.GetPhysicalAddress().GetAddressBytes()));
+            if (physicalAny != null)
+            {
+                return string.Join(":", physicalAny.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2")));
+            }
+
+            // 3. Cualquier interfaz activa con MAC válida
+            var anyUp = allNics.FirstOrDefault(n => n.OperationalStatus == OperationalStatus.Up && EsValida(n.GetPhysicalAddress().GetAddressBytes()));
+            if (anyUp != null)
+            {
+                return string.Join(":", anyUp.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2")));
+            }
+
+            // 4. Cualquier interfaz no vacía
+            var anyValid = allNics.FirstOrDefault(n => EsValida(n.GetPhysicalAddress().GetAddressBytes()));
+            if (anyValid != null)
+            {
+                return string.Join(":", anyValid.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2")));
             }
         }
         catch

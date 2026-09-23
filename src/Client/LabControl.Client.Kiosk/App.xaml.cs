@@ -48,12 +48,27 @@ public partial class App : Application
 
         try
         {
+            // 0. Si se invoca en modo centinela Guardian, ejecutar el bucle protector sin UI
+            var guardianIndex = Array.FindIndex(e.Args, a => string.Equals(a, "--guardian", StringComparison.OrdinalIgnoreCase));
+            if (guardianIndex >= 0 && e.Args.Length > guardianIndex + 1 && int.TryParse(e.Args[guardianIndex + 1], out int targetPid))
+            {
+                KioskGuardianService.RunGuardianLoop(targetPid);
+                Shutdown(0);
+                return;
+            }
+
+            // Iniciar Guardian para blindar el Kiosk contra terminaciones forzadas de proceso
+            KioskGuardianService.StartGuardian();
+
             // Recuperar y cerrar sesiones truncadas por apagados forzados previos
             _ = SqliteOfflineService.RecuperarSesionesHuerfanasAsync();
 
-            // Si ya existe kiosk-config.json se abre la ventana principal de bloqueo.
-            // Si no existe, se abre la ventana de instalación para leer de la BD las Aulas disponibles.
-            if (LocalStorageService.HasConfiguration())
+            bool forzarSetup = e.Args.Any(a => string.Equals(a, "--setup", StringComparison.OrdinalIgnoreCase) ||
+                                               string.Equals(a, "/setup", StringComparison.OrdinalIgnoreCase));
+
+            // Si ya está configurado con aula válida y no se forzó el asistente, se abre la ventana principal de bloqueo.
+            // En caso contrario, se abre la ventana de instalación para leer de la BD las Aulas disponibles.
+            if (LocalStorageService.HasConfiguration() && !forzarSetup)
             {
                 _mainWindow = new MainWindow();
                 _mainWindow.Show();

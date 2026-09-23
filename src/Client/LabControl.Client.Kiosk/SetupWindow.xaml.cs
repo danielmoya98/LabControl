@@ -13,6 +13,13 @@ public partial class SetupWindow : Window
     public SetupWindow()
     {
         InitializeComponent();
+
+        var existingConfig = LocalStorageService.LoadConfig();
+        if (existingConfig != null && !string.IsNullOrWhiteSpace(existingConfig.ApiBaseUrl))
+        {
+            TxtApiUrl.Text = existingConfig.ApiBaseUrl;
+        }
+
         CargarEspecificacionesHardware();
         Loaded += (s, e) => OnCargarAulasClick(this, new RoutedEventArgs());
     }
@@ -28,25 +35,50 @@ public partial class SetupWindow : Window
         TxtMac.Text = $"Dirección MAC: {_mac}";
     }
 
+    private void OnTxtApiUrlKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter)
+        {
+            OnCargarAulasClick(this, new RoutedEventArgs());
+        }
+    }
+
+    private void OnCerrarClick(object sender, RoutedEventArgs e)
+    {
+        var res = MessageBox.Show("¿Desea cerrar el asistente de configuración?", "Salir", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (res == MessageBoxResult.Yes)
+        {
+            Application.Current.Shutdown();
+        }
+    }
+
     private async void OnCargarAulasClick(object sender, RoutedEventArgs e)
     {
-        TxtStatus.Foreground = System.Windows.Media.Brushes.DodgerBlue;
-        TxtStatus.Text = "⏳ Conectando con la API Central...";
+        var url = TxtApiUrl.Text.Trim();
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            TxtStatus.Foreground = System.Windows.Media.Brushes.OrangeRed;
+            TxtStatus.Text = "⚠️ Ingrese una URL válida para el servidor central.";
+            return;
+        }
 
-        var apiService = new KioskApiService(TxtApiUrl.Text.Trim());
+        TxtStatus.Foreground = System.Windows.Media.Brushes.DodgerBlue;
+        TxtStatus.Text = $"⏳ Conectando con {url}...";
+
+        var apiService = new KioskApiService(url);
         _aulas = await apiService.GetAulasDisponiblesAsync();
 
         if (_aulas.Any())
         {
-            CmbAulas.ItemsSource = _aulas.Select(a => $"{a.Nombre} ({a.Pabellon ?? "Sin Pabellón"}) - Capacidad: {a.Capacidad} PCs");
+            CmbAulas.ItemsSource = _aulas.Select(a => $"{a.Nombre} ({a.Pabellon ?? "Sin Pabellón"}) — Capacidad: {a.Capacidad} PCs");
             CmbAulas.SelectedIndex = 0;
             TxtStatus.Foreground = System.Windows.Media.Brushes.LightGreen;
-            TxtStatus.Text = $"✅ ¡Conectado! Se encontraron {_aulas.Count} aulas en la base de datos.";
+            TxtStatus.Text = $"✅ ¡Conexión exitosa! Se encontraron {_aulas.Count} aulas en la base de datos.";
         }
         else
         {
             TxtStatus.Foreground = System.Windows.Media.Brushes.OrangeRed;
-            TxtStatus.Text = "⚠️ No se pudieron obtener aulas o no hay aulas registradas en la API. Asegúrate de iniciar la API primero.";
+            TxtStatus.Text = $"⚠️ No se pudo conectar a '{url}' o no hay aulas registradas en la base de datos. Verifique que la API central esté en ejecución y la IP sea correcta.";
         }
     }
 
@@ -62,13 +94,16 @@ public partial class SetupWindow : Window
         var aulaSeleccionada = _aulas[CmbAulas.SelectedIndex];
 
         TxtStatus.Foreground = System.Windows.Media.Brushes.DodgerBlue;
-        TxtStatus.Text = "⏳ Enviando auto-registro a la API PostgreSQL...";
+        TxtStatus.Text = $"⏳ Enviando auto-registro al aula '{aulaSeleccionada.Nombre}'...";
 
         var apiService = new KioskApiService(TxtApiUrl.Text.Trim());
-        var respuesta = await apiService.AutoRegistrarAsync(aulaSeleccionada.Id, _hostname, _ip, _mac);
+        var hw = SystemInfoService.GetHardwareInfo();
+        var respuesta = await apiService.AutoRegistrarAsync(aulaSeleccionada.Id, _hostname, _ip, _mac, hw);
 
         if (respuesta != null)
         {
+            var existingConfig = LocalStorageService.LoadConfig();
+
             // Guardar configuración localmente
             LocalStorageService.SaveConfig(new ConfigModel
             {
@@ -77,10 +112,13 @@ public partial class SetupWindow : Window
                 AulaNombre = aulaSeleccionada.Nombre,
                 ComputadoraId = respuesta.ComputadoraId,
                 Hostname = respuesta.Hostname,
-                MacAddress = respuesta.MacAddress
+                MacAddress = respuesta.MacAddress,
+                ClaveTecnico = existingConfig?.ClaveTecnico ?? "AdminLab@2026",
+                MinutosInactividadMaximo = respuesta.MinutosInactividadMaximo,
+                AccionInactividad = respuesta.AccionInactividad
             });
 
-            MessageBox.Show($"¡Computadora {respuesta.Hostname} vinculada con éxito al {aulaSeleccionada.Nombre}!",
+            MessageBox.Show($"¡Computadora {respuesta.Hostname} vinculada con éxito al {aulaSeleccionada.Nombre}!\n\nDirección MAC: {respuesta.MacAddress}\nIP: {_ip}",
                 "Auto-Registro Completo", MessageBoxButton.OK, MessageBoxImage.Information);
 
             // Abrir la ventana principal del Kiosk
@@ -91,7 +129,7 @@ public partial class SetupWindow : Window
         else
         {
             TxtStatus.Foreground = System.Windows.Media.Brushes.OrangeRed;
-            TxtStatus.Text = "❌ Error al auto-registrar la computadora. Revisa los logs de la API.";
+            TxtStatus.Text = "❌ Error al auto-registrar la computadora. Verifique la conectividad con la API central.";
         }
     }
 }

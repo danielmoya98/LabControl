@@ -290,7 +290,7 @@
             <div class="d-flex align-center gap-1">
                 <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" Color="Color.Secondary" Style="font-size: 0.85rem;" />
                 <span style="font-size: 0.82rem;">
-                    @context.FechaHoraInicio.ToString("dd/MM/yyyy HH:mm:ss")
+                    @context.FechaHoraInicio.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
                 </span>
             </div>
         </MudTd>
@@ -300,7 +300,7 @@
             @if (context.FechaHoraFin.HasValue)
             {
                 <span style="font-size: 0.82rem; color: var(--mud-palette-text-secondary);">
-                    @context.FechaHoraFin.Value.ToString("dd/MM/yyyy HH:mm:ss")
+                    @context.FechaHoraFin.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
                 </span>
             }
             else
@@ -473,6 +473,12 @@
     // Debounce para filtros de texto en tiempo real
     private CancellationTokenSource? _debounceCts;
 
+    [SupplyParameterFromQuery(Name = "hostname")]
+    public string? QueryHostname { get; set; }
+
+    [SupplyParameterFromQuery(Name = "aulaId")]
+    public int? QueryAulaId { get; set; }
+
     private bool HasActiveFilters =>
         _dateRange != null ||
         _filtroAulaId != null ||
@@ -485,6 +491,15 @@
         _cargando = true;
         try
         {
+            if (!string.IsNullOrWhiteSpace(QueryHostname))
+            {
+                _filtroHostname = QueryHostname.Trim();
+            }
+            if (QueryAulaId.HasValue && QueryAulaId.Value > 0)
+            {
+                _filtroAulaId = QueryAulaId.Value;
+            }
+
             _aulas = await ApiClient.GetAulasAsync();
             await CargarAuditoriaAsync(1);
         }
@@ -557,8 +572,13 @@
         _cargando = true;
         _paginaActual = nuevaPagina;
 
-        DateTime? fechaInicio = _dateRange?.Start?.Date;
-        DateTime? fechaFin = _dateRange?.End?.Date.AddDays(1).AddTicks(-1);
+        // Convertir rangos de fechas locales a UTC para coincidir con almacenamiento PostgreSQL
+        DateTime? fechaInicio = _dateRange?.Start.HasValue == true
+            ? DateTime.SpecifyKind(_dateRange.Start.Value.Date, DateTimeKind.Local).ToUniversalTime()
+            : null;
+        DateTime? fechaFin = _dateRange?.End.HasValue == true
+            ? DateTime.SpecifyKind(_dateRange.End.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Local).ToUniversalTime()
+            : null;
 
         _resultado = await ApiClient.GetAuditoriaSesionesAsync(
             fechaInicio: fechaInicio,

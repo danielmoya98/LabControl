@@ -10,6 +10,7 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
 @implements IAsyncDisposable
 
 <PageTitle>Tablero en Tiempo Real — Control de Laboratorios</PageTitle>
@@ -405,6 +406,9 @@
                                                         </MudMenuItem>
                                                         <MudMenuItem Icon="@Icons.Material.Filled.Memory" IconColor="Color.Primary" OnClick="() => AbrirFichaTecnicaAsync(pc)">
                                                             Ficha Técnica & Salud
+                                                        </MudMenuItem>
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.History" IconColor="Color.Info" OnClick="@(() => NavigationManager.NavigateTo($"/auditoria?hostname={Uri.EscapeDataString(pc.Hostname)}"))">
+                                                            Historial de Sesiones
                                                         </MudMenuItem>
                                                         <MudMenuItem Icon="@Icons.Material.Filled.PowerSettingsNew" IconColor="Color.Error" OnClick="() => ConfirmarApagadoPcAsync(pc)">
                                                             Apagar Terminal

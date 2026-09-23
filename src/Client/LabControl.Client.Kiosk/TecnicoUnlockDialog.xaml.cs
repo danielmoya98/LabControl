@@ -70,6 +70,7 @@ public partial class TecnicoUnlockDialog : Window
 
     private void OnAbrirConfiguracionClick(object sender, RoutedEventArgs e)
     {
+        KioskGuardianService.SignalGracefulShutdown();
         WindowsHookManager.UninstallHook();
         TaskManagerHelper.EnableTaskManager();
 
@@ -86,6 +87,7 @@ public partial class TecnicoUnlockDialog : Window
 
         if (res == MessageBoxResult.Yes)
         {
+            KioskGuardianService.SignalGracefulShutdown();
             WindowsHookManager.UninstallHook();
             TaskManagerHelper.EnableTaskManager();
             Application.Current.Shutdown();

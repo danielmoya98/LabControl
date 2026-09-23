@@ -27,6 +27,26 @@ public static class LocalStorageService
     {
         try
         {
+            // Detección de partición descongelada (Thawed Partition / ThawSpace) para Deep Freeze
+            // Si el laboratorio cuenta con una unidad secundaria persistente como D:\ o T:\
+            string[] thawCandidates = [ @"D:\LabControlData", @"T:\LabControlData" ];
+            foreach (var candidate in thawCandidates)
+            {
+                try
+                {
+                    var root = Path.GetPathRoot(candidate);
+                    if (!string.IsNullOrEmpty(root) && Directory.Exists(root))
+                    {
+                        if (!Directory.Exists(candidate))
+                        {
+                            Directory.CreateDirectory(candidate);
+                        }
+                        return candidate;
+                    }
+                }
+                catch { }
+            }
+
             var common = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "LabControl");
             if (!Directory.Exists(common))
             {
@@ -54,7 +74,8 @@ public static class LocalStorageService
 
     public static bool HasConfiguration()
     {
-        return File.Exists(DataConfigPath) || File.Exists(AppConfigPath);
+        var config = LoadConfig();
+        return config != null && config.AulaId > 0 && !string.IsNullOrWhiteSpace(config.ApiBaseUrl);
     }
 
     public static ConfigModel? LoadConfig()

@@ -45,8 +45,9 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# 3. Copiar scripts de instalación a la carpeta distribuible
-Write-Host "[3/3] Copiando instaladores y utilidades a la carpeta de distribución..." -ForegroundColor Yellow
+# 3. Copiar scripts de instalación y centinela Guardian a la carpeta distribuible
+Write-Host "[3/3] Copiando instaladores y binario centinela a la carpeta de distribución..." -ForegroundColor Yellow
+Copy-Item -Path "$OutputDir\LabControl.Client.Kiosk.exe" -Destination "$OutputDir\LabControl.Guardian.exe" -Force
 Copy-Item -Path "$PSScriptRoot\Install-Kiosk.ps1" -Destination $OutputDir -Force
 Copy-Item -Path "$PSScriptRoot\Uninstall-Kiosk.ps1" -Destination $OutputDir -Force
 

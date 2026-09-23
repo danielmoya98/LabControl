@@ -17,7 +17,7 @@ public partial class MainWindow : Window
     private ConfigModel? _config;
     private HubConnection? _hubConnection;
     private KioskApiService? _apiService;
-    private SessionWidgetWindow? _sessionWidget;
+    private DispatcherTimer? _sessionDurationTimer;
     private int? _sesionActualId;
     private int? _sesionOfflineId;
     private DateTime? _fechaInicioSesion;
@@ -61,6 +61,7 @@ public partial class MainWindow : Window
         WindowsHookManager.UninstallHook();
         TaskManagerHelper.EnableTaskManager();
         _screenCaptureTimer?.Stop();
+        _sessionDurationTimer?.Stop();
         _inactivityService.Stop();
         _offlineSyncWorker?.Dispose();
     }
@@ -153,6 +154,28 @@ public partial class MainWindow : Window
             }
 
             _config.ApiBaseUrl = KioskApiService.NormalizeApiUrl(_config.ApiBaseUrl);
+
+            // Siempre garantizar que la dirección MAC y Hostname correspondan al hardware físico real
+            var realMac = SystemInfoService.GetMacAddress();
+            var realHostname = SystemInfoService.GetHostname();
+            bool necesitaGuardar = false;
+
+            if (string.IsNullOrWhiteSpace(_config.MacAddress) || _config.MacAddress == "00:00:00:00:00:00" || _config.MacAddress != realMac)
+            {
+                _config.MacAddress = realMac;
+                necesitaGuardar = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(_config.Hostname) || _config.Hostname != realHostname)
+            {
+                _config.Hostname = realHostname;
+                necesitaGuardar = true;
+            }
+
+            if (necesitaGuardar)
+            {
+                LocalStorageService.SaveConfig(_config);
+            }
 
             _apiService = new KioskApiService(_config.ApiBaseUrl);
 
@@ -293,14 +316,32 @@ public partial class MainWindow : Window
             };
 
             // Escuchar comando de cierre remoto emitido por el administrador
-            _hubConnection.On<int>("RecibirComandoCierreSesion", (motivo) =>
+            _hubConnection.On<object>("RecibirComandoCierreSesion", (motivoObj) =>
             {
-                Dispatcher.Invoke(() =>
+                Dispatcher.Invoke(async () =>
                 {
-                    if (_sessionWidget != null)
+                    int motivo = (int)TipoCierreSesion.AdminRemoto;
+                    try
                     {
-                        _sessionWidget.CerrarPorComandoRemoto();
+                        if (motivoObj is System.Text.Json.JsonElement je)
+                        {
+                            if (je.ValueKind == System.Text.Json.JsonValueKind.Number && je.TryGetInt32(out int n))
+                                motivo = n;
+                            else if (je.ValueKind == System.Text.Json.JsonValueKind.String)
+                            {
+                                if (Enum.TryParse<TipoCierreSesion>(je.GetString(), true, out var pEnum))
+                                    motivo = (int)pEnum;
+                                else if (int.TryParse(je.GetString(), out int pInt))
+                                    motivo = pInt;
+                            }
+                        }
+                        else if (motivoObj is int i) motivo = i;
+                        else if (motivoObj is string s && Enum.TryParse<TipoCierreSesion>(s, true, out var parsed))
+                            motivo = (int)parsed;
                     }
+                    catch { }
+
+                    await ProcesarCierreSesionRemotoAsync(motivo);
                 });
             });
 
@@ -469,20 +510,14 @@ public partial class MainWindow : Window
                 LocalStorageService.SaveConfig(_config);
             }
 
-            // Liberar hooks y ocultar ventanas de bloqueo (pantalla principal y secundarias)
+            // Liberar hooks del teclado para permitir uso de la PC, pero mantener Task Manager deshabilitado contra sabotajes
             WindowsHookManager.UninstallHook();
-            TaskManagerHelper.EnableTaskManager();
+            TaskManagerHelper.DisableTaskManager();
             CerrarPantallasSecundarias();
             this.Hide();
 
-            // Abrir widget flotante con cronómetro en vivo sincronizado con el bloque
-            _sessionWidget = new SessionWidgetWindow(
-                email,
-                _config?.AulaNombre ?? "Laboratorio",
-                datos.MinutosLimite,
-                OnSesionTerminada
-            );
-            _sessionWidget.Show();
+            // Iniciar timer de duración de sesión en segundo plano (sin widget visual invasivo)
+            IniciarTimerDuracionSesion(datos.MinutosLimite);
 
             // Iniciar monitoreo de inactividad física
             _inactivityService.Start(
@@ -490,12 +525,9 @@ public partial class MainWindow : Window
                 (_config?.AccionInactividad ?? 0) == 0,
                 (esApagar) =>
                 {
-                    Dispatcher.Invoke(() =>
+                    Dispatcher.Invoke(async () =>
                     {
-                        if (_sessionWidget != null)
-                        {
-                            _sessionWidget.CerrarPorInactividad(esApagar);
-                        }
+                        await ProcesarInactividadAsync(esApagar);
                     });
                 }
             );
@@ -526,32 +558,23 @@ public partial class MainWindow : Window
                     _sesionOfflineId = offlineId;
                     _sesionActualId = null;
 
-                    // Liberar hooks y ocultar pantallas de bloqueo (principal y secundarias)
+                    // Liberar hooks del teclado para permitir uso de la PC, pero mantener Task Manager deshabilitado contra sabotajes
                     WindowsHookManager.UninstallHook();
-                    TaskManagerHelper.EnableTaskManager();
+                    TaskManagerHelper.DisableTaskManager();
                     CerrarPantallasSecundarias();
                     this.Hide();
 
-                    // Iniciar widget con límite por defecto de 90 minutos
-                    _sessionWidget = new SessionWidgetWindow(
-                        $"{email} (Modo Local)",
-                        _config.AulaNombre,
-                        90,
-                        OnSesionTerminada
-                    );
-                    _sessionWidget.Show();
+                    // Iniciar timer con límite por defecto de 90 minutos en segundo plano (sin widget visual)
+                    IniciarTimerDuracionSesion(90);
 
                     _inactivityService.Start(
                         _config?.MinutosInactividadMaximo ?? 15,
                         (_config?.AccionInactividad ?? 0) == 0,
                         (esApagar) =>
                         {
-                            Dispatcher.Invoke(() =>
+                            Dispatcher.Invoke(async () =>
                             {
-                                if (_sessionWidget != null)
-                                {
-                                    _sessionWidget.CerrarPorInactividad(esApagar);
-                                }
+                                await ProcesarInactividadAsync(esApagar);
                             });
                         }
                     );
@@ -574,14 +597,89 @@ public partial class MainWindow : Window
     {
         if (_sesionActualId.HasValue || _sesionOfflineId.HasValue)
         {
-            // Tipo 7 = ApagadoForzado
-            OnSesionTerminada(7);
+            try
+            {
+                FinalizarSesionInternoAsync((int)TipoCierreSesion.ApagadoForzado).Wait(TimeSpan.FromSeconds(2));
+            }
+            catch { }
         }
+    }
+
+    private void IniciarTimerDuracionSesion(int minutos)
+    {
+        _sessionDurationTimer?.Stop();
+        int duracion = minutos > 0 ? minutos : 90;
+        _sessionDurationTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMinutes(duracion)
+        };
+        _sessionDurationTimer.Tick += (s, e) =>
+        {
+            _sessionDurationTimer.Stop();
+            OnSesionTerminada((int)TipoCierreSesion.FinPeriodo);
+        };
+        _sessionDurationTimer.Start();
+    }
+
+    private async Task ProcesarInactividadAsync(bool esApagar)
+    {
+        _inactivityService.Stop();
+        _sessionDurationTimer?.Stop();
+
+        // 1. Notificar y persistir fin de sesión con código 6 (TipoCierreSesion.Inactividad)
+        // Se aguarda el registro antes de ordenar el apagado para garantizar recepción por el backend
+        await FinalizarSesionInternoAsync((int)TipoCierreSesion.Inactividad);
+
+        if (esApagar)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "shutdown.exe",
+                    Arguments = "/s /t 5 /c \"Apagado automatico por inactividad fisica prolongada en laboratorio\" /f",
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                });
+            }
+            catch { }
+        }
+        else
+        {
+            RestaurarBloqueoKiosk("⚠️ Sesión cerrada automáticamente por inactividad física prolongada.");
+        }
+    }
+
+    private async Task ProcesarCierreSesionRemotoAsync(int motivo)
+    {
+        _inactivityService.Stop();
+        _sessionDurationTimer?.Stop();
+
+        await FinalizarSesionInternoAsync(motivo);
+
+        RestaurarBloqueoKiosk("⚠️ Sesión finalizada remotamente por el administrador del laboratorio.");
     }
 
     private async void OnSesionTerminada(int tipoCierre)
     {
         _inactivityService.Stop();
+        _sessionDurationTimer?.Stop();
+
+        await FinalizarSesionInternoAsync(tipoCierre);
+
+        string mensaje = tipoCierre switch
+        {
+            (int)TipoCierreSesion.Inactividad => "⚠️ Sesión cerrada automáticamente por inactividad física prolongada.",
+            (int)TipoCierreSesion.FinPeriodo => "ℹ️ El tiempo asignado a su sesión o clase ha finalizado.",
+            (int)TipoCierreSesion.AdminRemoto => "⚠️ Sesión finalizada remotamente por el administrador.",
+            _ => "ℹ️ La sesión ha concluido. Terminal bloqueada."
+        };
+
+        RestaurarBloqueoKiosk(mensaje);
+    }
+
+    private async Task FinalizarSesionInternoAsync(int tipoCierre)
+    {
         var fechaFin = DateTime.UtcNow;
 
         // 1. Si la sesión inició en modo offline:
@@ -590,13 +688,9 @@ public partial class MainWindow : Window
             try
             {
                 await SqliteOfflineService.RegistrarFinSesionOfflineAsync(_sesionOfflineId.Value, fechaFin, tipoCierre);
-                // Disparar sincronización por si volvió la red
                 _ = _offlineSyncWorker?.SincronizarPendientesAsync();
             }
-            catch
-            {
-                // Silencioso
-            }
+            catch { }
             _sesionOfflineId = null;
         }
         // 2. Si la sesión inició en modo online:
@@ -630,16 +724,12 @@ public partial class MainWindow : Window
                         tipoCierre
                     );
                 }
-                catch
-                {
-                    // Silencioso
-                }
+                catch { }
             }
 
             _sesionActualId = null;
         }
 
-        _sessionWidget = null;
         _emailSesionActual = null;
         _fechaInicioSesion = null;
 
@@ -648,8 +738,10 @@ public partial class MainWindow : Window
             _config.UltimoEstudianteSesion = null;
             LocalStorageService.SaveConfig(_config);
         }
+    }
 
-        // Restaurar pantalla completa de bloqueo y reinstalar hooks
+    private void RestaurarBloqueoKiosk(string? mensajeAlerta)
+    {
         Dispatcher.Invoke(() =>
         {
             this.Show();
@@ -662,15 +754,16 @@ public partial class MainWindow : Window
             BloquearPantallasSecundarias();
 
             TxtEmail.Text = "";
-            if (tipoCierre == 4)
+
+            if (!string.IsNullOrWhiteSpace(mensajeAlerta))
             {
-                TxtAlert.Text = "⚠️ Sesión cerrada automáticamente por inactividad física prolongada.";
+                TxtAlert.Text = mensajeAlerta;
+                AlertBorder.Visibility = Visibility.Visible;
             }
             else
             {
-                TxtAlert.Text = "ℹ️ La sesión ha concluido. Terminal bloqueada.";
+                AlertBorder.Visibility = Visibility.Collapsed;
             }
-            AlertBorder.Visibility = Visibility.Visible;
         });
     }
 
@@ -699,12 +792,18 @@ public partial class MainWindow : Window
     {
         try
         {
-            // Cerrar sesión activa si existiera
-            _sessionWidget?.CerrarPorComandoRemoto();
+            if (_sesionActualId.HasValue || _sesionOfflineId.HasValue)
+            {
+                try
+                {
+                    FinalizarSesionInternoAsync((int)TipoCierreSesion.ApagadoForzado).Wait(TimeSpan.FromSeconds(2));
+                }
+                catch { }
+            }
 
             var cmd = tipoComando?.Trim().ToUpperInvariant() == "RESTART"
-                ? "/r /t 0 /f"
-                : "/s /t 0 /f";
+                ? "/r /t 2 /f"
+                : "/s /t 2 /f";
 
             var psi = new ProcessStartInfo("shutdown.exe", cmd)
             {

@@ -89,6 +89,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 [UninstallRun]
 ; Matar proceso si está activo antes de desinstalar
 Filename: "taskkill.exe"; Parameters: "/F /IM {#MyAppExeName}"; Flags: runhidden; RunOnceId: "KillKioskProcess"
+Filename: "taskkill.exe"; Parameters: "/F /IM LabControl.Guardian.exe"; Flags: runhidden; RunOnceId: "KillGuardianProcess"
 
 ; Eliminar la Tarea Programada de arranque
 Filename: "schtasks.exe"; Parameters: "/Delete /TN ""LabControlKioskStartup"" /F"; Flags: runhidden; RunOnceId: "DelScheduledTask"
@@ -101,25 +102,24 @@ var
   ConfigPage: TInputQueryWizardPage;
 
 // ==============================================================================
-// 1. PÁGINA PERSONALIZADA DE CONFIGURACIÓN DEL SERVIDOR Y AULA
+// 1. PÁGINA PERSONALIZADA DE CONFIGURACIÓN DEL SERVIDOR CENTRAL
 // ==============================================================================
 procedure InitializeWizard;
 begin
   ConfigPage := CreateInputQueryPage(
     wpSelectDir,
-    'Configuración de Servidor y Laboratorio',
+    'Configuración de Servidor Central',
     'Parámetros de conexión al sistema central de Univalle',
-    'Por favor verifique la dirección del servidor API central y el código del aula asignada para este equipo:'
+    'Por favor verifique la dirección del servidor API central para este equipo:' + #13#10 +
+    '(El aula se seleccionará de manera dinámica e interactiva de la base de datos al finalizar)'
   );
 
   ConfigPage.Add('URL del Servidor Central (API):', False);
-  ConfigPage.Add('Identificador / Número de Aula:', False);
-  ConfigPage.Add('Clave de Desbloqueo Técnico:', True);
+  ConfigPage.Add('Clave Maestra de Desbloqueo Técnico:', True);
 
   // Valores predeterminados iniciales
   ConfigPage.Values[0] := ExpandConstant('{#DefaultApiUrl}');
-  ConfigPage.Values[1] := ExpandConstant('{#DefaultAulaId}');
-  ConfigPage.Values[2] := ExpandConstant('{#MasterTechnicianKey}');
+  ConfigPage.Values[1] := ExpandConstant('{#MasterTechnicianKey}');
 end;
 
 // ==============================================================================
@@ -138,8 +138,9 @@ begin
   begin
     // Leer parámetros ingresados o usar los pasados por línea de comandos
     ServerUrl := ExpandConstant('{param:APIURL|' + ConfigPage.Values[0] + '}');
-    AulaIdStr := ExpandConstant('{param:AULAID|' + ConfigPage.Values[1] + '}');
-    ClaveTec := ExpandConstant('{param:CLAVETECNICO|' + ConfigPage.Values[2] + '}');
+    // AulaId opcional si se pasa por comando silencioso (ej: /AULAID=2), por defecto 0 para abrir selector interactivo
+    AulaIdStr := ExpandConstant('{param:AULAID|0}');
+    ClaveTec := ExpandConstant('{param:CLAVETECNICO|' + ConfigPage.Values[1] + '}');
     Hostname := ExpandConstant('{%COMPUTERNAME}');
 
     // Normalizar URL del servidor
@@ -153,21 +154,21 @@ begin
 
     // Normalizar ID del Aula
     AulaIdStr := Trim(AulaIdStr);
-    if (AulaIdStr = '') or (StrToIntDef(AulaIdStr, 0) <= 0) then
-      AulaIdStr := '{#DefaultAulaId}';
+    if (AulaIdStr = '') or (StrToIntDef(AulaIdStr, -1) < 0) then
+      AulaIdStr := '0';
 
     if Trim(ClaveTec) = '' then
       ClaveTec := '{#MasterTechnicianKey}';
 
-    // Generar JSON de configuración del Kiosk
+    // Generar JSON de configuración del Kiosk (AulaId=0 para que al iniciar lance el selector de aulas dinámico)
     ConfigJson :=
       '{' + #13#10 +
       '  "ApiBaseUrl": "' + ServerUrl + '",' + #13#10 +
       '  "AulaId": ' + AulaIdStr + ',' + #13#10 +
-      '  "AulaNombre": "Aula ' + AulaIdStr + '",' + #13#10 +
+      '  "AulaNombre": "",' + #13#10 +
       '  "ComputadoraId": 0,' + #13#10 +
       '  "Hostname": "' + Hostname + '",' + #13#10 +
-      '  "MacAddress": "00:00:00:00:00:00",' + #13#10 +
+      '  "MacAddress": "",' + #13#10 +
       '  "ClaveTecnico": "' + ClaveTec + '"' + #13#10 +
       '}';
 

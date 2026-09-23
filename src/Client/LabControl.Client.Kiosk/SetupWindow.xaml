@@ -47,7 +47,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="TxtApiUrl" Grid.Column="0" Text="http://localhost:5256/" Style="{StaticResource UnivalleTextBox}" FontSize="13" />
+                    <TextBox x:Name="TxtApiUrl" Grid.Column="0" Text="http://localhost:5256/" Style="{StaticResource UnivalleTextBox}" FontSize="13" KeyDown="OnTxtApiUrlKeyDown" />
                     <Button Grid.Column="1" Content="🔄 Conectar y Leer Aulas" Margin="10,0,0,0" Height="40" Style="{StaticResource UnivallePrimaryButton}" FontSize="13" Click="OnCargarAulasClick"/>
                 </Grid>
 
@@ -89,14 +89,15 @@
         </Border>
 
         <!-- Actions -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-            <Button Content="🚀 Enlazar y Auto-Registrar Terminal" Height="42" Padding="22,0" Background="#16A34A" Foreground="#FFFFFF" FontSize="14" FontWeight="Bold" Cursor="Hand" Click="OnAutoRegistrarClick">
+        <Grid Grid.Row="2" Margin="0,20,0,0">
+            <Button Content="Cerrar Asistente" Height="42" Padding="18,0" Style="{StaticResource UnivalleOutlineButton}" HorizontalAlignment="Left" Click="OnCerrarClick" />
+            <Button Content="🚀 Enlazar y Auto-Registrar Terminal" Height="42" Padding="22,0" Background="#16A34A" Foreground="#FFFFFF" FontSize="14" FontWeight="Bold" Cursor="Hand" HorizontalAlignment="Right" Click="OnAutoRegistrarClick">
                 <Button.Resources>
                     <Style TargetType="Border">
                         <Setter Property="CornerRadius" Value="10"/>
                     </Style>
                 </Button.Resources>
             </Button>
-        </StackPanel>
+        </Grid>
     </Grid>
 </Window>
