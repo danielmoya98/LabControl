@@ -1,4 +1,4 @@
-# 🖥️ Sistema de Gestión, Monitoreo y Control de Acceso para Laboratorios de Cómputo (Intranet)
+---# 🖥️ Sistema de Gestión, Monitoreo y Control de Acceso para Laboratorios de Cómputo (Intranet)
 
 Sistema integral de gestión de acceso, monitoreo en tiempo real y control de sesiones para laboratorios de cómputo universitarios. Diseñado para operar sobre la **Intranet Local (LAN)** administrando ~100 terminales distribuidas en aulas de cómputo con mapas interactivos y control remoto por WebSockets (SignalR).
 
