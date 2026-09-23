@@ -586,6 +586,113 @@
         padding-top: 16px;
         border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
+
+    /* =========================================================================
+       ALTO CONTRASTE Y MÁXIMA LEGIBILIDAD PARA CAMPOS DE ONBOARDING (DARK THEME)
+       ========================================================================= */
+    .onboarding-root,
+    .onboarding-card {
+        --mud-palette-text-primary: #f8fafc !important;
+        --mud-palette-text-secondary: #cbd5e1 !important;
+        --mud-palette-text-disabled: #64748b !important;
+        --mud-palette-lines-inputs: rgba(255, 255, 255, 0.28) !important;
+        --mud-palette-lines-default: rgba(255, 255, 255, 0.18) !important;
+        --mud-palette-action-default: #e2e8f0 !important;
+        --mud-palette-surface: #1e293b !important;
+        --mud-palette-background: #0f172a !important;
+        --mud-palette-primary: #f43f5e !important;
+    }
+
+    /* Contenedor del campo: Fondo oscuro distintivo para separarlo de la tarjeta */
+    .onboarding-card .mud-input.mud-input-outlined {
+        background-color: rgba(30, 41, 59, 0.85) !important;
+        border-radius: 10px !important;
+        transition: all 0.2s ease !important;
+    }
+
+    /* Borde del campo en reposo */
+    .onboarding-card .mud-input.mud-input-outlined .mud-input-outlined-border {
+        border-color: rgba(255, 255, 255, 0.28) !important;
+        border-width: 1.5px !important;
+    }
+
+    /* Borde en hover */
+    .onboarding-card .mud-input.mud-input-outlined:hover .mud-input-outlined-border {
+        border-color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    /* Borde y foco activo */
+    .onboarding-card .mud-input.mud-input-outlined:focus-within .mud-input-outlined-border {
+        border-color: #f43f5e !important;
+        border-width: 2px !important;
+        box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.3) !important;
+    }
+
+    /* Texto tipiado o sugerido: Blanco brillante nítido */
+    .onboarding-card .mud-input-slot,
+    .onboarding-card input.mud-input-slot,
+    .onboarding-card textarea.mud-input-slot {
+        color: #ffffff !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+        -webkit-text-fill-color: #ffffff !important;
+    }
+
+    /* Placeholder visible */
+    .onboarding-card .mud-input-slot::placeholder,
+    .onboarding-card input.mud-input-slot::placeholder,
+    .onboarding-card textarea.mud-input-slot::placeholder {
+        color: #94a3b8 !important;
+        -webkit-text-fill-color: #94a3b8 !important;
+        opacity: 0.9 !important;
+    }
+
+    /* Etiquetas del campo (Labels) */
+    .onboarding-card .mud-input-control > .mud-input-control-input-container > .mud-input-label-inputcontrol {
+        color: #cbd5e1 !important;
+        font-weight: 600 !important;
+        font-size: 0.92rem !important;
+    }
+
+    /* Etiqueta reducida / flotante (notch) */
+    .onboarding-card .mud-shrink ~ label.mud-input-label.mud-input-label-inputcontrol,
+    .onboarding-card .mud-input:has(:-webkit-autofill) ~ label.mud-input-label.mud-input-label-inputcontrol {
+        color: #fda4af !important;
+        font-weight: 700 !important;
+        background-color: transparent !important;
+    }
+
+    /* Etiqueta con foco activo */
+    .onboarding-card .mud-input:focus-within ~ label.mud-input-label.mud-input-label-inputcontrol {
+        color: #f43f5e !important;
+        font-weight: 700 !important;
+    }
+
+    /* Adornments, Iconos y Controles Numéricos */
+    .onboarding-card .mud-input-adornment,
+    .onboarding-card .mud-input-adornment .mud-icon-root,
+    .onboarding-card .mud-numeric-up-button,
+    .onboarding-card .mud-numeric-down-button {
+        color: #e2e8f0 !important;
+    }
+
+    /* Switches y Checkboxes */
+    .onboarding-card .mud-switch .mud-typography,
+    .onboarding-card .mud-checkbox .mud-typography {
+        color: #f8fafc !important;
+        font-weight: 500 !important;
+    }
+
+    /* Alerta informativa en paso final */
+    .onboarding-card .mud-alert-outlined-info {
+        border-color: rgba(56, 189, 248, 0.4) !important;
+        background-color: rgba(14, 165, 233, 0.1) !important;
+        color: #e0f2fe !important;
+    }
+
+    .onboarding-card .mud-alert-outlined-info .mud-alert-icon {
+        color: #38bdf8 !important;
+    }
 </style>
 
 @code {
