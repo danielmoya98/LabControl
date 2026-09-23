@@ -20,20 +20,60 @@ public class ConfigModel
 
 public static class LocalStorageService
 {
-    private static readonly string ConfigFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kiosk-config.json");
+    private static string AppConfigPath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kiosk-config.json");
+    private static string DataConfigPath => Path.Combine(GetDataDirectory(), "kiosk-config.json");
+
+    public static string GetDataDirectory()
+    {
+        try
+        {
+            var common = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "LabControl");
+            if (!Directory.Exists(common))
+            {
+                Directory.CreateDirectory(common);
+            }
+            return common;
+        }
+        catch
+        {
+            try
+            {
+                var local = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LabControl");
+                if (!Directory.Exists(local))
+                {
+                    Directory.CreateDirectory(local);
+                }
+                return local;
+            }
+            catch
+            {
+                return AppDomain.CurrentDomain.BaseDirectory;
+            }
+        }
+    }
 
     public static bool HasConfiguration()
     {
-        return File.Exists(ConfigFilePath);
+        return File.Exists(DataConfigPath) || File.Exists(AppConfigPath);
     }
 
     public static ConfigModel? LoadConfig()
     {
-        if (!File.Exists(ConfigFilePath)) return null;
+        string? path = null;
+        if (File.Exists(DataConfigPath)) path = DataConfigPath;
+        else if (File.Exists(AppConfigPath)) path = AppConfigPath;
+
+        if (path == null) return null;
+
         try
         {
-            var json = File.ReadAllText(ConfigFilePath);
-            return JsonSerializer.Deserialize<ConfigModel>(json);
+            var json = File.ReadAllText(path);
+            var model = JsonSerializer.Deserialize<ConfigModel>(json);
+            if (model != null)
+            {
+                model.ApiBaseUrl = KioskApiService.NormalizeApiUrl(model.ApiBaseUrl);
+            }
+            return model;
         }
         catch
         {
@@ -43,7 +83,36 @@ public static class LocalStorageService
 
     public static void SaveConfig(ConfigModel config)
     {
-        var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(ConfigFilePath, json);
+        try
+        {
+            config.ApiBaseUrl = KioskApiService.NormalizeApiUrl(config.ApiBaseUrl);
+            var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+
+            // 1. Guardar en DataConfigPath (C:\ProgramData\LabControl - accesible con permisos de usuario estándar)
+            try
+            {
+                var dataDir = GetDataDirectory();
+                if (!Directory.Exists(dataDir)) Directory.CreateDirectory(dataDir);
+                File.WriteAllText(DataConfigPath, json);
+            }
+            catch
+            {
+                // Silencioso
+            }
+
+            // 2. Intentar guardar también en la carpeta de la aplicación si hay permisos suficientes
+            try
+            {
+                File.WriteAllText(AppConfigPath, json);
+            }
+            catch
+            {
+                // Silencioso si Program Files es de solo lectura para el usuario actual
+            }
+        }
+        catch
+        {
+            // Silencioso
+        }
     }
 }

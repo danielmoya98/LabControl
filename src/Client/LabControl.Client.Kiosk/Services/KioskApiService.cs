@@ -83,11 +83,38 @@ public class KioskApiService
 {
     private readonly HttpClient _httpClient;
 
+    public static string NormalizeApiUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return "http://localhost:5256/";
+
+        url = url.Trim();
+        if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            url = "http://" + url;
+        }
+
+        if (!url.EndsWith("/"))
+        {
+            url += "/";
+        }
+
+        return url;
+    }
+
     public KioskApiService(string baseUrl)
     {
+        baseUrl = NormalizeApiUrl(baseUrl);
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+        {
+            uri = new Uri("http://localhost:5256/");
+        }
+
         _httpClient = new HttpClient
         {
-            BaseAddress = new Uri(baseUrl)
+            BaseAddress = uri,
+            Timeout = TimeSpan.FromSeconds(8)
         };
     }
 

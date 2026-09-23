@@ -62,6 +62,8 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 ; Administradores y SYSTEM tienen control total.
 ; Usuarios estándar (estudiantes) solo tienen permiso de lectura y ejecución.
 Name: "{app}"; Permissions: users-readexec authusers-readexec admins-full system-full
+; Carpeta de datos comunes para SQLite y configuración accesible para todos los usuarios:
+Name: "{commonappdata}\LabControl"; Permissions: users-full authusers-full admins-full system-full
 
 [Files]
 ; Binarios compilados autónomos (Self-Contained win-x64)
@@ -78,6 +80,8 @@ Filename: "schtasks.exe"; Parameters: "/Create /TN ""LabControlKioskStartup"" /T
 ; 3. Endurecimiento de permisos NTFS (Anti-borrado y Anti-manipulación por estudiantes)
 ; Otorga solo lectura y ejecución al grupo Usuarios y deniega escritura/eliminación
 Filename: "icacls.exe"; Parameters: """{app}"" /grant *S-1-5-32-545:(OI)(CI)RX /grant *S-1-5-32-544:(OI)(CI)F /grant *S-1-5-18:(OI)(CI)F /inheritance:r"; Flags: runhidden
+; Permitir a los usuarios modificar el archivo de configuración cuando la PC se auto-registre
+Filename: "icacls.exe"; Parameters: """{app}\kiosk-config.json"" /grant *S-1-5-32-545:M"; Flags: runhidden
 
 ; 4. Lanzar la aplicación inmediatamente al finalizar la instalación
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
@@ -138,10 +142,20 @@ begin
     ClaveTec := ExpandConstant('{param:CLAVETECNICO|' + ConfigPage.Values[2] + '}');
     Hostname := ExpandConstant('{%COMPUTERNAME}');
 
-    if Trim(ServerUrl) = '' then
+    // Normalizar URL del servidor
+    ServerUrl := Trim(ServerUrl);
+    if ServerUrl = '' then
       ServerUrl := '{#DefaultApiUrl}';
-    if Trim(AulaIdStr) = '' then
+    if (Pos('http://', Lowercase(ServerUrl)) = 0) and (Pos('https://', Lowercase(ServerUrl)) = 0) then
+      ServerUrl := 'http://' + ServerUrl;
+    if ServerUrl[Length(ServerUrl)] <> '/' then
+      ServerUrl := ServerUrl + '/';
+
+    // Normalizar ID del Aula
+    AulaIdStr := Trim(AulaIdStr);
+    if (AulaIdStr = '') or (StrToIntDef(AulaIdStr, 0) <= 0) then
       AulaIdStr := '{#DefaultAulaId}';
+
     if Trim(ClaveTec) = '' then
       ClaveTec := '{#MasterTechnicianKey}';
 
@@ -157,8 +171,13 @@ begin
       '  "ClaveTecnico": "' + ClaveTec + '"' + #13#10 +
       '}';
 
+    // 1. Guardar en {app}\kiosk-config.json
     ConfigFilePath := ExpandConstant('{app}\kiosk-config.json');
     SaveStringToFile(ConfigFilePath, ConfigJson, False);
+
+    // 2. Guardar también en {commonappdata}\LabControl\kiosk-config.json
+    ForceDirectories(ExpandConstant('{commonappdata}\LabControl'));
+    SaveStringToFile(ExpandConstant('{commonappdata}\LabControl\kiosk-config.json'), ConfigJson, False);
   end;
 end;
 

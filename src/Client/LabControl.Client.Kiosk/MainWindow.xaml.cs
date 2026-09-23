@@ -36,13 +36,20 @@ public partial class MainWindow : Window
 
     private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
-        // Instalar bloqueo a bajo nivel (Alt+Tab, WinKey, Ctrl+Esc, Alt+F4)
-        WindowsHookManager.InstallHook();
-        TaskManagerHelper.DisableTaskManager();
+        try
+        {
+            // Instalar bloqueo a bajo nivel (Alt+Tab, WinKey, Ctrl+Esc, Alt+F4)
+            WindowsHookManager.InstallHook();
+            TaskManagerHelper.DisableTaskManager();
 
-        // Bloquear todas las pantallas secundarias conectadas al equipo
-        BloquearPantallasSecundarias();
-        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+            // Bloquear todas las pantallas secundarias conectadas al equipo
+            BloquearPantallasSecundarias();
+            SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+        }
+        catch
+        {
+            // Silencioso
+        }
     }
 
     private void OnWindowClosed(object sender, EventArgs e)
@@ -124,45 +131,65 @@ public partial class MainWindow : Window
 
     private async void InicializarKiosk()
     {
-        // Inicializar base de datos SQLite local para tolerancia offline
-        await SqliteOfflineService.InicializarBaseDeDatosAsync();
-
-        _config = LocalStorageService.LoadConfig();
-
-        if (_config == null)
+        try
         {
-            // Auto-configuración transparente y silenciosa apuntando a la IP central por defecto
-            _config = new ConfigModel
+            // Inicializar base de datos SQLite local para tolerancia offline
+            await SqliteOfflineService.InicializarBaseDeDatosAsync();
+
+            _config = LocalStorageService.LoadConfig();
+
+            if (_config == null)
             {
-                ApiBaseUrl = "http://192.168.50.132:5256/",
-                AulaId = 1,
-                AulaNombre = "Laboratorio Central",
-                Hostname = SystemInfoService.GetHostname(),
-                MacAddress = SystemInfoService.GetMacAddress()
-            };
-            LocalStorageService.SaveConfig(_config);
+                // Auto-configuración transparente y silenciosa apuntando a la IP central por defecto
+                _config = new ConfigModel
+                {
+                    ApiBaseUrl = "http://192.168.50.132:5256/",
+                    AulaId = 1,
+                    AulaNombre = "Laboratorio Central",
+                    Hostname = SystemInfoService.GetHostname(),
+                    MacAddress = SystemInfoService.GetMacAddress()
+                };
+                LocalStorageService.SaveConfig(_config);
+            }
+
+            _config.ApiBaseUrl = KioskApiService.NormalizeApiUrl(_config.ApiBaseUrl);
+
+            _apiService = new KioskApiService(_config.ApiBaseUrl);
+
+            // Iniciar agente de sincronización offline en segundo plano
+            _offlineSyncWorker = new OfflineSyncWorker(_apiService, _config);
+            _offlineSyncWorker.Start();
+
+            var currentIp = SystemInfoService.GetLocalIpAddress();
+            TxtAulaInfo.Text = $"{_config.AulaNombre} | Equipo: {_config.Hostname}";
+            TxtIpMac.Text = $"IP: {currentIp} | MAC: {_config.MacAddress}";
+
+            // Asegurar auto-registro en la base de datos PostgreSQL
+            await AsegurarRegistroComputadoraAsync(currentIp);
+
+            // Auditar y reportar a la API si la computadora sufrió un corte previo de energía o apagado de fuerza bruta
+            _ = WindowsEventLogService.VerificarYReportarApagadoForzadoAsync(_apiService, _config);
+
+            await ConectarSignalRAsync();
+
+            IniciarHeartbeatTimer();
+            IniciarScreenCaptureTimer();
         }
+        catch (Exception ex)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                TxtSignalRStatus.Text = "○ Modo Offline (Servidor no alcanzable)";
+                TxtSignalRStatus.Foreground = System.Windows.Media.Brushes.IndianRed;
+            });
 
-        _apiService = new KioskApiService(_config.ApiBaseUrl);
-
-        // Iniciar agente de sincronización offline en segundo plano
-        _offlineSyncWorker = new OfflineSyncWorker(_apiService, _config);
-        _offlineSyncWorker.Start();
-
-        var currentIp = SystemInfoService.GetLocalIpAddress();
-        TxtAulaInfo.Text = $"{_config.AulaNombre} | Equipo: {_config.Hostname}";
-        TxtIpMac.Text = $"IP: {currentIp} | MAC: {_config.MacAddress}";
-
-        // Asegurar auto-registro en la base de datos PostgreSQL
-        await AsegurarRegistroComputadoraAsync(currentIp);
-
-        // Auditar y reportar a la API si la computadora sufrió un corte previo de energía o apagado de fuerza bruta
-        _ = WindowsEventLogService.VerificarYReportarApagadoForzadoAsync(_apiService, _config);
-
-        await ConectarSignalRAsync();
-
-        IniciarHeartbeatTimer();
-        IniciarScreenCaptureTimer();
+            try
+            {
+                var logPath = System.IO.Path.Combine(LocalStorageService.GetDataDirectory(), "kiosk-crash.log");
+                System.IO.File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [InicializarKiosk] {ex.Message}\n{ex.StackTrace}\n\n");
+            }
+            catch { }
+        }
     }
 
     private async Task AsegurarRegistroComputadoraAsync(string currentIp)

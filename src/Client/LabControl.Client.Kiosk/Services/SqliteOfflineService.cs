@@ -23,7 +23,7 @@ public class OfflineSesionItem
 /// </summary>
 public static class SqliteOfflineService
 {
-    private static readonly string DbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "labcontrol_offline.db");
+    private static readonly string DbPath = Path.Combine(LocalStorageService.GetDataDirectory(), "labcontrol_offline.db");
     private static readonly string ConnectionString = $"Data Source={DbPath}";
     private static bool _inicializado = false;
     private static readonly object _lock = new();
@@ -32,28 +32,41 @@ public static class SqliteOfflineService
     {
         if (_inicializado) return;
 
-        using var connection = new SqliteConnection(ConnectionString);
-        await connection.OpenAsync();
+        try
+        {
+            var dir = Path.GetDirectoryName(DbPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
 
-        var tableCmd = @"
-            CREATE TABLE IF NOT EXISTS OfflineSesionesQueue (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ComputadoraId INTEGER,
-                Hostname TEXT NOT NULL,
-                EmailEstudiante TEXT NOT NULL,
-                FechaHoraInicio TEXT NOT NULL,
-                FechaHoraFin TEXT,
-                DuracionMinutos INTEGER,
-                TipoCierre INTEGER NOT NULL,
-                EstadoSync TEXT NOT NULL DEFAULT 'Pendiente',
-                Intentos INTEGER NOT NULL DEFAULT 0,
-                FechaCreacion TEXT NOT NULL
-            );";
+            using var connection = new SqliteConnection(ConnectionString);
+            await connection.OpenAsync();
 
-        using var command = new SqliteCommand(tableCmd, connection);
-        await command.ExecuteNonQueryAsync();
+            var tableCmd = @"
+                CREATE TABLE IF NOT EXISTS OfflineSesionesQueue (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ComputadoraId INTEGER,
+                    Hostname TEXT NOT NULL,
+                    EmailEstudiante TEXT NOT NULL,
+                    FechaHoraInicio TEXT NOT NULL,
+                    FechaHoraFin TEXT,
+                    DuracionMinutos INTEGER,
+                    TipoCierre INTEGER NOT NULL,
+                    EstadoSync TEXT NOT NULL DEFAULT 'Pendiente',
+                    Intentos INTEGER NOT NULL DEFAULT 0,
+                    FechaCreacion TEXT NOT NULL
+                );";
 
-        _inicializado = true;
+            using var command = new SqliteCommand(tableCmd, connection);
+            await command.ExecuteNonQueryAsync();
+
+            _inicializado = true;
+        }
+        catch
+        {
+            // Falla de base de datos local no debe derribar la aplicación principal
+        }
     }
 
     public static async Task<int> RegistrarInicioSesionOfflineAsync(int? computadoraId, string hostname, string emailEstudiante, DateTime inicio)
