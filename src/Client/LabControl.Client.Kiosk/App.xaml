@@ -2,6 +2,283 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
-         
+        <!-- Paleta Institucional Universidad del Valle (Univalle Bolivia) -->
+        <SolidColorBrush x:Key="UnivalleGuindoBrush" Color="#9E0044" />
+        <SolidColorBrush x:Key="UnivalleGuindoDarkBrush" Color="#7D0036" />
+        <SolidColorBrush x:Key="UnivalleGuindoHoverBrush" Color="#BE123C" />
+        <SolidColorBrush x:Key="UnivallePillBgBrush" Color="#339E0044" />
+        <SolidColorBrush x:Key="UnivallePillBorderBrush" Color="#669E0044" />
+        <SolidColorBrush x:Key="UnivallePillTextBrush" Color="#FDA4AF" />
+
+        <SolidColorBrush x:Key="UnivalleDarkBgBrush" Color="#0D0F14" />
+        <SolidColorBrush x:Key="UnivalleCardBgBrush" Color="#161D26" />
+        <SolidColorBrush x:Key="UnivalleCardBorderBrush" Color="#334155" />
+        <SolidColorBrush x:Key="UnivalleInputBgBrush" Color="#0F172A" />
+        <SolidColorBrush x:Key="UnivalleTextPrimaryBrush" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="UnivalleTextSecondaryBrush" Color="#94A3B8" />
+        <SolidColorBrush x:Key="UnivalleTextMutedBrush" Color="#64748B" />
+
+        <!-- Fondos Acrílicos y Glassmorphism Univalle -->
+        <LinearGradientBrush x:Key="UnivalleGlassBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#D9111722" Offset="0.0" />
+            <GradientStop Color="#BF182232" Offset="0.6" />
+            <GradientStop Color="#A67D0036" Offset="1.0" />
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="UnivalleGlassBorderBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#66FFFFFF" Offset="0.0" />
+            <GradientStop Color="#33BE123C" Offset="0.5" />
+            <GradientStop Color="#1AFFFFFF" Offset="1.0" />
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="UnivallePrimaryGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#9E0044" Offset="0.0" />
+            <GradientStop Color="#7D0036" Offset="1.0" />
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="UnivallePrimaryGradientHover" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#BE123C" Offset="0.0" />
+            <GradientStop Color="#9E0044" Offset="1.0" />
+        </LinearGradientBrush>
+
+        <!-- Estilo de Botón Primario Univalle -->
+        <Style x:Key="UnivallePrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource UnivallePrimaryGradient}" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                CornerRadius="10" 
+                                Padding="{TemplateBinding Padding}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource UnivallePrimaryGradientHover}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource UnivalleGuindoDarkBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#334155" />
+                                <Setter Property="Foreground" Value="#64748B" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo de Botón Secundario / Outline -->
+        <Style x:Key="UnivalleOutlineButton" TargetType="Button">
+            <Setter Property="Background" Value="#1E293B" />
+            <Setter Property="Foreground" Value="#E2E8F0" />
+            <Setter Property="BorderBrush" Value="#334155" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                CornerRadius="8" 
+                                Padding="{TemplateBinding Padding}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#334155" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="#64748B" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#0F172A" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo de Botón de Apagado / Peligro -->
+        <Style x:Key="UnivalleDangerButton" TargetType="Button">
+            <Setter Property="Background" Value="#1E293B" />
+            <Setter Property="Foreground" Value="#F87171" />
+            <Setter Property="BorderBrush" Value="#DC2626" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                CornerRadius="8" 
+                                Padding="{TemplateBinding Padding}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#DC2626" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo de Botón Acrílico Translúcido (Glass Outline) -->
+        <Style x:Key="UnivalleGlassOutlineButton" TargetType="Button">
+            <Setter Property="Background" Value="#26FFFFFF" />
+            <Setter Property="Foreground" Value="#F8FAFC" />
+            <Setter Property="BorderBrush" Value="#4DFFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                CornerRadius="8" 
+                                Padding="{TemplateBinding Padding}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#4DFFFFFF" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="#80FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1AFFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo de Botón Acrílico Peligro (Glass Danger) -->
+        <Style x:Key="UnivalleGlassDangerButton" TargetType="Button">
+            <Setter Property="Background" Value="#33DC2626" />
+            <Setter Property="Foreground" Value="#FECDD3" />
+            <Setter Property="BorderBrush" Value="#66F43F5E" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                CornerRadius="8" 
+                                Padding="{TemplateBinding Padding}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#80DC2626" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="#FFA4AF" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#4D991B1B" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo Moderno de Cajas de Texto con Borde de Enfoque Guindo -->
+        <Style x:Key="UnivalleTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#0F172A" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#334155" />
+            <Setter Property="BorderThickness" Value="1.2" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="8" 
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False" 
+                                          HorizontalScrollBarVisibility="Hidden" 
+                                          VerticalScrollBarVisibility="Hidden"
+                                          Margin="0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#64748B" />
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource UnivalleGuindoBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo de PasswordBox con Borde de Enfoque Guindo -->
+        <Style x:Key="UnivallePasswordBox" TargetType="PasswordBox">
+            <Setter Property="Background" Value="#0F172A" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#334155" />
+            <Setter Property="BorderThickness" Value="1.2" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="8" 
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False" 
+                                          HorizontalScrollBarVisibility="Hidden" 
+                                          VerticalScrollBarVisibility="Hidden"
+                                          Margin="0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#64748B" />
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource UnivalleGuindoBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Application.Resources>
 </Application>

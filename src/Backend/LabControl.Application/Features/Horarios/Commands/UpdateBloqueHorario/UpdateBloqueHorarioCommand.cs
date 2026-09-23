@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using LabControl.Application.Common.Interfaces;
@@ -15,7 +15,15 @@ public record UpdateBloqueHorarioCommand(
     TimeSpan HoraInicio,
     TimeSpan HoraFin,
     bool EsRecreo,
-    string? Descripcion
+    string? Descripcion,
+    int? MateriaId = null,
+    int? DocenteId = null,
+    string? GrupoParalelo = null,
+    bool EsUsoLibre = false,
+    int? PeriodoAcademicoId = null,
+    string? DocenteNombreManual = null,
+    string? DocenteEmailManual = null,
+    string? MateriaNombreManual = null
 ) : IRequest<Result<BloqueHorarioDto>>;
 
 public class UpdateBloqueHorarioCommandValidator : AbstractValidator<UpdateBloqueHorarioCommand>
@@ -40,6 +48,9 @@ public class UpdateBloqueHorarioCommandHandler : IRequestHandler<UpdateBloqueHor
     public async Task<Result<BloqueHorarioDto>> Handle(UpdateBloqueHorarioCommand request, CancellationToken cancellationToken)
     {
         var bloque = await _context.BloquesHorarios
+            .Include(b => b.Materia)
+            .Include(b => b.Docente)
+            .Include(b => b.PeriodoAcademico)
             .FirstOrDefaultAsync(b => b.Id == request.Id, cancellationToken);
 
         if (bloque == null)
@@ -60,7 +71,15 @@ public class UpdateBloqueHorarioCommandHandler : IRequestHandler<UpdateBloqueHor
             request.HoraInicio,
             request.HoraFin,
             request.EsRecreo,
-            request.Descripcion
+            request.Descripcion,
+            request.MateriaId,
+            request.DocenteId,
+            request.GrupoParalelo,
+            request.EsUsoLibre,
+            request.PeriodoAcademicoId,
+            request.DocenteNombreManual,
+            request.DocenteEmailManual,
+            request.MateriaNombreManual
         );
 
         if (updateResult.IsFailure)
@@ -70,6 +89,22 @@ public class UpdateBloqueHorarioCommandHandler : IRequestHandler<UpdateBloqueHor
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        string? materiaSigla = bloque.Materia?.Sigla;
+        string? materiaNombre = bloque.Materia?.Nombre ?? bloque.MateriaNombreManual;
+        if (string.IsNullOrEmpty(materiaNombre) && bloque.MateriaId.HasValue)
+        {
+            var m = await _context.Materias.FindAsync([bloque.MateriaId.Value], cancellationToken);
+            materiaSigla = m?.Sigla;
+            materiaNombre = m?.Nombre;
+        }
+
+        string? docenteNombre = bloque.Docente?.NombreCompleto ?? bloque.DocenteNombreManual;
+        if (string.IsNullOrEmpty(docenteNombre) && bloque.DocenteId.HasValue)
+        {
+            var d = await _context.Docentes.FindAsync([bloque.DocenteId.Value], cancellationToken);
+            docenteNombre = d?.NombreCompleto;
+        }
+
         return Result<BloqueHorarioDto>.Success(new BloqueHorarioDto(
             bloque.Id,
             bloque.AulaId,
@@ -77,7 +112,19 @@ public class UpdateBloqueHorarioCommandHandler : IRequestHandler<UpdateBloqueHor
             bloque.HoraInicio,
             bloque.HoraFin,
             bloque.EsRecreo,
-            bloque.Descripcion
+            bloque.Descripcion,
+            bloque.MateriaId,
+            materiaSigla,
+            materiaNombre,
+            bloque.DocenteId,
+            docenteNombre,
+            bloque.GrupoParalelo,
+            bloque.EsUsoLibre,
+            bloque.PeriodoAcademicoId,
+            bloque.PeriodoAcademico?.Nombre,
+            bloque.DocenteNombreManual,
+            bloque.DocenteEmailManual,
+            bloque.MateriaNombreManual
         ));
     }
 }

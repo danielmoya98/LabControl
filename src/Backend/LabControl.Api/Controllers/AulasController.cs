@@ -9,9 +9,9 @@ namespace LabControl.Api.Controllers;
 public class AulasController : ApiControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAulas(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAulas([FromQuery] int? bloqueId, CancellationToken cancellationToken)
     {
-        var result = await Mediator.Send(new GetAulasQuery(), cancellationToken);
+        var result = await Mediator.Send(new GetAulasQuery(bloqueId), cancellationToken);
         return HandleResult(result);
     }
 

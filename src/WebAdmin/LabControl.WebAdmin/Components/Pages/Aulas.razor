@@ -1,6 +1,7 @@
 @page "/aulas"
 @using Microsoft.AspNetCore.Components.Web
 @using LabControl.Application.Features.Aulas.Commands.CreateAula
+@using LabControl.Domain.Enums
 @using LabControl.WebAdmin.Services
 @inject LabApiClient ApiClient
 @inject ISnackbar Snackbar
@@ -8,106 +9,481 @@
 
 <PageTitle>Gestión de Aulas — Control de Laboratorios</PageTitle>
 
-<div class="d-flex justify-space-between align-center mb-6">
+<!-- Cabecera de Página Moderna -->
+<div class="d-flex flex-wrap justify-space-between align-center gap-4 mb-5">
     <div>
-        <MudText Typo="Typo.h5" Class="font-weight-bold">🏢 Gestión de Aulas y Laboratorios</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">Crea, edita y administra las aulas del centro de cómputo</MudText>
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-lg d-flex align-center justify-center" style="background: rgba(37, 99, 235, 0.1); width: 36px; height: 36px;">
+                <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Color="Color.Primary" Size="Size.Small" />
+            </div>
+            <MudText Typo="Typo.h5" Class="font-weight-bold" Style="font-size: 1.35rem; letter-spacing: -0.02em;">
+                Gestión de Aulas y Laboratorios
+            </MudText>
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1" Style="font-size: 0.85rem;">
+            Crea, edita y administra los espacios físicos, capacidades y políticas de energía de Univalle
+        </MudText>
     </div>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
-        Crear Nueva Aula
-    </MudButton>
+    <div class="d-flex gap-2 align-center flex-wrap">
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Info"
+                   StartIcon="@Icons.Material.Filled.Router"
+                   OnClick="OpenSedesDialog"
+                   Class="rounded-lg px-3 font-weight-bold"
+                   Style="text-transform: none;">
+            Redes por Sede @(ListaSedes.FirstOrDefault(s => !string.IsNullOrEmpty(s.SegmentoRed)) != null ? $"({ListaSedes.First(s => !string.IsNullOrEmpty(s.SegmentoRed)).SegmentoRed}xx)" : "")
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateDialog"
+                   Class="rounded-lg px-4 font-weight-bold"
+                   Style="box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25); text-transform: none;">
+            Crear Nueva Aula
+        </MudButton>
+    </div>
 </div>
+
+<!-- Barra Exterior de Filtros & Búsqueda en Tiempo Real (Fuera de la tabla) -->
+<MudPaper Elevation="0" Outlined="true" Class="pa-3 mb-4 rounded-lg d-flex flex-wrap align-center justify-space-between gap-3"
+          Style="background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default);">
+    <div class="d-flex flex-wrap align-center gap-3" style="flex: 1;">
+        <!-- Buscador en tiempo real -->
+        <MudTextField T="string"
+                      @bind-Value="TextoBusqueda"
+                      Immediate="true"
+                      Placeholder="Buscar por nombre de aula, pabellón o ID..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.Search"
+                      Clearable="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="min-width: 280px; max-width: 360px;" />
+
+        <!-- Filtro por Bloque -->
+        @if (ListaBloques.Count > 0)
+        {
+            <MudSelect T="int?"
+                       @bind-Value="BloqueFiltroId"
+                       Label="Bloque / Edificio"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       AnchorOrigin="Origin.BottomLeft"
+                       TransformOrigin="Origin.TopLeft"
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Outlined.Business"
+                       Style="min-width: 180px;">
+                <MudSelectItem T="int?" Value="@((int?)null)">Todos los Bloques</MudSelectItem>
+                @foreach (var b in ListaBloques)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)b.Id)">@b.Nombre</MudSelectItem>
+                }
+            </MudSelect>
+        }
+
+        <!-- Filtro por Estado -->
+        <MudSelect T="bool?"
+                   @bind-Value="EstadoFiltro"
+                   Label="Estado de Aula"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Outlined.ToggleOn"
+                   Style="min-width: 170px;">
+            <MudSelectItem T="bool?" Value="@((bool?)null)">Todos los Estados</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@((bool?)true)">🟢 Aulas Activas</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@((bool?)false)">🔴 Aulas Inactivas</MudSelectItem>
+        </MudSelect>
+
+        <!-- Filtro por Política de Inactividad -->
+        <MudSelect T="TipoAccionInactividad?"
+                   @bind-Value="AccionInactividadFiltro"
+                   Label="Política de Energía"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Outlined.Bolt"
+                   Style="min-width: 200px;">
+            <MudSelectItem T="TipoAccionInactividad?" Value="@((TipoAccionInactividad?)null)">Todas las Políticas</MudSelectItem>
+            <MudSelectItem T="TipoAccionInactividad?" Value="@((TipoAccionInactividad?)TipoAccionInactividad.ApagarEquipo)">⏻ Apagar Automáticamente</MudSelectItem>
+            <MudSelectItem T="TipoAccionInactividad?" Value="@((TipoAccionInactividad?)TipoAccionInactividad.CerrarSesion)">🔒 Cerrar Sesión y Bloquear</MudSelectItem>
+        </MudSelect>
+
+        @if (HasActiveFilters)
+        {
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Outlined.FilterAltOff"
+                       OnClick="LimpiarFiltros"
+                       Size="Size.Small"
+                       Style="text-transform: none; font-size: 0.8rem;">
+                Limpiar filtros
+            </MudButton>
+        }
+    </div>
+</MudPaper>
 
 <!-- Modal Centrado para Crear / Editar Aula -->
 <MudDialog @bind-Visible="MostrarModal" Options="_dialogOptions">
     <TitleContent>
-        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Primary">
-            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.MeetingRoom)" Class="mr-2" />
-            @(IsEditMode ? $"Editar Aula: {NuevoNombre}" : "Registrar Nueva Aula")
-        </MudText>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.MeetingRoom)" Color="Color.Primary" />
+            <MudText Typo="Typo.h6" Class="font-weight-bold">
+                @(IsEditMode ? $"Editar Aula: {NuevoNombre}" : "Registrar Nueva Aula")
+            </MudText>
+        </div>
     </TitleContent>
     <DialogContent>
         @if (!string.IsNullOrEmpty(MensajeError))
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4">@MensajeError</MudAlert>
+            <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">@MensajeError</MudAlert>
         }
 
         <EditForm Model="this" OnValidSubmit="GuardarAulaAsync">
-            <MudGrid>
+            <MudGrid Spacing="3" Class="pt-2">
                 <MudItem xs="12">
-                    <MudTextField @bind-Value="NuevoNombre" Label="Nombre del Aula" Variant="Variant.Outlined" Required="true" Placeholder="Ej: A-302" FullWidth="true" />
+                    <MudTextField @bind-Value="NuevoNombre" Label="Nombre del Aula" Variant="Variant.Outlined" Required="true"
+                                  Placeholder="Ej: A-302" FullWidth="true"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.MeetingRoom" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudNumericField @bind-Value="NuevaCapacidad" Label="Capacidad (Nº de PCs)" Variant="Variant.Outlined" Required="true" Min="1" FullWidth="true" />
+                    <MudNumericField @bind-Value="NuevaCapacidad" Label="Capacidad (Nº de PCs)" Variant="Variant.Outlined" Required="true" Min="1" FullWidth="true"
+                                     Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Computer" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="NuevoPabellon" Label="Pabellón / Ubicación" Variant="Variant.Outlined" Placeholder="Ej: Bloque A - Piso 2" FullWidth="true" />
+                    <MudSelect T="int?" @bind-Value="NuevoBloqueId" Label="Bloque / Edificio" Variant="Variant.Outlined" FullWidth="true"
+                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Business">
+                        <MudSelectItem T="int?" Value="@((int?)null)">Sin Bloque específico</MudSelectItem>
+                        @foreach (var b in ListaBloques)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)b.Id)">@b.Nombre (@b.Codigo)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="NuevoPiso" Label="Piso / Nivel" Variant="Variant.Outlined" Placeholder="Ej: Piso 2 o PB" FullWidth="true"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Layers" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="NuevoPabellon" Label="Pabellón / Ubicación Detallada" Variant="Variant.Outlined" Placeholder="Ej: Bloque A - Piso 2" FullWidth="true"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Place" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="NuevoMinutosInactividad" Label="Límite Inactividad (Minutos)" Variant="Variant.Outlined" Required="true" Min="1" Max="240"
+                                     HelperText="Tiempo sin actividad física antes de ejecutar acción" FullWidth="true"
+                                     Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Timer" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="NuevoAccionInactividad" Label="Acción por Inactividad" Variant="Variant.Outlined" FullWidth="true"
+                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Bolt">
+                        <MudSelectItem Value="@TipoAccionInactividad.ApagarEquipo">⏻ Apagar PC Automáticamente</MudSelectItem>
+                        <MudSelectItem Value="@TipoAccionInactividad.CerrarSesion">🔒 Cerrar Sesión y Bloquear</MudSelectItem>
+                    </MudSelect>
                 </MudItem>
                 @if (IsEditMode)
                 {
                     <MudItem xs="12">
-                        <MudSwitch @bind-Value="NuevoActivo" Label="Aula Activa" Color="Color.Success" />
+                        <MudSwitch @bind-Value="NuevoActivo" Label="Aula Habilitada para Clases" Color="Color.Success" />
                     </MudItem>
                 }
             </MudGrid>
         </EditForm>
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDialog">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="GuardarAulaAsync">
+        <MudButton Variant="Variant.Text" OnClick="CloseDialog">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="GuardarAulaAsync">
             @(IsSaving ? "Guardando..." : (IsEditMode ? "Actualizar Aula" : "Guardar Aula"))
         </MudButton>
     </DialogActions>
 </MudDialog>
 
-<!-- Tabla de Aulas Registradas -->
-<MudTable Items="ListaAulas" Loading="IsLoading" Hover="true" Striped="true" Elevation="3" Class="rounded-lg">
+<!-- MODAL PARA CONFIGURACIÓN DE REDES E IPS POR SEDE -->
+<MudDialog @bind-Visible="MostrarModalSedes" Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-md" style="background: rgba(37, 99, 235, 0.1);">
+                <MudIcon Icon="@Icons.Material.Filled.Router" Color="Color.Primary" Size="Size.Small" />
+            </div>
+            <div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold" Style="font-size: 1.1rem;">
+                    Configuración de Redes e IPs por Sede
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Asigna segmentos IP (ej: 192.168.50.) para auto-detectar la sede de los equipos y telemetría
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Cuando un equipo o terminal reporta su dirección IP, el sistema determina automáticamente la sede comparando el prefijo del segmento de red configurado a continuación.
+        </MudText>
+        <MudTable Items="ListaSedes" Dense="true" Hover="true" Elevation="0" Outlined="true" Class="rounded-lg">
+            <HeaderContent>
+                <MudTh>Sede</MudTh>
+                <MudTh>Ciudad</MudTh>
+                <MudTh>Segmento de Red (Prefijo IP)</MudTh>
+                <MudTh Style="text-align: right;">Acciones</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Sede">
+                    <span class="font-weight-bold">@context.Nombre</span>
+                </MudTd>
+                <MudTd DataLabel="Ciudad">
+                    @context.Ciudad
+                </MudTd>
+                <MudTd DataLabel="Segmento Red">
+                    <MudTextField @bind-Value="context.SegmentoRed" 
+                                  Variant="Variant.Outlined" 
+                                  Margin="Margin.Dense" 
+                                  Placeholder="Ej: 192.168.50." 
+                                  Style="max-width: 200px;" />
+                </MudTd>
+                <MudTd Style="text-align: right;">
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               Size="Size.Small" 
+                               StartIcon="@Icons.Material.Filled.Save"
+                               OnClick="() => GuardarSegmentoSedeAsync(context)"
+                               Class="rounded-lg"
+                               Style="text-transform: none;">
+                        Guardar
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalSedes = false" Class="rounded-lg" Style="text-transform: none;">
+            Cerrar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Tabla de Aulas SaaS Ultra-Refinada con Paginación y Corner Radius Sutil -->
+<MudTable Items="AulasFiltradas" Loading="IsLoading" Hover="true" Striped="false" Elevation="0"
+          Class="saas-card rounded-lg overflow-hidden" Dense="false">
     <HeaderContent>
-        <MudTh>ID</MudTh>
-        <MudTh>NOMBRE AULA</MudTh>
-        <MudTh>CAPACIDAD</MudTh>
-        <MudTh>PABELLÓN</MudTh>
-        <MudTh>PCS ASIGNADAS</MudTh>
-        <MudTh>ESTADO</MudTh>
-        <MudTh Style="text-align: right;">ACCIONES</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">AULA / LABORATORIO</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">UBICACIÓN &amp; PABELLÓN</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">CAPACIDAD &amp; ASIGNADAS</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">POLÍTICA DE INACTIVIDAD</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">ESTADO</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px; text-align: right;">ACCIONES</MudTh>
     </HeaderContent>
     <RowTemplate>
-        <MudTd DataLabel="ID">#@context.Id</MudTd>
-        <MudTd DataLabel="Nombre">
-            <MudText Typo="Typo.body1" Class="font-weight-bold" Color="Color.Primary">@context.Nombre</MudText>
+        <!-- 1. Aula / Laboratorio -->
+        <MudTd DataLabel="Aula">
+            <div class="d-flex align-center gap-3">
+                <div class="pa-2 rounded-md d-flex align-center justify-center"
+                     style="width: 36px; height: 36px; background: rgba(37, 99, 235, 0.08); flex-shrink: 0;">
+                    <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Color="Color.Primary" Size="Size.Small" />
+                </div>
+                <div>
+                    <MudText Typo="Typo.body2" Class="font-weight-bold" Color="Color.Primary" Style="font-size: 0.88rem;">
+                        @context.Nombre
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.72rem;">
+                        Aula ID #@context.Id
+                    </MudText>
+                </div>
+            </div>
         </MudTd>
-        <MudTd DataLabel="Capacidad">@context.Capacidad PCs</MudTd>
-        <MudTd DataLabel="Pabellón">@(context.Pabellon ?? "N/A")</MudTd>
-        <MudTd DataLabel="Computadoras">@context.TotalComputadoras PCs</MudTd>
+
+        <!-- 2. Ubicación & Pabellón -->
+        <MudTd DataLabel="Ubicación">
+            <div class="d-flex align-center gap-2">
+                <div class="pa-1 rounded-md" style="background: rgba(148, 163, 184, 0.1);">
+                    <MudIcon Icon="@Icons.Material.Outlined.Place" Size="Size.Small" Color="Color.Secondary" />
+                </div>
+                <div class="d-flex flex-column">
+                    <MudText Typo="Typo.body2" Class="font-weight-medium">
+                        @(!string.IsNullOrEmpty(context.BloqueNombre) ? context.BloqueNombre : (string.IsNullOrEmpty(context.Pabellon) ? "Sin especificar" : context.Pabellon))
+                    </MudText>
+                    @if (!string.IsNullOrEmpty(context.Piso))
+                    {
+                        <span style="font-size: 0.72rem; color: var(--mud-palette-text-secondary);">
+                            @context.Piso
+                        </span>
+                    }
+                </div>
+            </div>
+        </MudTd>
+
+        <!-- 3. Capacidad & Asignadas -->
+        <MudTd DataLabel="Capacidad">
+            <div class="d-flex flex-column">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Outlined.Computer" Size="Size.Small" Color="Color.Default" Style="font-size: 0.85rem;" />
+                    <span style="font-size: 0.85rem; font-weight: 600;">
+                        @context.TotalComputadoras de @context.Capacidad PCs
+                    </span>
+                </div>
+                <span style="font-size: 0.72rem; color: var(--mud-palette-text-secondary); margin-left: 20px;">
+                    @(context.Capacidad > 0 ? $"{(context.TotalComputadoras * 100 / context.Capacidad)}% de capacidad cubierta" : "0% cubierta")
+                </span>
+            </div>
+        </MudTd>
+
+        <!-- 4. Política de Inactividad -->
+        <MudTd DataLabel="Política Inactividad">
+            @if (context.AccionInactividad == TipoAccionInactividad.ApagarEquipo)
+            {
+                <span class="badge-soft badge-soft-warning">
+                    <MudIcon Icon="@Icons.Material.Outlined.PowerSettingsNew" Size="Size.Small" Style="font-size: 0.8rem;" />
+                    @context.MinutosInactividadMaximo min • Apagar PC
+                </span>
+            }
+            else
+            {
+                <span class="badge-soft badge-soft-info">
+                    <MudIcon Icon="@Icons.Material.Outlined.Lock" Size="Size.Small" Style="font-size: 0.8rem;" />
+                    @context.MinutosInactividadMaximo min • Bloquear
+                </span>
+            }
+        </MudTd>
+
+        <!-- 5. Estado -->
         <MudTd DataLabel="Estado">
-            <MudChip T="string" Color="@(context.Activo ? Color.Success : Color.Error)" Size="Size.Small">
-                @(context.Activo ? "Activa" : "Inactiva")
-            </MudChip>
+            <div class="d-flex align-center">
+                @if (context.Activo)
+                {
+                    <span class="badge-soft badge-soft-success">
+                        <span class="pulse-dot-green"></span>
+                        Activa
+                    </span>
+                }
+                else
+                {
+                    <span class="badge-soft badge-soft-error">
+                        <span class="dot-red"></span>
+                        Inactiva
+                    </span>
+                }
+            </div>
         </MudTd>
+
+        <!-- 6. Acciones -->
         <MudTd DataLabel="Acciones" Style="text-align: right;">
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" aria-label="Editar Aula" />
-            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => ConfirmarEliminarAulaAsync(context))" aria-label="Eliminar Aula" />
+            <div class="d-flex align-center justify-end gap-1">
+                <MudTooltip Text="Editar Aula">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" Color="Color.Default" Size="Size.Small"
+                                   OnClick="@(() => OpenEditDialog(context))" />
+                </MudTooltip>
+                <MudTooltip Text="Eliminar o Desactivar">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Size="Size.Small"
+                                   OnClick="@(() => ConfirmarEliminarAulaAsync(context))" />
+                </MudTooltip>
+            </div>
         </MudTd>
     </RowTemplate>
+
+    <!-- Estado de Carga Shimmer Elegante -->
+    <LoadingContent>
+        <div class="pa-4">
+            @for (int i = 0; i < 5; i++)
+            {
+                <div class="d-flex align-center justify-space-between py-3" style="border-bottom: 1px solid var(--mud-palette-lines-default);">
+                    <div class="d-flex align-center gap-3" style="width: 25%;">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="36px" Height="36px" />
+                        <div style="width: 70%;">
+                            <MudSkeleton SkeletonType="SkeletonType.Text" Width="80%" Height="18px" />
+                            <MudSkeleton SkeletonType="SkeletonType.Text" Width="50%" Height="14px" />
+                        </div>
+                    </div>
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="18%" Height="18px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="18%" Height="18px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="90px" Height="22px" Class="rounded-pill" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="60px" Height="22px" Class="rounded-pill" />
+                    <div class="d-flex gap-1 justify-end" style="width: 8%;">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="28px" Height="28px" />
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="28px" Height="28px" />
+                    </div>
+                </div>
+            }
+        </div>
+    </LoadingContent>
+
+    <!-- Empty State con Llamada Directa a la Acción -->
     <NoRecordsContent>
-        <MudText Typo="Typo.body1" Class="pa-4 text-center" Color="Color.Secondary">
-            ⚠️ No hay aulas creadas aún. Haz clic en "Crear Nueva Aula" para registrar la primera.
-        </MudText>
+        <div class="d-flex flex-column align-center justify-center pa-10 text-center">
+            @if (HasActiveFilters)
+            {
+                <div class="pa-4 rounded-circle mb-3" style="background: rgba(148, 163, 184, 0.1);">
+                    <MudIcon Icon="@Icons.Material.Outlined.FilterAltOff" Size="Size.Large" Color="Color.Secondary" Style="font-size: 2.8rem;" />
+                </div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">No se encontraron aulas</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4" Style="max-width: 420px; font-size: 0.85rem;">
+                    No existen aulas o laboratorios que coincidan con los criterios de búsqueda o filtros seleccionados.
+                </MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.RestartAlt"
+                           OnClick="LimpiarFiltros"
+                           Class="rounded-lg">
+                    Restablecer Filtros
+                </MudButton>
+            }
+            else
+            {
+                <div class="pa-4 rounded-circle mb-3" style="background: rgba(37, 99, 235, 0.08);">
+                    <MudIcon Icon="@Icons.Material.Outlined.MeetingRoom" Size="Size.Large" Color="Color.Primary" Style="font-size: 3rem;" />
+                </div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">No hay aulas registradas</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4" Style="max-width: 440px; font-size: 0.85rem;">
+                    Aún no se han configurado aulas físicas en el sistema. Registra tu primer espacio para asignar terminales y aplicar políticas energéticas.
+                </MudText>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="OpenCreateDialog"
+                           Class="rounded-lg px-4 font-weight-bold"
+                           Style="box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25); text-transform: none;">
+                    Crear Primera Aula
+                </MudButton>
+            }
+        </div>
     </NoRecordsContent>
+
+    <!-- Paginación Elegante -->
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }"
+                       InfoFormat="{first_item}-{last_item} de {all_items}"
+                       RowsPerPageString="Filas por página:" />
+    </PagerContent>
 </MudTable>
 
 @code {
     private List<AulaDto> ListaAulas = [];
+    private List<BloqueDto> ListaBloques = [];
+    private List<SedeDetalleModel> ListaSedes = [];
     private bool IsLoading = true;
     private bool MostrarModal = false;
+    private bool MostrarModalSedes = false;
     private bool IsSaving = false;
     private bool IsEditMode = false;
     private int AulaIdSeleccionada = 0;
     private string? MensajeError;
 
+    // Filtros exteriores
+    private string TextoBusqueda = "";
+    private int? BloqueFiltroId = null;
+    private bool? EstadoFiltro = null;
+    private TipoAccionInactividad? AccionInactividadFiltro = null;
+    private bool HasActiveFilters => !string.IsNullOrWhiteSpace(TextoBusqueda) || BloqueFiltroId != null || EstadoFiltro != null || AccionInactividadFiltro != null;
+
+    // Campos formulario
     private string NuevoNombre = "";
     private int NuevaCapacidad = 26;
-    private string? NuevoPabellon = "Bloque A - Piso 2";
+    private int? NuevoBloqueId = null;
+    private string? NuevoPiso = "Piso 2";
+    private string? NuevoPabellon = "";
+    private int NuevoMinutosInactividad = 15;
+    private TipoAccionInactividad NuevoAccionInactividad = TipoAccionInactividad.ApagarEquipo;
     private bool NuevoActivo = true;
 
     private readonly DialogOptions _dialogOptions = new()
@@ -118,6 +494,38 @@
         Position = DialogPosition.Center
     };
 
+    private IEnumerable<AulaDto> AulasFiltradas
+    {
+        get
+        {
+            return ListaAulas.Where(a =>
+            {
+                if (BloqueFiltroId.HasValue && a.BloqueId != BloqueFiltroId.Value)
+                    return false;
+
+                if (EstadoFiltro.HasValue && a.Activo != EstadoFiltro.Value)
+                    return false;
+
+                if (AccionInactividadFiltro.HasValue && a.AccionInactividad != AccionInactividadFiltro.Value)
+                    return false;
+
+                if (!string.IsNullOrWhiteSpace(TextoBusqueda))
+                {
+                    var q = TextoBusqueda.Trim().ToLowerInvariant();
+                    bool match = a.Nombre.ToLowerInvariant().Contains(q) ||
+                                 (!string.IsNullOrEmpty(a.Pabellon) && a.Pabellon.ToLowerInvariant().Contains(q)) ||
+                                 (!string.IsNullOrEmpty(a.BloqueNombre) && a.BloqueNombre.ToLowerInvariant().Contains(q)) ||
+                                 (!string.IsNullOrEmpty(a.Piso) && a.Piso.ToLowerInvariant().Contains(q)) ||
+                                 a.Id.ToString().Contains(q);
+                    if (!match)
+                        return false;
+                }
+
+                return true;
+            });
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await CargarAulasAsync();
@@ -127,7 +535,17 @@
     {
         IsLoading = true;
         ListaAulas = await ApiClient.GetAulasAsync();
+        ListaBloques = await ApiClient.GetBloquesAsync();
+        ListaSedes = await ApiClient.GetSedesDetalleAsync();
         IsLoading = false;
+    }
+
+    private void LimpiarFiltros()
+    {
+        TextoBusqueda = "";
+        BloqueFiltroId = null;
+        EstadoFiltro = null;
+        AccionInactividadFiltro = null;
     }
 
     private void OpenCreateDialog()
@@ -136,7 +554,11 @@
         AulaIdSeleccionada = 0;
         NuevoNombre = "";
         NuevaCapacidad = 26;
-        NuevoPabellon = "Bloque A - Piso 2";
+        NuevoBloqueId = ListaBloques.FirstOrDefault()?.Id;
+        NuevoPiso = "Piso 2";
+        NuevoPabellon = "";
+        NuevoMinutosInactividad = 15;
+        NuevoAccionInactividad = TipoAccionInactividad.ApagarEquipo;
         NuevoActivo = true;
         MensajeError = null;
         MostrarModal = true;
@@ -148,7 +570,11 @@
         AulaIdSeleccionada = aula.Id;
         NuevoNombre = aula.Nombre;
         NuevaCapacidad = aula.Capacidad;
+        NuevoBloqueId = aula.BloqueId;
+        NuevoPiso = aula.Piso;
         NuevoPabellon = aula.Pabellon;
+        NuevoMinutosInactividad = aula.MinutosInactividadMaximo;
+        NuevoAccionInactividad = aula.AccionInactividad;
         NuevoActivo = aula.Activo;
         MensajeError = null;
         MostrarModal = true;
@@ -167,17 +593,32 @@
             return;
         }
 
+        if (NuevoMinutosInactividad <= 0)
+        {
+            MensajeError = "El tiempo de inactividad debe ser mayor a 0 minutos.";
+            return;
+        }
+
         IsSaving = true;
         MensajeError = null;
+
+        if (string.IsNullOrWhiteSpace(NuevoPabellon) && NuevoBloqueId.HasValue)
+        {
+            var b = ListaBloques.FirstOrDefault(x => x.Id == NuevoBloqueId.Value);
+            if (b != null)
+            {
+                NuevoPabellon = $"{b.Nombre}{(string.IsNullOrWhiteSpace(NuevoPiso) ? "" : " - " + NuevoPiso)}";
+            }
+        }
 
         bool exito;
         if (IsEditMode)
         {
-            exito = await ApiClient.UpdateAulaAsync(AulaIdSeleccionada, NuevoNombre, NuevaCapacidad, NuevoPabellon, NuevoActivo);
+            exito = await ApiClient.UpdateAulaAsync(AulaIdSeleccionada, NuevoNombre, NuevaCapacidad, NuevoPabellon, NuevoActivo, NuevoMinutosInactividad, NuevoAccionInactividad, NuevoBloqueId, NuevoPiso);
         }
         else
         {
-            exito = await ApiClient.CreateAulaAsync(NuevoNombre, NuevaCapacidad, NuevoPabellon);
+            exito = await ApiClient.CreateAulaAsync(NuevoNombre, NuevaCapacidad, NuevoPabellon, NuevoMinutosInactividad, NuevoAccionInactividad, NuevoBloqueId, NuevoPiso);
         }
 
         if (exito)
@@ -213,6 +654,25 @@
             {
                 Snackbar.Add("No se pudo eliminar el aula. Verifique la conexión con la API.", Severity.Error);
             }
+        }
+    }
+
+    private void OpenSedesDialog()
+    {
+        MostrarModalSedes = true;
+    }
+
+    private async Task GuardarSegmentoSedeAsync(SedeDetalleModel sede)
+    {
+        bool ok = await ApiClient.UpdateSedeSegmentoRedAsync(sede.Id, sede.SegmentoRed);
+        if (ok)
+        {
+            Snackbar.Add($"Segmento de red para '{sede.Nombre}' guardado exitosamente ({sede.SegmentoRed}).", Severity.Success);
+            ListaSedes = await ApiClient.GetSedesDetalleAsync();
+        }
+        else
+        {
+            Snackbar.Add($"No se pudo actualizar el segmento de red para '{sede.Nombre}'.", Severity.Error);
         }
     }
 }

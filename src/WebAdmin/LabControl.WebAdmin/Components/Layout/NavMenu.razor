@@ -2,56 +2,72 @@
 @inject UserSessionService SessionService
 @inject NavigationManager Navigation
 
-<MudNavMenu Class="mud-width-full">
-    <div class="pa-4 d-flex align-center gap-3">
-        <MudIcon Icon="@Icons.Material.Filled.DesktopWindows" Color="Color.Primary" Size="Size.Large" />
-        <div>
-            <MudText Typo="Typo.h6" Class="font-weight-bold" Style="background: linear-gradient(135deg, #38bdf8 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                LabControl
-            </MudText>
-            <MudText Typo="Typo.caption" Color="Color.Secondary">Univalle Intranet</MudText>
+<div class="d-flex flex-column" style="height: 100%;">
+    <!-- Brand Logo Section con Logo Institucional Univalle (Alineado con el Topbar a 70px) -->
+    <div class="px-4 d-flex align-center justify-space-between"
+         style="height: 70px; min-height: 70px; border-bottom: 1px solid var(--mud-palette-lines-default); box-sizing: border-box; background: var(--mud-palette-drawer-background);">
+        <div class="d-flex align-center gap-3">
+            <div class="rounded-lg d-flex align-center justify-center"
+                 style="background: #ffffff; width: 40px; height: 40px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid var(--mud-palette-lines-default); padding: 2px;">
+                <img src="images/logo_univalle.png" alt="Univalle Logo" style="width: 34px; height: 34px; object-fit: contain;" />
+            </div>
+            <div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold" Style="font-size: 1.05rem; letter-spacing: -0.02em; line-height: 1.15; color: var(--mud-palette-text-primary);">
+                    LabControl
+                </MudText>
+                <MudText Typo="Typo.caption" Style="font-size: 0.72rem; font-weight: 600; color: #9e0044;">
+                    Universidad del Valle
+                </MudText>
+            </div>
         </div>
     </div>
-    <MudDivider Class="mb-3" />
 
-    <MudNavLink href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard" IconColor="Color.Info">
-        Dashboard Aulas
-    </MudNavLink>
+    <!-- Navigation Menu Items con scroll independiente -->
+    <div style="overflow-y: auto; flex: 1;" class="py-2">
+        <MudNavMenu Class="mud-width-full px-2">
+            <span class="nav-section-title">SUPERVISIÓN EN VIVO</span>
 
-    <MudNavLink href="aulas" Icon="@Icons.Material.Filled.MeetingRoom" IconColor="Color.Primary">
-        Aulas & Labs
-    </MudNavLink>
+        <MudNavLink href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.Dashboard">
+            Tablero de Control
+        </MudNavLink>
 
-    <MudNavLink href="computadoras" Icon="@Icons.Material.Filled.Computer" IconColor="Color.Secondary">
-        PCs & Terminales
-    </MudNavLink>
+        <MudNavLink href="aulas" Icon="@Icons.Material.Outlined.MeetingRoom">
+            Gestión de Aulas
+        </MudNavLink>
 
-    <MudNavLink href="horarios" Icon="@Icons.Material.Filled.AccessTime" IconColor="Color.Warning">
-        Horarios & Recreos
-    </MudNavLink>
+        <MudNavLink href="computadoras" Icon="@Icons.Material.Outlined.Computer">
+            Terminales &amp; PCs
+        </MudNavLink>
 
-    <MudNavLink href="auditoria" Icon="@Icons.Material.Filled.Assessment" IconColor="Color.Success">
-        Auditoría y Reportes
-    </MudNavLink>
+        <span class="nav-section-title mt-3">GESTIÓN Y POLÍTICAS</span>
 
-    <MudNavLink href="reporte-energia" Icon="@Icons.Material.Filled.Bolt" IconColor="Color.Warning">
-        Auditoría Energética
-    </MudNavLink>
+        <MudNavLink href="horarios" Icon="@Icons.Material.Outlined.AccessTime">
+            Horarios &amp; Recreos
+        </MudNavLink>
 
+        <MudNavLink href="auditoria" Icon="@Icons.Material.Outlined.Assessment">
+            Historial de Sesiones
+        </MudNavLink>
 
-    <MudDivider Class="my-4" />
+        <MudNavLink href="reporte-energia" Icon="@Icons.Material.Outlined.Bolt">
+            Auditoría Energética
+        </MudNavLink>
 
-    <div class="pa-4">
-        <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true" StartIcon="@Icons.Material.Filled.Logout" OnClick="HandleLogout">
-            Cerrar Sesión
-        </MudButton>
+        <span class="nav-section-title mt-3">CATÁLOGO ACADÉMICO</span>
+
+        <MudNavLink href="materias" Icon="@Icons.Material.Outlined.MenuBook">
+            Materias &amp; Carreras
+        </MudNavLink>
+
+        <MudNavLink href="docentes" Icon="@Icons.Material.Outlined.School">
+            Cuerpo Docente
+        </MudNavLink>
+
+        <span class="nav-section-title mt-3">SISTEMA &amp; ACCESO</span>
+
+        <MudNavLink href="usuarios" Icon="@Icons.Material.Outlined.ManageAccounts">
+            Usuarios del Sistema
+        </MudNavLink>
+    </MudNavMenu>
     </div>
-</MudNavMenu>
-
-@code {
-    private void HandleLogout()
-    {
-        SessionService.Logout();
-        Navigation.NavigateTo("/login");
-    }
-}
+</div>

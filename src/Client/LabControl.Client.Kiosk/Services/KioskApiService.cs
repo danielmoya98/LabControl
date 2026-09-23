@@ -33,6 +33,8 @@ public class AutoRegistroResponse
     public string IpActual { get; set; } = "";
     public string MacAddress { get; set; } = "";
     public string EstadoActual { get; set; } = "";
+    public int MinutosInactividadMaximo { get; set; } = 15;
+    public int AccionInactividad { get; set; } = 0;
 }
 
 public class IniciarSesionApiRequest
@@ -51,6 +53,14 @@ public class IniciarSesionApiResponse
     public string EmailEstudiante { get; set; } = "";
     public DateTime FechaHoraInicio { get; set; }
     public int MinutosLimite { get; set; }
+}
+
+public class IniciarSesionResult
+{
+    public bool Exito { get; set; }
+    public IniciarSesionApiResponse? Datos { get; set; }
+    public string? MensajeError { get; set; }
+    public bool EsErrorConexion { get; set; }
 }
 
 public class FinalizarSesionApiRequest
@@ -132,7 +142,7 @@ public class KioskApiService
         }
     }
 
-    public async Task<IniciarSesionApiResponse?> IniciarSesionAsync(int? computadoraId, string? hostname, string emailEstudiante, int minutosLimite = 90)
+    public async Task<IniciarSesionResult> IniciarSesionAsync(int? computadoraId, string? hostname, string emailEstudiante, int minutosLimite = 90)
     {
         try
         {
@@ -147,13 +157,40 @@ public class KioskApiService
             var response = await _httpClient.PostAsJsonAsync("api/sesiones/iniciar", req);
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<IniciarSesionApiResponse>();
+                var datos = await response.Content.ReadFromJsonAsync<IniciarSesionApiResponse>();
+                return new IniciarSesionResult { Exito = true, Datos = datos };
             }
-            return null;
+
+            // Error de negocio devuelto por la API (ej. validación de horario, receso o clase inminente)
+            string? mensaje = null;
+            try
+            {
+                var problem = await response.Content.ReadFromJsonAsync<System.Text.Json.Nodes.JsonObject>();
+                if (problem != null)
+                {
+                    if (problem.TryGetPropertyValue("detail", out var detailNode))
+                        mensaje = detailNode?.ToString();
+                    else if (problem.TryGetPropertyValue("title", out var titleNode))
+                        mensaje = titleNode?.ToString();
+                }
+            }
+            catch { }
+
+            return new IniciarSesionResult
+            {
+                Exito = false,
+                EsErrorConexion = false,
+                MensajeError = mensaje ?? "No fue posible iniciar sesión según las políticas de horarios del laboratorio."
+            };
         }
         catch
         {
-            return null;
+            // Error de red / servicio inalcanzable (activar modo offline)
+            return new IniciarSesionResult
+            {
+                Exito = false,
+                EsErrorConexion = true
+            };
         }
     }
 
@@ -201,6 +238,33 @@ public class KioskApiService
         }
     }
 
+    public async Task<bool> ReportarApagadoForzadoAsync(
+        string hostname, 
+        DateTime? fechaEventoUtc, 
+        int eventId, 
+        string? detalle, 
+        string? ultimoEmailDetectado = null)
+    {
+        try
+        {
+            var req = new ReportarApagadoForzadoApiRequest
+            {
+                Hostname = hostname,
+                FechaHoraEventoUtc = fechaEventoUtc,
+                EventId = eventId,
+                Detalle = detalle,
+                UltimoEmailDetectado = ultimoEmailDetectado
+            };
+
+            var response = await _httpClient.PostAsJsonAsync("api/control/reportar-apagado-forzado", req);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task<bool> PingAsync()
     {
         try
@@ -214,6 +278,15 @@ public class KioskApiService
             return false;
         }
     }
+}
+
+public class ReportarApagadoForzadoApiRequest
+{
+    public string Hostname { get; set; } = "";
+    public DateTime? FechaHoraEventoUtc { get; set; }
+    public int EventId { get; set; }
+    public string? Detalle { get; set; }
+    public string? UltimoEmailDetectado { get; set; }
 }
 
 public class SesionBatchItemDto

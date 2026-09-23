@@ -1,0 +1,527 @@
+@page "/usuarios"
+@using Microsoft.AspNetCore.Components.Web
+@using LabControl.WebAdmin.Services
+@inject LabApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Gestión de Usuarios — Control de Laboratorios</PageTitle>
+
+<!-- Cabecera de Página -->
+<div class="d-flex flex-wrap justify-space-between align-center gap-4 mb-5">
+    <div>
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-lg d-flex align-center justify-center" style="background: rgba(158, 0, 68, 0.1); width: 38px; height: 38px;">
+                <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Color="Color.Primary" Size="Size.Small" />
+            </div>
+            <MudText Typo="Typo.h5" Class="font-weight-bold" Style="font-size: 1.35rem; letter-spacing: -0.02em;">
+                Control de Acceso y Usuarios
+            </MudText>
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1" Style="font-size: 0.85rem;">
+            Administración de cuentas con privilegios de acceso al panel web (Administradores, Encargados y Soporte)
+        </MudText>
+    </div>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.PersonAdd"
+               OnClick="OpenCreateDialog"
+               Class="rounded-lg px-4 font-weight-bold"
+               Style="box-shadow: 0 2px 8px rgba(158, 0, 68, 0.25); text-transform: none;">
+        Nuevo Usuario
+    </MudButton>
+</div>
+
+<!-- Barra Exterior de Filtros & Búsqueda -->
+<MudPaper Elevation="0" Outlined="true" Class="pa-3 mb-4 rounded-lg d-flex flex-wrap align-center justify-space-between gap-3"
+          Style="background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default);">
+    <div class="d-flex flex-wrap align-center gap-3" style="flex: 1;">
+        <!-- Buscador en tiempo real -->
+        <MudTextField T="string"
+                      @bind-Value="TextoBusqueda"
+                      Immediate="true"
+                      Placeholder="Buscar por nombre, email o rol..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.Search"
+                      Clearable="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="min-width: 280px; max-width: 380px;" />
+
+        <!-- Filtro por Rol -->
+        <MudSelect T="string"
+                   @bind-Value="RolFiltro"
+                   Label="Rol de Acceso"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Outlined.AdminPanelSettings"
+                   Style="min-width: 180px;">
+            <MudSelectItem T="string" Value="@((string?)null)">Todos los Roles</MudSelectItem>
+            <MudSelectItem T="string" Value="@("Administrador")">Administrador</MudSelectItem>
+            <MudSelectItem T="string" Value="@("Encargado")">Encargado de Laboratorio</MudSelectItem>
+            <MudSelectItem T="string" Value="@("Soporte")">Soporte Técnico</MudSelectItem>
+        </MudSelect>
+
+        <!-- Filtro por Estado -->
+        <MudSelect T="bool?"
+                   @bind-Value="EstadoFiltro"
+                   Label="Estado"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Outlined.ToggleOn"
+                   Style="min-width: 160px;">
+            <MudSelectItem T="bool?" Value="@((bool?)null)">Todos</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@((bool?)true)">🟢 Habilitados</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@((bool?)false)">🔴 Deshabilitados</MudSelectItem>
+        </MudSelect>
+
+        @if (HasActiveFilters)
+        {
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Outlined.FilterAltOff"
+                       OnClick="LimpiarFiltros"
+                       Size="Size.Small"
+                       Style="text-transform: none; font-size: 0.8rem;">
+                Limpiar filtros
+            </MudButton>
+        }
+    </div>
+</MudPaper>
+
+<!-- Modal Centrado para Crear / Editar Usuario -->
+<MudDialog @bind-Visible="MostrarModal" Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.PersonAdd)" Color="Color.Primary" />
+            <MudText Typo="Typo.h6" Class="font-weight-bold">
+                @(IsEditMode ? $"Editar Usuario: {NuevoEmail}" : "Crear Nuevo Operador / Administrador")
+            </MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(MensajeError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">@MensajeError</MudAlert>
+        }
+
+        <EditForm Model="this" OnValidSubmit="GuardarUsuarioAsync">
+            <MudGrid Spacing="3" Class="pt-2">
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="NuevoNombreCompleto" Label="Nombre Completo" Variant="Variant.Outlined" Required="true"
+                                  Placeholder="Ej: Ing. Jorge Valdivia" FullWidth="true" Margin="Margin.Dense"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Badge" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="NuevoEmail" Label="Correo Electrónico (Login)" Variant="Variant.Outlined" Required="true"
+                                  Disabled="@IsEditMode"
+                                  Placeholder="jorge.valdivia@univalle.edu" FullWidth="true" Margin="Margin.Dense"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Email" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string" @bind-Value="NuevoRol" Label="Rol del Sistema" Variant="Variant.Outlined" Required="true" Margin="Margin.Dense" FullWidth="true"
+                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.AdminPanelSettings">
+                        <MudSelectItem T="string" Value="@("Administrador")">Administrador Total</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Encargado")">Encargado de Laboratorio</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Soporte")">Soporte Técnico</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                @if (!IsEditMode)
+                {
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="NuevoPassword" Label="Contraseña Inicial" Variant="Variant.Outlined" Required="true"
+                                      InputType="InputType.Password" Placeholder="Mínimo 6 caracteres" FullWidth="true" Margin="Margin.Dense"
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Lock" />
+                    </MudItem>
+                }
+                else
+                {
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="NuevoPassword" Label="Nueva Contraseña (Opcional - dejar vacío para mantener)" Variant="Variant.Outlined"
+                                      InputType="InputType.Password" Placeholder="Opcional: cambiar contraseña" FullWidth="true" Margin="Margin.Dense"
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.LockReset" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudSwitch @bind-Value="NuevoActivo" Label="Cuenta Activa y Habilitada para Iniciar Sesión" Color="Color.Success" />
+                    </MudItem>
+                }
+            </MudGrid>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDialog" Class="rounded-lg" Style="text-transform: none;">
+            Cancelar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="GuardarUsuarioAsync" Class="rounded-lg font-weight-bold" Style="text-transform: none;">
+            @(IsSaving ? "Guardando..." : (IsEditMode ? "Actualizar Usuario" : "Crear Usuario"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Tabla de Usuarios -->
+<MudTable Items="@UsuariosFiltrados"
+          Hover="true"
+          Breakpoint="Breakpoint.Sm"
+          Loading="@IsLoading"
+          LoadingProgressColor="Color.Primary"
+          Elevation="0"
+          Outlined="true"
+          Class="rounded-lg saas-card"
+          Style="border: 1px solid var(--mud-palette-lines-default);">
+
+    <HeaderContent>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Usuario</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Email / Credencial</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Rol Asignado</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Fecha Alta</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase; text-align: center;">Estado</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase; text-align: right;">Acciones</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Usuario">
+            <div class="d-flex align-center gap-3">
+                <MudAvatar Color="@(context.Role == "Administrador" ? Color.Primary : Color.Dark)" Variant="Variant.Filled" Size="Size.Small" Style="font-size: 0.8rem; font-weight: bold;">
+                    @(string.IsNullOrEmpty(context.NombreCompleto) ? "U" : context.NombreCompleto[0].ToString().ToUpper())
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.body2" Class="font-weight-bold">
+                        @context.NombreCompleto
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        ID: @context.Id.Substring(0, Math.Min(8, context.Id.Length))...
+                    </MudText>
+                </div>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Email">
+            <div class="d-flex align-center gap-1">
+                <MudIcon Icon="@Icons.Material.Outlined.Email" Size="Size.Small" Color="Color.Secondary" Style="font-size: 1rem;" />
+                <MudText Typo="Typo.body2" Class="font-mono">
+                    @context.Email
+                </MudText>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Rol">
+            @if (context.Role == "Administrador")
+            {
+                <span class="badge-soft-guindo font-weight-bold" style="font-size: 0.75rem;">
+                    🛡️ Administrador
+                </span>
+            }
+            else if (context.Role == "Encargado")
+            {
+                <span class="badge-soft-info font-weight-bold" style="font-size: 0.75rem;">
+                    🔑 Encargado
+                </span>
+            }
+            else
+            {
+                <span class="badge-soft-warning font-weight-bold" style="font-size: 0.75rem;">
+                    🛠️ @context.Role
+                </span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Fecha Alta">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @context.FechaRegistroUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="Estado" Style="text-align: center;">
+            @if (context.Activo)
+            {
+                <span class="badge-soft-success font-weight-bold" style="font-size: 0.75rem;">🟢 Activo</span>
+            }
+            else
+            {
+                <span class="badge-soft-error font-weight-bold" style="font-size: 0.75rem;">🔴 Bloqueado</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Acciones" Style="text-align: right;">
+            <MudTooltip Text="Editar Permisos / Contraseña">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               OnClick="@(() => OpenEditDialog(context))" />
+            </MudTooltip>
+            @if (!EsAdminPrincipal(context.Email))
+            {
+                <MudTooltip Text="Eliminar Usuario">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   OnClick="@(() => ConfirmarEliminarUsuarioAsync(context))" />
+                </MudTooltip>
+            }
+            else
+            {
+                <MudTooltip Text="El Administrador Principal no puede eliminarse">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Lock"
+                                   Color="Color.Default"
+                                   Size="Size.Small"
+                                   Disabled="true" />
+                </MudTooltip>
+            }
+        </MudTd>
+    </RowTemplate>
+
+    <NoRecordsContent>
+        <div class="pa-8 d-flex flex-column align-center justify-center text-center">
+            @if (HasActiveFilters)
+            {
+                <div class="pa-4 rounded-circle mb-3" style="background: rgba(148, 163, 184, 0.1);">
+                    <MudIcon Icon="@Icons.Material.Outlined.FilterAltOff" Size="Size.Large" Color="Color.Secondary" Style="font-size: 2.8rem;" />
+                </div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">No se encontraron usuarios</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4" Style="max-width: 420px; font-size: 0.85rem;">
+                    No existen operadores o administradores que coincidan con la búsqueda.
+                </MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.RestartAlt"
+                           OnClick="LimpiarFiltros"
+                           Class="rounded-lg">
+                    Restablecer Filtros
+                </MudButton>
+            }
+            else
+            {
+                <div class="pa-4 rounded-circle mb-3" style="background: rgba(158, 0, 68, 0.08);">
+                    <MudIcon Icon="@Icons.Material.Outlined.ManageAccounts" Size="Size.Large" Color="Color.Primary" Style="font-size: 3rem;" />
+                </div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">No hay usuarios adicionales</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4" Style="max-width: 440px; font-size: 0.85rem;">
+                    Crea cuentas para que los encargados de laboratorio supervisen terminales y apliquen políticas.
+                </MudText>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PersonAdd"
+                           OnClick="OpenCreateDialog"
+                           Class="rounded-lg px-4 font-weight-bold"
+                           Style="box-shadow: 0 2px 8px rgba(158, 0, 68, 0.25); text-transform: none;">
+                    Crear Primer Operador
+                </MudButton>
+            }
+        </div>
+    </NoRecordsContent>
+
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }"
+                       InfoFormat="{first_item}-{last_item} de {all_items}"
+                       RowsPerPageString="Filas por página:" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private List<UsuarioSistemaDto> ListaUsuarios = [];
+    private bool IsLoading = true;
+    private bool MostrarModal = false;
+    private bool IsSaving = false;
+    private bool IsEditMode = false;
+    private string UsuarioIdSeleccionado = "";
+    private string? MensajeError;
+
+    // Filtros
+    private string TextoBusqueda = "";
+    private string? RolFiltro = null;
+    private bool? EstadoFiltro = null;
+    private bool HasActiveFilters => !string.IsNullOrWhiteSpace(TextoBusqueda) || !string.IsNullOrWhiteSpace(RolFiltro) || EstadoFiltro != null;
+
+    // Formulario
+    private string NuevoNombreCompleto = "";
+    private string NuevoEmail = "";
+    private string NuevoRol = "Encargado";
+    private string NuevoPassword = "";
+    private bool NuevoActivo = true;
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseButton = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        Position = DialogPosition.Center
+    };
+
+    private static bool EsAdminPrincipal(string email) =>
+        string.Equals(email, "admin@univalle.edu", StringComparison.OrdinalIgnoreCase);
+
+    private IEnumerable<UsuarioSistemaDto> UsuariosFiltrados
+    {
+        get
+        {
+            return ListaUsuarios.Where(u =>
+            {
+                if (EstadoFiltro.HasValue && u.Activo != EstadoFiltro.Value)
+                    return false;
+
+                if (!string.IsNullOrWhiteSpace(RolFiltro) && !string.Equals(u.Role, RolFiltro, StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                if (!string.IsNullOrWhiteSpace(TextoBusqueda))
+                {
+                    var q = TextoBusqueda.Trim().ToLowerInvariant();
+                    bool match = u.NombreCompleto.ToLowerInvariant().Contains(q) ||
+                                 u.Email.ToLowerInvariant().Contains(q) ||
+                                 u.Role.ToLowerInvariant().Contains(q);
+                    if (!match) return false;
+                }
+
+                return true;
+            });
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarUsuariosAsync();
+    }
+
+    private async Task CargarUsuariosAsync()
+    {
+        IsLoading = true;
+        ListaUsuarios = await ApiClient.GetUsuariosAsync();
+        IsLoading = false;
+    }
+
+    private void LimpiarFiltros()
+    {
+        TextoBusqueda = "";
+        RolFiltro = null;
+        EstadoFiltro = null;
+    }
+
+    private void OpenCreateDialog()
+    {
+        IsEditMode = false;
+        UsuarioIdSeleccionado = "";
+        NuevoNombreCompleto = "";
+        NuevoEmail = "";
+        NuevoRol = "Encargado";
+        NuevoPassword = "";
+        NuevoActivo = true;
+        MensajeError = null;
+        MostrarModal = true;
+    }
+
+    private void OpenEditDialog(UsuarioSistemaDto user)
+    {
+        IsEditMode = true;
+        UsuarioIdSeleccionado = user.Id;
+        NuevoNombreCompleto = user.NombreCompleto;
+        NuevoEmail = user.Email;
+        NuevoRol = user.Role;
+        NuevoPassword = "";
+        NuevoActivo = user.Activo;
+        MensajeError = null;
+        MostrarModal = true;
+    }
+
+    private void CloseDialog()
+    {
+        MostrarModal = false;
+    }
+
+    private async Task GuardarUsuarioAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NuevoNombreCompleto) || string.IsNullOrWhiteSpace(NuevoEmail) || string.IsNullOrWhiteSpace(NuevoRol))
+        {
+            MensajeError = "Por favor complete todos los campos requeridos.";
+            return;
+        }
+
+        if (!NuevoEmail.Contains("@"))
+        {
+            MensajeError = "Ingrese un correo electrónico válido.";
+            return;
+        }
+
+        if (!IsEditMode && (string.IsNullOrWhiteSpace(NuevoPassword) || NuevoPassword.Length < 6))
+        {
+            MensajeError = "La contraseña debe tener al menos 6 caracteres.";
+            return;
+        }
+
+        IsSaving = true;
+        MensajeError = null;
+
+        if (IsEditMode)
+        {
+            var (success, error) = await ApiClient.UpdateUsuarioAsync(
+                UsuarioIdSeleccionado,
+                NuevoNombreCompleto.Trim(),
+                NuevoRol,
+                NuevoActivo,
+                string.IsNullOrWhiteSpace(NuevoPassword) ? null : NuevoPassword);
+
+            if (success)
+            {
+                Snackbar.Add($"¡Usuario '{NuevoEmail}' actualizado exitosamente!", Severity.Success);
+                MostrarModal = false;
+                await CargarUsuariosAsync();
+            }
+            else
+            {
+                MensajeError = error ?? "No se pudo actualizar el usuario.";
+            }
+        }
+        else
+        {
+            var (success, error) = await ApiClient.CreateUsuarioAsync(
+                NuevoEmail.Trim(),
+                NuevoPassword,
+                NuevoNombreCompleto.Trim(),
+                NuevoRol);
+
+            if (success)
+            {
+                Snackbar.Add($"¡Usuario '{NuevoEmail}' registrado exitosamente!", Severity.Success);
+                MostrarModal = false;
+                await CargarUsuariosAsync();
+            }
+            else
+            {
+                MensajeError = error ?? "No se pudo registrar el usuario. Verifique si el email ya existe.";
+            }
+        }
+
+        IsSaving = false;
+    }
+
+    private async Task ConfirmarEliminarUsuarioAsync(UsuarioSistemaDto user)
+    {
+        if (EsAdminPrincipal(user.Email))
+        {
+            Snackbar.Add("No se puede eliminar la cuenta principal de administrador.", Severity.Warning);
+            return;
+        }
+
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Eliminación",
+            $"¿Está seguro que desea revocar y eliminar permanentemente la cuenta '{user.Email}'?",
+            yesText: "Sí, Eliminar", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            bool exito = await ApiClient.DeleteUsuarioAsync(user.Id);
+            if (exito)
+            {
+                Snackbar.Add($"Usuario '{user.Email}' eliminado del sistema.", Severity.Info);
+                await CargarUsuariosAsync();
+            }
+            else
+            {
+                Snackbar.Add("No se pudo eliminar el usuario.", Severity.Error);
+            }
+        }
+    }
+}

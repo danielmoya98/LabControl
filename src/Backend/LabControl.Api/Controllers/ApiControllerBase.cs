@@ -34,6 +34,8 @@ public abstract class ApiControllerBase : ControllerBase
 
     private IActionResult MapErrorToResponse(Error error)
     {
+        Serilog.Log.Warning("API Error [{Code}] ({Type}): {Message}", error.Code, error.Type, error.Message);
+
         return error.Type switch
         {
             ErrorType.NotFound => NotFound(new ProblemDetails

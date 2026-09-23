@@ -8,7 +8,7 @@
         AllowsTransparency="True"
         Background="Transparent"
         Topmost="True">
-    <Border Background="#1E293B" CornerRadius="16" BorderBrush="#334155" BorderThickness="1.5" Padding="25">
+    <Border Background="{StaticResource UnivalleCardBgBrush}" CornerRadius="16" BorderBrush="{StaticResource UnivalleCardBorderBrush}" BorderThickness="1.5" Padding="25">
         <Border.Effect>
             <DropShadowEffect BlurRadius="25" Color="#000000" Opacity="0.6"/>
         </Border.Effect>
@@ -23,10 +23,12 @@
 
             <!-- Cabecera -->
             <StackPanel Grid.Row="0" Margin="0,0,0,15">
-                <TextBlock Text="🛠️ MANTENIMIENTO TÉCNICO" FontSize="13" FontWeight="Bold" Foreground="#F59E0B" HorizontalAlignment="Center"/>
+                <Border Background="{StaticResource UnivallePillBgBrush}" BorderBrush="{StaticResource UnivallePillBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="10,4" HorizontalAlignment="Center" Margin="0,0,0,6">
+                    <TextBlock Text="🛠️ MANTENIMIENTO TÉCNICO" FontSize="11" FontWeight="Bold" Foreground="{StaticResource UnivallePillTextBrush}"/>
+                </Border>
                 <TextBlock Text="Desbloqueo de Emergencia" FontSize="20" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                 <TextBlock Text="Ingrese la contraseña de soporte para acceder a las opciones de mantenimiento físico." 
-                           FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"/>
+                           FontSize="12" Foreground="{StaticResource UnivalleTextSecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"/>
             </StackPanel>
 
             <!-- Error de contraseña -->
@@ -37,21 +39,21 @@
             <!-- Contenido / Acciones -->
             <StackPanel Grid.Row="2" VerticalAlignment="Center">
                 <TextBlock Text="Contraseña de Administrador:" FontSize="13" Foreground="#CBD5E1" Margin="0,0,0,6"/>
-                <PasswordBox x:Name="TxtPassword" FontSize="15" Padding="10,8" Background="#0F172A" Foreground="#FFFFFF" BorderBrush="#334155" Margin="0,0,0,15"
+                <PasswordBox x:Name="TxtPassword" Style="{StaticResource UnivallePasswordBox}" FontSize="15" Margin="0,0,0,15"
                              KeyDown="OnPasswordKeyDown"/>
 
                 <StackPanel x:Name="PanelOpciones" Visibility="Collapsed" Margin="0,0,0,10">
-                    <TextBlock Text="Opciones de Soporte Técnico:" FontSize="12" Foreground="#38BDF8" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Button Content="🔓 Desbloquear y Minimizar (Mantenimiento)" Height="36" Background="#0284C7" Foreground="#FFFFFF" FontWeight="Bold" Margin="0,0,0,6" Click="OnDesbloquearMinimizarClick"/>
-                    <Button Content="⚙️ Abrir Configuración de Terminal" Height="36" Background="#334155" Foreground="#FFFFFF" FontWeight="SemiBold" Margin="0,0,0,6" Click="OnAbrirConfiguracionClick"/>
-                    <Button Content="❌ Salir y Cerrar Kiosk" Height="36" Background="#DC2626" Foreground="#FFFFFF" FontWeight="Bold" Click="OnCerrarAppClick"/>
+                    <TextBlock Text="Opciones de Soporte Técnico:" FontSize="12" Foreground="{StaticResource UnivallePillTextBrush}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <Button Content="🔓 Desbloquear y Minimizar (Mantenimiento)" Height="38" Style="{StaticResource UnivallePrimaryButton}" Margin="0,0,0,8" Click="OnDesbloquearMinimizarClick"/>
+                    <Button Content="⚙️ Abrir Configuración de Terminal" Height="38" Style="{StaticResource UnivalleOutlineButton}" Margin="0,0,0,8" Click="OnAbrirConfiguracionClick"/>
+                    <Button Content="❌ Salir y Cerrar Kiosk" Height="38" Style="{StaticResource UnivalleDangerButton}" Click="OnCerrarAppClick"/>
                 </StackPanel>
             </StackPanel>
 
             <!-- Botones inferiores -->
             <Grid Grid.Row="3" Margin="0,15,0,0">
-                <Button x:Name="BtnValidar" Content="Verificar Clave" Width="130" Height="36" Background="#6366F1" Foreground="#FFFFFF" FontWeight="Bold" HorizontalAlignment="Right" Click="OnValidarClaveClick"/>
-                <Button Content="Cancelar" Width="100" Height="36" Background="#334155" Foreground="#CBD5E1" HorizontalAlignment="Left" Click="OnCancelarClick"/>
+                <Button x:Name="BtnValidar" Content="Verificar Clave" Width="130" Height="38" Style="{StaticResource UnivallePrimaryButton}" HorizontalAlignment="Right" Click="OnValidarClaveClick"/>
+                <Button Content="Cancelar" Width="100" Height="38" Style="{StaticResource UnivalleOutlineButton}" HorizontalAlignment="Left" Click="OnCancelarClick"/>
             </Grid>
         </Grid>
     </Border>

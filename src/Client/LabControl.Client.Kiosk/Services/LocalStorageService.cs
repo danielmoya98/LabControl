@@ -12,6 +12,10 @@ public class ConfigModel
     public string Hostname { get; set; } = "";
     public string MacAddress { get; set; } = "";
     public string ClaveTecnico { get; set; } = "AdminLab@2026";
+    public int MinutosInactividadMaximo { get; set; } = 15;
+    public int AccionInactividad { get; set; } = 0; // 0 = Apagar, 1 = CerrarSesion
+    public DateTime? UltimoApagadoReportadoUtc { get; set; }
+    public string? UltimoEstudianteSesion { get; set; }
 }
 
 public static class LocalStorageService

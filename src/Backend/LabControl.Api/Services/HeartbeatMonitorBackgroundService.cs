@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using LabControl.Application.Common.Interfaces;
+using LabControl.Domain.Entities;
 using LabControl.Domain.Enums;
 using Serilog;
 
@@ -9,7 +10,7 @@ public class HeartbeatMonitorBackgroundService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private static readonly TimeSpan IntervaloChequeo = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan UmbralInactividad = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan UmbralInactividad = TimeSpan.FromSeconds(75);
 
     public HeartbeatMonitorBackgroundService(IServiceScopeFactory scopeFactory)
     {
@@ -57,6 +58,35 @@ public class HeartbeatMonitorBackgroundService : BackgroundService
                 pc.Hostname, pc.Id, pc.UltimoHeartbeatUtc);
 
             pc.CambiarEstado(EstadoComputadora.Offline);
+
+            // Verificar si la terminal tenía una sesión activa que quedó huérfana por apagón forzado
+            var sesionActiva = await context.SesionesUso
+                .FirstOrDefaultAsync(s => s.ComputadoraId == pc.Id && s.FechaHoraFin == null, cancellationToken);
+
+            if (sesionActiva != null)
+            {
+                var fechaFin = pc.UltimoHeartbeatUtc ?? DateTime.UtcNow;
+                sesionActiva.Finalizar(TipoCierreSesion.ApagadoForzado, fechaFin);
+
+                var duracionHoras = Math.Max(0.1, Math.Round((fechaFin - sesionActiva.FechaHoraInicio).TotalHours, 1));
+                var regEnergia = RegistroConsumoEnergia.Create(
+                    pc.Id,
+                    pc.AulaId,
+                    sesionActiva.EmailEstudiante,
+                    null,
+                    duracionHoras,
+                    "Equipo apagado forzadamente o corte abrupto de energía con sesión abierta (Detectado por Watchdog de Servidor)",
+                    sesionActiva.Id
+                );
+
+                if (regEnergia.IsSuccess)
+                {
+                    context.RegistrosConsumoEnergia.Add(regEnergia.Value);
+                }
+
+                Log.Warning("Sesión {SesionId} de {Email} cerrada automáticamente por desconexión/apagado abrupto de {Hostname}.",
+                    sesionActiva.Id, sesionActiva.EmailEstudiante, pc.Hostname);
+            }
 
             await signalR.NotifyEstadoComputadoraCambiadoAsync(
                 pc.Id,

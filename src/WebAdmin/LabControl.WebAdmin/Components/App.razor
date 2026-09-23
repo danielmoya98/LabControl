@@ -5,9 +5,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="app.css?v=2.2" />
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
@@ -15,6 +17,90 @@
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script>
+        window.themeManager = {
+            getThemePreference: function () {
+                return localStorage.getItem('labcontrol_theme') || 'light';
+            },
+            setThemePreference: function (theme) {
+                localStorage.setItem('labcontrol_theme', theme);
+            }
+        };
+
+        window.chartHelper = {
+            init: function () {
+                const stretchSvgs = () => {
+                    const svgs = document.querySelectorAll('.dashboard-chart-wrapper .mud-chart svg, .dashboard-chart-wrapper svg.mud-chart-bar');
+                    svgs.forEach(svg => {
+                        if (svg.getAttribute('preserveAspectRatio') !== 'none') {
+                            svg.setAttribute('preserveAspectRatio', 'none');
+                        }
+                    });
+                };
+                stretchSvgs();
+                const observer = new MutationObserver(stretchSvgs);
+                observer.observe(document.body, { childList: true, subtree: true });
+            }
+        };
+        window.clipboardHelper = {
+            copyText: async function (text) {
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(text);
+                    } else {
+                        const textArea = document.createElement("textarea");
+                        textArea.value = text;
+                        textArea.style.position = "fixed";
+                        textArea.style.left = "-999999px";
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        document.execCommand('copy');
+                        textArea.remove();
+                    }
+                    return true;
+                } catch (e) {
+                    console.error("Clipboard copy failed:", e);
+                    return false;
+                }
+            }
+        };
+
+        window.fullscreenHelper = {
+            toggleFullscreen: function (elementId) {
+                const elem = elementId ? document.getElementById(elementId) : document.documentElement;
+                if (!document.fullscreenElement) {
+                    if (elem.requestFullscreen) {
+                        elem.requestFullscreen();
+                    } else if (elem.webkitRequestFullscreen) {
+                        elem.webkitRequestFullscreen();
+                    }
+                    return true;
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    }
+                    return false;
+                }
+            },
+            isFullscreen: function () {
+                return !!document.fullscreenElement;
+            }
+        };
+
+        // Atajo global de teclado: Ctrl+K / Cmd+K
+        window.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                const trigger = document.getElementById('command-palette-trigger');
+                if (trigger) {
+                    trigger.click();
+                }
+            }
+        });
+    </script>
 </body>
 
 </html>

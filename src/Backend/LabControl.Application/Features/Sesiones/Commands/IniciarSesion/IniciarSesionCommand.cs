@@ -30,9 +30,9 @@ public class IniciarSesionCommandValidator : AbstractValidator<IniciarSesionComm
     public IniciarSesionCommandValidator()
     {
         RuleFor(x => x.EmailEstudiante)
-            .NotEmpty().WithMessage("El correo del estudiante es obligatorio.")
-            .Matches(@"^[a-zA-Z0-9._%+-]+@est\.univalle\.edu$")
-            .WithMessage("El correo debe pertenecer al dominio institucional @est.univalle.edu.");
+            .NotEmpty().WithMessage("El correo institucional es obligatorio.")
+            .Matches(@"^[a-zA-Z0-9._%+-]+@(est\.univalle\.edu|univalle\.edu)$")
+            .WithMessage("El correo debe pertenecer al dominio institucional (@est.univalle.edu o @univalle.edu).");
     }
 }
 
@@ -107,12 +107,44 @@ public class IniciarSesionCommandHandler : IRequestHandler<IniciarSesionCommand,
                 Error.Validation("Sesion.EnRecreo", $"El laboratorio se encuentra en período de receso/mantenimiento hasta las {bloqueActivo.HoraFin:hh\\:mm}. No es posible iniciar sesión."));
         }
 
-        // Ajustar dinámicamente el tiempo límite si la clase actual finaliza antes de los minutos solicitados
+        // Ajustar dinámicamente el tiempo límite según el bloque horario activo o el próximo turno
         int minutosLimiteFinal = request.MinutosLimite;
         if (bloqueActivo != null && !bloqueActivo.EsRecreo)
         {
+            // La sesión se acota estrictamente a los minutos que restan para el término exacto de la clase actual
             var minutosRestantesBloque = (int)Math.Max(1, Math.Floor((bloqueActivo.HoraFin - horaActual).TotalMinutes));
-            minutosLimiteFinal = Math.Min(request.MinutosLimite, minutosRestantesBloque);
+            minutosLimiteFinal = minutosRestantesBloque;
+        }
+        else if (bloqueActivo == null)
+        {
+            // Si no hay clase activa en este instante, verificar si se aproxima una clase hoy
+            var proximoBloque = await _context.BloquesHorarios
+                .Include(b => b.Materia)
+                .Where(b => b.AulaId == computadora.AulaId &&
+                            b.DiaSemana == diaActual &&
+                            b.HoraInicio > horaActual)
+                .OrderBy(b => b.HoraInicio)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (proximoBloque != null)
+            {
+                var minutosHastaProximo = (int)Math.Floor((proximoBloque.HoraInicio - horaActual).TotalMinutes);
+
+                // Si la próxima clase comienza en 5 minutos o menos, impedir sesión para no invadir el siguiente período
+                if (minutosHastaProximo <= 5)
+                {
+                    string descClase = !string.IsNullOrWhiteSpace(proximoBloque.Materia?.Nombre) 
+                        ? proximoBloque.Materia.Nombre 
+                        : (proximoBloque.Descripcion ?? "Clase programada");
+
+                    return Result<IniciarSesionResponse>.Failure(
+                        Error.Validation("Sesion.ProximaClaseInminente", 
+                            $"La próxima clase ({descClase}) comienza en {minutosHastaProximo} minutos ({proximoBloque.HoraInicio:hh\\:mm}). No es posible iniciar sesión en este intervalo."));
+                }
+
+                // Acotar el tiempo máximo exactamente hasta la hora de inicio de la siguiente clase
+                minutosLimiteFinal = Math.Min(request.MinutosLimite, minutosHastaProximo);
+            }
         }
 
         // 4. Cerrar cualquier sesión previa abierta en esta computadora (Relevo forzado)

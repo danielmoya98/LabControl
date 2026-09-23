@@ -11,111 +11,214 @@
 <PageTitle>Horarios y Turnos — Control de Laboratorios</PageTitle>
 
 <!-- ENCABEZADO Y ACCIONES PRINCIPALES -->
-<div class="d-flex justify-space-between align-center mb-6 flex-wrap gap-4">
+<div class="d-flex justify-space-between align-center mb-5 flex-wrap gap-4">
     <div>
-        <MudText Typo="Typo.h5" Class="font-weight-bold">⏰ Gestión de Horarios y Recreos (Auto-Kickout)</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-lg d-flex align-center justify-center" style="background: rgba(37, 99, 235, 0.1); width: 38px; height: 38px;">
+                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Color="Color.Primary" Size="Size.Small" />
+            </div>
+            <MudText Typo="Typo.h5" Class="font-weight-bold" Style="font-size: 1.35rem; letter-spacing: -0.02em;">
+                Gestión de Horarios y Recreos (Auto-Kickout)
+            </MudText>
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1" Style="font-size: 0.85rem;">
             Programación semanal de clases y franjas de receso con cierre automático de terminales
         </MudText>
     </div>
     <div class="d-flex gap-2 align-center flex-wrap">
         <MudButton Variant="Variant.Outlined"
-                   Color="Color.Secondary"
+                   Color="Color.Info"
+                   StartIcon="@Icons.Material.Filled.DateRange"
+                   OnClick="OpenGestionPeriodosDialog"
+                   Class="rounded-lg font-weight-bold"
+                   Style="text-transform: none;">
+            Semestres (@(ListaPeriodos.FirstOrDefault(p => p.Id == PeriodoSeleccionadoId)?.Nombre ?? "Actual"))
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.ContentCopy"
                    OnClick="OpenClonarDialog"
-                   Disabled="@(!ListaHorarios.Any())">
+                   Disabled="@(!ListaHorarios.Any())"
+                   Class="rounded-lg font-weight-bold"
+                   Style="text-transform: none;">
             Replicar a Otros Días
         </MudButton>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="OpenCreateDialog">
+                   OnClick="OpenCreateDialog"
+                   Class="rounded-lg font-weight-bold"
+                   Style="text-transform: none; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);">
             Configurar Nuevo Bloque
         </MudButton>
     </div>
 </div>
 
-<!-- BARRA DE SELECCIÓN DE AULA Y KPIs -->
-<MudGrid Class="mb-6">
-    <MudItem xs="12" md="4">
-        <MudPaper Class="pa-4 d-flex flex-column justify-center" Elevation="2" Style="background: #1e293b; height: 100%;">
-            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">LABORATORIO ACTIVO</MudText>
-            <MudSelect T="int" Value="AulaSeleccionadaId" ValueChanged="OnAulaSeleccionadaChanged" Variant="Variant.Outlined" FullWidth="true">
+<!-- BARRA DE SELECCIÓN DE AULA Y KPIs (SAAS REFINADO 8-10px) -->
+<MudGrid Class="mb-5" Spacing="3">
+    <!-- Card 1: Selector de Semestre y Laboratorio Activo -->
+    <MudItem xs="12" sm="6" md="4">
+        <MudPaper Class="pa-4 d-flex flex-column justify-center saas-card rounded-lg" Elevation="0" Style="height: 100%;">
+            <div class="d-flex justify-space-between align-center mb-1">
+                <span class="kpi-title">SEMESTRE / GESTIÓN</span>
+                <span style="font-size: 0.72rem; color: #16a34a; font-weight: bold;">
+                    @(ListaPeriodos.FirstOrDefault(p => p.Id == PeriodoSeleccionadoId)?.EsActual == true ? "⭐ Actual" : "📁 Histórico")
+                </span>
+            </div>
+            <MudSelect T="int" 
+                       Value="PeriodoSeleccionadoId" 
+                       ValueChanged="OnPeriodoSeleccionadoChanged" 
+                       Variant="Variant.Outlined" 
+                       Margin="Margin.Dense"
+                       AnchorOrigin="Origin.BottomLeft"
+                       TransformOrigin="Origin.TopLeft"
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Outlined.CalendarMonth"
+                       FullWidth="true"
+                       Class="mb-2">
+                @foreach (var p in ListaPeriodos)
+                {
+                    <MudSelectItem T="int" Value="@p.Id">@p.Nombre @(p.EsActual ? " ⭐ (Actual)" : "")</MudSelectItem>
+                }
+            </MudSelect>
+
+            <span class="kpi-title mb-1">LABORATORIO ACTIVO</span>
+            <MudSelect T="int" 
+                       Value="AulaSeleccionadaId" 
+                       ValueChanged="OnAulaSeleccionadaChanged" 
+                       Variant="Variant.Outlined" 
+                       Margin="Margin.Dense"
+                       AnchorOrigin="Origin.BottomLeft"
+                       TransformOrigin="Origin.TopLeft"
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Outlined.MeetingRoom"
+                       FullWidth="true">
                 @foreach (var aula in ListaAulas)
                 {
-                    <MudSelectItem T="int" Value="@aula.Id">🏢 @aula.Nombre (@aula.Capacidad equipos)</MudSelectItem>
+                    <MudSelectItem T="int" Value="@aula.Id">@aula.Nombre (@aula.Capacidad equipos)</MudSelectItem>
                 }
             </MudSelect>
         </MudPaper>
     </MudItem>
 
-    <MudItem xs="12" sm="4" md="2">
-        <MudPaper Class="pa-4 d-flex align-center justify-space-between" Elevation="2" Style="border-left: 4px solid #3b82f6; background: #1e293b; height: 100%;">
+    <!-- Card 2: Bloques Totales -->
+    <MudItem xs="12" sm="6" md="2">
+        <MudPaper Class="pa-4 d-flex align-center justify-space-between saas-card rounded-lg" Elevation="0" Style="height: 100%;">
             <div>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">BLOQUES TOTALES</MudText>
-                <MudText Typo="Typo.h5" Class="font-weight-bold">@ListaHorarios.Count</MudText>
+                <span class="kpi-title">BLOQUES TOTALES</span>
+                <MudText Typo="Typo.h5" Class="kpi-number mt-1">@ListaHorarios.Count</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.72rem;">
+                    @ListaHorarios.Count(h => !h.EsRecreo) clases · @ListaHorarios.Count(h => h.EsRecreo) recesos
+                </MudText>
             </div>
-            <MudAvatar Color="Color.Info" Variant="Variant.Filled" Size="Size.Small">
-                <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" />
-            </MudAvatar>
+            <div class="kpi-icon-box kpi-icon-primary">
+                <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small" />
+            </div>
         </MudPaper>
     </MudItem>
 
-    <MudItem xs="12" sm="4" md="3">
-        <MudPaper Class="pa-4 d-flex align-center justify-space-between" Elevation="2" Style="border-left: 4px solid #22c55e; background: #1e293b; height: 100%;">
+    <!-- Card 3: Horas Académicas -->
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex align-center justify-space-between saas-card rounded-lg" Elevation="0" Style="height: 100%;">
             <div>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">HORAS ACADÉMICAS</MudText>
-                <MudText Typo="Typo.h5" Class="font-weight-bold">@CalcularHorasSemanales().ToString("F1") hrs</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">@ListaHorarios.Count(h => !h.EsRecreo) clases / sem.</MudText>
+                <span class="kpi-title">HORAS ACADÉMICAS</span>
+                <MudText Typo="Typo.h5" Class="kpi-number mt-1" Style="color: #16a34a;">
+                    @CalcularHorasSemanales().ToString("F1") hrs
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.72rem;">
+                    @ListaHorarios.Count(h => !h.EsRecreo) clases programadas
+                </MudText>
             </div>
-            <MudAvatar Color="Color.Success" Variant="Variant.Filled" Size="Size.Small">
-                <MudIcon Icon="@Icons.Material.Filled.School" />
-            </MudAvatar>
+            <div class="kpi-icon-box kpi-icon-success">
+                <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Small" />
+            </div>
         </MudPaper>
     </MudItem>
 
-    <MudItem xs="12" sm="4" md="3">
-        <MudPaper Class="pa-4 d-flex align-center justify-space-between" Elevation="2" Style="border-left: 4px solid #f59e0b; background: #1e293b; height: 100%;">
+    <!-- Card 4: Estado Actual en Vivo -->
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex align-center justify-space-between saas-card rounded-lg" Elevation="0" Style="height: 100%;">
             <div>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">ESTADO ACTUAL EN VIVO</MudText>
+                <span class="kpi-title">ESTADO ACTUAL EN VIVO</span>
                 @if (ObtenerBloqueEnCurso() is var bloqueActual && bloqueActual != null)
                 {
-                    <MudChip T="string" Color="@(bloqueActual.EsRecreo ? Color.Warning : Color.Success)" Size="Size.Small" Variant="Variant.Filled" Class="font-weight-bold mt-1">
-                        @(bloqueActual.EsRecreo ? "☕ En Receso" : "🟢 En Clase") (@bloqueActual.HoraInicio.ToString(@"hh\:mm") - @bloqueActual.HoraFin.ToString(@"hh\:mm"))
-                    </MudChip>
+                    <div class="mt-1 d-flex align-center gap-1">
+                        @if (bloqueActual.EsRecreo)
+                        {
+                            <span class="badge-soft-warning font-weight-bold" style="font-size: 0.75rem;">
+                                ☕ En Receso (@bloqueActual.HoraInicio.ToString(@"hh\:mm") - @bloqueActual.HoraFin.ToString(@"hh\:mm"))
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge-soft-success font-weight-bold" style="font-size: 0.75rem;">
+                                <span class="pulse-dot-green mr-1"></span>En Clase (@bloqueActual.HoraInicio.ToString(@"hh\:mm") - @bloqueActual.HoraFin.ToString(@"hh\:mm"))
+                            </span>
+                        }
+                    </div>
                 }
                 else
                 {
-                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined" Class="mt-1">
-                        ⚪ Aula Libre
-                    </MudChip>
+                    <div class="mt-1">
+                        <span class="badge-soft-info" style="font-size: 0.75rem;">
+                            ⚪ Aula Libre (Sin Clase)
+                        </span>
+                    </div>
                 }
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.72rem;" Class="mt-1 d-block">
+                    Auto-Kickout configurado
+                </MudText>
             </div>
-            <MudAvatar Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">
-                <MudIcon Icon="@Icons.Material.Filled.Schedule" />
-            </MudAvatar>
+            <div class="kpi-icon-box" style="background-color: rgba(245, 158, 11, 0.12); color: #d97706;">
+                <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" />
+            </div>
         </MudPaper>
     </MudItem>
 </MudGrid>
 
-<!-- SELECTOR DE VISTA (GRILLA SEMANAL VS TABLA) -->
-<div class="d-flex justify-space-between align-center mb-4">
-    <MudText Typo="Typo.h6" Class="font-weight-bold">
-        Programación del Aula: @(ListaAulas.FirstOrDefault(a => a.Id == AulaSeleccionadaId)?.Nombre ?? "...")
-    </MudText>
-    <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">
-        <MudButton Variant="@(_vistaGrilla ? Variant.Filled : Variant.Outlined)" OnClick="() => _vistaGrilla = true" StartIcon="@Icons.Material.Filled.ViewWeek">
-            Grilla Semanal
-        </MudButton>
-        <MudButton Variant="@(!_vistaGrilla ? Variant.Filled : Variant.Outlined)" OnClick="() => _vistaGrilla = false" StartIcon="@Icons.Material.Filled.FormatListBulleted">
-            Tabla Detallada
-        </MudButton>
-    </MudButtonGroup>
+<!-- TOOLBAR DE VISTA (GRILLA SEMANAL VS TABLA + FILTRO RÁPIDO) -->
+<div class="d-flex justify-space-between align-center mb-4 flex-wrap gap-3">
+    <div class="d-flex align-center gap-2">
+        <MudText Typo="Typo.h6" Class="font-weight-bold" Style="font-size: 1.05rem;">
+            Programación: @(ListaAulas.FirstOrDefault(a => a.Id == AulaSeleccionadaId)?.Nombre ?? "Laboratorio")
+        </MudText>
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Class="font-weight-bold" Style="font-size: 0.76rem;">
+            @(ListaAulas.FirstOrDefault(a => a.Id == AulaSeleccionadaId)?.Pabellon ?? "Campus Central")
+        </MudChip>
+    </div>
+    <div class="d-flex align-center gap-3">
+        <!-- Buscador rápido de materia -->
+        <MudTextField T="string"
+                      @bind-Value="BusquedaMateria"
+                      Placeholder="Filtrar por materia..."
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Immediate="true"
+                      Clearable="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.Search"
+                      Style="min-width: 180px; max-width: 240px;" />
+
+        <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small" Class="rounded-lg">
+            <MudButton Variant="@(_vistaGrilla ? Variant.Filled : Variant.Outlined)" 
+                       OnClick="() => _vistaGrilla = true" 
+                       StartIcon="@Icons.Material.Filled.ViewWeek"
+                       Style="text-transform: none; font-weight: 600;">
+                Grilla Semanal
+            </MudButton>
+            <MudButton Variant="@(!_vistaGrilla ? Variant.Filled : Variant.Outlined)" 
+                       OnClick="() => _vistaGrilla = false" 
+                       StartIcon="@Icons.Material.Filled.FormatListBulleted"
+                       Style="text-transform: none; font-weight: 600;">
+                Tabla Detallada
+            </MudButton>
+        </MudButtonGroup>
+    </div>
 </div>
 
 @if (IsLoading)
 {
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-6" />
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-6 rounded" />
 }
 else if (_vistaGrilla)
 {
@@ -123,31 +226,51 @@ else if (_vistaGrilla)
     <MudGrid Spacing="3">
         @foreach (var dia in Enum.GetValues<DiaSemana>().Where(d => d != DiaSemana.Domingo))
         {
-            var bloquesDia = ListaHorarios.Where(h => h.DiaSemana == dia).OrderBy(h => h.HoraInicio).ToList();
+            var bloquesDia = ListaHorarios
+                .Where(h => h.DiaSemana == dia && CumpleFiltroMateria(h))
+                .OrderBy(h => h.HoraInicio)
+                .ToList();
             bool esHoy = dia == ObtenerDiaActual();
 
             <MudItem xs="12" sm="6" md="4" lg="2">
-                <MudPaper Elevation="3" Class="pa-3 rounded-lg" Style="@($"background: #1e293b; height: 100%; {(esHoy ? "border: 2px solid #38bdf8;" : "border: 1px solid #334155;")}")">
+                <MudPaper Elevation="0" 
+                          Class="pa-3 rounded-lg saas-card d-flex flex-column" 
+                          Style="@($"height: 100%; min-height: 380px; {(esHoy ? "border-top: 3px solid #2563eb;" : "")}")">
                     <!-- Cabecera del Día -->
-                    <div class="d-flex justify-space-between align-center mb-3 pb-2 border-b border-solid" style="border-bottom: 1px solid #334155;">
+                    <div class="d-flex justify-space-between align-center mb-3 pb-2" style="border-bottom: 1px solid var(--mud-palette-lines-default);">
                         <div>
-                            <MudText Typo="Typo.subtitle2" Class="font-weight-bold" Color="@(esHoy ? Color.Info : Color.Default)">
+                            <MudText Typo="Typo.subtitle2" Class="font-weight-bold" Color="@(esHoy ? Color.Primary : Color.Default)" Style="font-size: 0.82rem; letter-spacing: 0.5px;">
                                 @dia.ToString().ToUpper()
                             </MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@bloquesDia.Count bloques</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.7rem;">
+                                @bloquesDia.Count @(bloquesDia.Count == 1 ? "bloque" : "bloques")
+                            </MudText>
                         </div>
                         @if (esHoy)
                         {
-                            <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Filled">HOY</MudChip>
+                            <span class="badge-soft-info font-weight-bold" style="font-size: 0.68rem; padding: 2px 6px;">HOY</span>
                         }
                     </div>
 
                     <!-- Lista de Bloques del Día -->
-                    <div class="d-flex flex-column gap-2">
+                    <div class="d-flex flex-column gap-2" style="flex: 1;">
                         @if (bloquesDia.Count == 0)
                         {
-                            <div class="pa-4 text-center" style="color: #64748b; font-size: 0.8rem; font-style: italic;">
-                                Sin bloques
+                            <div class="pa-4 text-center d-flex flex-column align-center justify-center my-auto rounded-lg" 
+                                 style="border: 1px dashed var(--mud-palette-lines-default); background: rgba(148, 163, 184, 0.03);">
+                                <MudIcon Icon="@Icons.Material.Outlined.EventBusy" Size="Size.Small" Color="Color.Secondary" Class="mb-1" />
+                                <span style="color: var(--mud-palette-text-secondary); font-size: 0.75rem;">
+                                    Sin bloques
+                                </span>
+                                <MudButton Variant="Variant.Text" 
+                                           Color="Color.Primary" 
+                                           Size="Size.Small" 
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="() => OpenCreateDialogForDay(dia)"
+                                           Class="mt-1"
+                                           Style="font-size: 0.72rem; text-transform: none;">
+                                    Agregar
+                                </MudButton>
                             </div>
                         }
                         else
@@ -155,46 +278,95 @@ else if (_vistaGrilla)
                             @foreach (var bloque in bloquesDia)
                             {
                                 bool enCurso = esHoy && EsBloqueEnCurso(bloque);
-                                string estiloBorde = enCurso 
-                                    ? "border-left: 4px solid #22c55e; background: #0f172a;" 
-                                    : (bloque.EsRecreo ? "border-left: 4px solid #f59e0b; background: #0f172a;" : "border-left: 4px solid #3b82f6; background: #0f172a;");
+                                string cardBorder = enCurso
+                                    ? "border-left: 3px solid #16a34a; box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.25);"
+                                    : (bloque.EsRecreo ? "border-left: 3px solid #d97706;" : "border-left: 3px solid #2563eb;");
 
-                                <MudCard Elevation="1" Class="rounded pa-2" Style="@estiloBorde">
-                                    <div class="d-flex justify-space-between align-start">
+                                <div class="pa-2 rounded-md saas-card" 
+                                     style="@($"border: 1px solid var(--mud-palette-lines-default); background: var(--mud-palette-surface); {cardBorder}")">
+                                    <!-- Fila Superior: Horario y Acciones -->
+                                    <div class="d-flex justify-space-between align-center">
                                         <div>
-                                            <div class="d-flex align-center gap-1">
-                                                <MudText Typo="Typo.body2" Class="font-weight-bold">
-                                                    @bloque.HoraInicio.ToString(@"hh\:mm") - @bloque.HoraFin.ToString(@"hh\:mm")
-                                                </MudText>
-                                            </div>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                @((int)(bloque.HoraFin - bloque.HoraInicio).TotalMinutes) min
-                                            </MudText>
+                                            <span style="font-weight: 700; font-size: 0.8rem; color: var(--mud-palette-text-primary);">
+                                                @bloque.HoraInicio.ToString(@"hh\:mm") - @bloque.HoraFin.ToString(@"hh\:mm")
+                                            </span>
+                                            <span style="font-size: 0.68rem; color: var(--mud-palette-text-secondary); margin-left: 4px;">
+                                                @((int)(bloque.HoraFin - bloque.HoraInicio).TotalMinutes)m
+                                            </span>
                                         </div>
-                                        <div class="d-flex">
-                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Default" OnClick="() => OpenEditDialog(bloque)" />
-                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => ConfirmarEliminarHorarioAsync(bloque)" />
+                                        <div class="d-flex align-center">
+                                            @if (!bloque.EsRecreo)
+                                            {
+                                                <MudTooltip Text="Descargar / Imprimir Planilla de Asistencia (PDF)">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.PictureAsPdf" 
+                                                                   Size="Size.Small" 
+                                                                   Color="Color.Primary" 
+                                                                   Href="@ApiClient.GetReporteAsistenciaPdfUrl(bloque.Id)" 
+                                                                   Target="_blank"
+                                                                   Style="padding: 2px;" />
+                                                </MudTooltip>
+                                            }
+                                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" 
+                                                           Size="Size.Small" 
+                                                           OnClick="() => OpenEditDialog(bloque)" 
+                                                           Style="padding: 2px;" />
+                                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" 
+                                                           Size="Size.Small" 
+                                                           Color="Color.Error" 
+                                                           OnClick="() => ConfirmarEliminarHorarioAsync(bloque)" 
+                                                           Style="padding: 2px;" />
                                         </div>
                                     </div>
 
+                                    <!-- Fila Media: Badge y Materia -->
                                     <div class="mt-1">
-                                        <MudChip T="string" Size="Size.Small" Color="@(bloque.EsRecreo ? Color.Warning : Color.Primary)" Variant="Variant.Text" Class="pa-0">
-                                            @(bloque.EsRecreo ? "☕ Recreo" : "📚 Clase")
-                                        </MudChip>
-                                        <MudText Typo="Typo.body2" Class="text-truncate" title="@bloque.Descripcion">
-                                            @(!string.IsNullOrWhiteSpace(bloque.Descripcion) ? bloque.Descripcion : "(Sin descripción)")
+                                        @if (bloque.EsRecreo)
+                                        {
+                                            <span class="badge-soft-warning font-weight-bold" style="font-size: 0.68rem; padding: 1px 5px;">
+                                                ☕ Recreo
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge-soft-info font-weight-bold" style="font-size: 0.68rem; padding: 1px 5px;">
+                                                📚 @(string.IsNullOrWhiteSpace(bloque.MateriaSigla) ? "Clase" : bloque.MateriaSigla)
+                                            </span>
+                                            @if (!string.IsNullOrWhiteSpace(bloque.GrupoParalelo))
+                                            {
+                                                <span class="ml-1" style="font-size: 0.68rem; color: #94a3b8;">(@bloque.GrupoParalelo)</span>
+                                            }
+                                        }
+
+                                        <MudText Typo="Typo.body2" Class="font-weight-bold text-truncate mt-1" Style="font-size: 0.78rem;" title="@(bloque.MateriaNombre ?? bloque.Descripcion)">
+                                            @if (!string.IsNullOrWhiteSpace(bloque.MateriaNombre))
+                                            {
+                                                <span>@bloque.MateriaNombre</span>
+                                            }
+                                            else
+                                            {
+                                                @(!string.IsNullOrWhiteSpace(bloque.Descripcion) ? bloque.Descripcion : "(Sin descripción)")
+                                            }
                                         </MudText>
+
+                                        @if (!string.IsNullOrWhiteSpace(bloque.DocenteNombre))
+                                        {
+                                            <div class="d-flex align-center gap-1 mt-1 text-truncate" style="font-size: 0.7rem; color: #38bdf8;">
+                                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="font-size: 13px;" />
+                                                <span>@bloque.DocenteNombre</span>
+                                            </div>
+                                        }
                                     </div>
 
+                                    <!-- Indicador En Curso -->
                                     @if (enCurso)
                                     {
                                         <div class="mt-1">
-                                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.PlayArrow">
-                                                EN CURSO AHORA
-                                            </MudChip>
+                                            <span class="badge-soft-success font-weight-bold" style="font-size: 0.64rem; padding: 1px 6px;">
+                                                <span class="pulse-dot-green mr-1"></span>EN CURSO
+                                            </span>
                                         </div>
                                     }
-                                </MudCard>
+                                </div>
                             }
                         }
                     </div>
@@ -205,70 +377,147 @@ else if (_vistaGrilla)
 }
 else
 {
-    <!-- VISTA TABLA DETALLADA -->
-    <MudTable Items="ListaHorarios" Loading="IsLoading" Hover="true" Striped="true" Elevation="2" Style="background: #1e293b;">
+    <!-- TABLA DETALLADA SAAS REFINADA -->
+    <MudTable Items="ListaHorarios.Where(CumpleFiltroMateria)" 
+              Loading="IsLoading" 
+              Hover="true" 
+              Bordered="false"
+              Striped="false" 
+              Elevation="0" 
+              Class="saas-card rounded-lg overflow-hidden">
         <HeaderContent>
-            <MudTh>DÍA</MudTh>
-            <MudTh>HORA INICIO</MudTh>
-            <MudTh>HORA FIN</MudTh>
-            <MudTh>DURACIÓN</MudTh>
-            <MudTh>TIPO DE FRANJA</MudTh>
-            <MudTh>DESCRIPCIÓN</MudTh>
-            <MudTh Style="text-align: right;">ACCIONES</MudTh>
+            <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">DÍA</MudTh>
+            <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">HORA INICIO</MudTh>
+            <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">HORA FIN</MudTh>
+            <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">DURACIÓN</MudTh>
+            <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">TIPO DE FRANJA</MudTh>
+            <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">MATERIA / DESCRIPCIÓN</MudTh>
+            <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px; text-align: right;">ACCIONES</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Día">
-                <MudText Typo="Typo.body1" Class="font-weight-bold" Color="Color.Primary">@context.DiaSemana.ToString()</MudText>
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" Style="font-size: 1rem;" />
+                    <span style="font-weight: 700; font-size: 0.84rem;">@context.DiaSemana.ToString()</span>
+                </div>
             </MudTd>
-            <MudTd DataLabel="Hora Inicio">@context.HoraInicio.ToString(@"hh\:mm")</MudTd>
-            <MudTd DataLabel="Hora Fin">@context.HoraFin.ToString(@"hh\:mm")</MudTd>
-            <MudTd DataLabel="Duración">@((int)(context.HoraFin - context.HoraInicio).TotalMinutes) min</MudTd>
+            <MudTd DataLabel="Hora Inicio">
+                <div class="d-flex align-center gap-1" style="font-size: 0.82rem;">
+                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Color="Color.Secondary" Style="font-size: 0.95rem;" />
+                    <span>@context.HoraInicio.ToString(@"hh\:mm")</span>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Hora Fin">
+                <div class="d-flex align-center gap-1" style="font-size: 0.82rem;">
+                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Color="Color.Secondary" Style="font-size: 0.95rem;" />
+                    <span>@context.HoraFin.ToString(@"hh\:mm")</span>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Duración">
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--mud-palette-text-secondary);">
+                    @((int)(context.HoraFin - context.HoraInicio).TotalMinutes) min
+                </span>
+            </MudTd>
             <MudTd DataLabel="Tipo">
-                <MudChip T="string" Color="@(context.EsRecreo ? Color.Warning : Color.Success)" Size="Size.Small" Icon="@(context.EsRecreo ? Icons.Material.Filled.Coffee : Icons.Material.Filled.School)">
-                    @(context.EsRecreo ? "☕ Recreo" : "📚 Clase")
-                </MudChip>
+                @if (context.EsRecreo)
+                {
+                    <span class="badge-soft-warning font-weight-bold" style="font-size: 0.72rem;">
+                        ☕ Franja de Recreo
+                    </span>
+                }
+                else
+                {
+                    <span class="badge-soft-info font-weight-bold" style="font-size: 0.72rem;">
+                        📚 Clase Académica
+                    </span>
+                }
             </MudTd>
-            <MudTd DataLabel="Descripción">@(context.Descripcion ?? "-")</MudTd>
+            <MudTd DataLabel="Descripción">
+                <span style="font-size: 0.84rem; font-weight: 600; color: var(--mud-palette-text-primary);">
+                    @(!string.IsNullOrWhiteSpace(context.Descripcion) ? context.Descripcion : "-")
+                </span>
+            </MudTd>
             <MudTd DataLabel="Acciones" Style="text-align: right;">
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => ConfirmarEliminarHorarioAsync(context))" />
+                @if (!context.EsRecreo)
+                {
+                    <MudTooltip Text="Descargar / Imprimir Planilla de Asistencia (PDF)">
+                        <MudIconButton Icon="@Icons.Material.Filled.PictureAsPdf" Color="Color.Primary" Size="Size.Small" Href="@ApiClient.GetReporteAsistenciaPdfUrl(context.Id)" Target="_blank" />
+                    </MudTooltip>
+                }
+                <MudTooltip Text="Editar Bloque">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" />
+                </MudTooltip>
+                <MudTooltip Text="Eliminar Bloque">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => ConfirmarEliminarHorarioAsync(context))" />
+                </MudTooltip>
             </MudTd>
         </RowTemplate>
         <NoRecordsContent>
-            <MudText Typo="Typo.body1" Class="pa-6 text-center" Color="Color.Secondary">
-                ⚠️ No hay bloques horarios o recesos configurados para esta aula.
-            </MudText>
+            <div class="pa-8 d-flex flex-column align-center justify-center text-center">
+                <div class="pa-3 rounded-circle mb-3" style="background: rgba(148, 163, 184, 0.1);">
+                    <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Large" Color="Color.Secondary" />
+                </div>
+                <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">
+                    No hay bloques horarios registrados para esta aula
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4" Style="max-width: 440px;">
+                    Configura las materias o los recesos diarios para que el cierre automático funcione adecuadamente.
+                </MudText>
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Add" 
+                           OnClick="OpenCreateDialog"
+                           Class="rounded-lg font-weight-bold"
+                           Style="text-transform: none;">
+                    Configurar Primer Bloque
+                </MudButton>
+            </div>
         </NoRecordsContent>
+        <PagerContent>
+            <div class="pa-3 d-flex align-center justify-space-between flex-wrap gap-2" 
+                 style="border-top: 1px solid var(--mud-palette-lines-default); background: var(--mud-palette-surface);">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Bloques horarios del laboratorio seleccionado
+                </MudText>
+                <MudTablePager RowsPerPageString="Filas por página:" 
+                               InfoFormat="{first_item}-{last_item} de {all_items}" 
+                               PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </div>
+        </PagerContent>
     </MudTable>
 }
 
 <!-- MODAL REGISTRAR / EDITAR BLOQUE HORARIO -->
 <MudDialog @bind-Visible="MostrarModal" Options="_dialogOptions">
     <TitleContent>
-        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Primary">
-            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.AccessTime)" Class="mr-2" />
-            @(IsEditMode ? "Editar Bloque Horario" : "Configurar Nuevo Bloque Horario")
-        </MudText>
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-md" style="background: rgba(37, 99, 235, 0.1);">
+                <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.AccessTime)" Color="Color.Primary" Size="Size.Small" />
+            </div>
+            <MudText Typo="Typo.h6" Class="font-weight-bold" Style="font-size: 1.1rem;">
+                @(IsEditMode ? "Editar Bloque Horario" : "Configurar Nuevo Bloque Horario")
+            </MudText>
+        </div>
     </TitleContent>
     <DialogContent>
         @if (!string.IsNullOrEmpty(MensajeError))
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4">@MensajeError</MudAlert>
+            <MudAlert Severity="Severity.Error" Class="mb-4 rounded-lg">@MensajeError</MudAlert>
         }
 
         <EditForm Model="this" OnValidSubmit="GuardarBloqueHorarioAsync">
-            <MudGrid>
+            <MudGrid Spacing="3">
                 <MudItem xs="12" sm="6">
-                    <MudSelect T="int" @bind-Value="NuevoAulaId" Label="Aula" Variant="Variant.Outlined" Required="true" FullWidth="true">
+                    <MudSelect T="int" @bind-Value="NuevoAulaId" Label="Aula" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" FullWidth="true">
                         @foreach (var aula in ListaAulas)
                         {
-                            <MudSelectItem T="int" Value="@aula.Id">@aula.Nombre</MudSelectItem>
+                            <MudSelectItem T="int" Value="@aula.Id">@aula.Nombre (@(aula.BloqueNombre ?? aula.Pabellon ?? "Aula"))</MudSelectItem>
                         }
                     </MudSelect>
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudSelect T="DiaSemana" @bind-Value="NuevoDiaSemana" Label="Día de la Semana" Variant="Variant.Outlined" Required="true" FullWidth="true">
+                    <MudSelect T="DiaSemana" @bind-Value="NuevoDiaSemana" Label="Día de la Semana" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" FullWidth="true">
                         <MudSelectItem T="DiaSemana" Value="@DiaSemana.Lunes">Lunes</MudSelectItem>
                         <MudSelectItem T="DiaSemana" Value="@DiaSemana.Martes">Martes</MudSelectItem>
                         <MudSelectItem T="DiaSemana" Value="@DiaSemana.Miercoles">Miércoles</MudSelectItem>
@@ -279,29 +528,115 @@ else
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudSelect T="bool" @bind-Value="EsRecreo" Label="Tipo de Franja" Variant="Variant.Outlined" FullWidth="true">
-                        <MudSelectItem T="bool" Value="false">📚 Bloque de Clase Académica</MudSelectItem>
+                    <MudSelect T="bool" @bind-Value="EsRecreo" Label="Tipo de Franja" Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth="true">
+                        <MudSelectItem T="bool" Value="false">📚 Clase Académica / Práctica</MudSelectItem>
                         <MudSelectItem T="bool" Value="true">☕ Franja de Recreo / Receso</MudSelectItem>
                     </MudSelect>
                 </MudItem>
 
+                @if (!EsRecreo)
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">MATERIA / ASIGNATURA</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <div class="d-flex align-center gap-2">
+                            <MudSelect T="int?" @bind-Value="NuevoMateriaId" Label="Materia (Catálogo)" Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth="true" Clearable="true">
+                                <MudSelectItem T="int?" Value="@((int?)null)">(Sin materia del catálogo)</MudSelectItem>
+                                @foreach (var mat in ListaMaterias)
+                                {
+                                    <MudSelectItem T="int?" Value="@((int?)mat.Id)">@mat.Sigla - @mat.Nombre</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudTooltip Text="Crear nueva materia rápidamente">
+                                <MudIconButton Icon="@Icons.Material.Filled.Add" 
+                                               Color="Color.Primary" 
+                                               Variant="Variant.Filled" 
+                                               Size="Size.Small" 
+                                               OnClick="OpenCrearMateriaRapidaModal" 
+                                               Class="rounded-lg" 
+                                               Style="height: 38px; min-width: 38px; box-shadow: 0 1px 4px rgba(158, 0, 68, 0.2);" />
+                            </MudTooltip>
+                        </div>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="NuevoMateriaNombreManual" 
+                                      Label="O Nombre Materia (Manual sin catálogo)" 
+                                      Variant="Variant.Outlined" 
+                                      Margin="Margin.Dense" 
+                                      Placeholder="Ej: Taller de Robótica" 
+                                      FullWidth="true"
+                                      Disabled="@(NuevoMateriaId.HasValue && NuevoMateriaId.Value > 0)"
+                                      HelperText="@(NuevoMateriaId.HasValue && NuevoMateriaId.Value > 0 ? "Desactivado (seleccionaste del catálogo)" : "Escribe el nombre si no deseas registrarla en catálogo")" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">DOCENTE RESPONSABLE</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <div class="d-flex align-center gap-2">
+                            <MudSelect T="int?" @bind-Value="NuevoDocenteId" Label="Docente (Catálogo)" Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth="true" Clearable="true">
+                                <MudSelectItem T="int?" Value="@((int?)null)">(Sin docente del catálogo)</MudSelectItem>
+                                @foreach (var doc in ListaDocentes)
+                                {
+                                    <MudSelectItem T="int?" Value="@((int?)doc.Id)">@doc.NombreCompleto</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudTooltip Text="Crear nuevo docente rápidamente">
+                                <MudIconButton Icon="@Icons.Material.Filled.Add" 
+                                               Color="Color.Primary" 
+                                               Variant="Variant.Filled" 
+                                               Size="Size.Small" 
+                                               OnClick="OpenCrearDocenteRapidoModal" 
+                                               Class="rounded-lg" 
+                                               Style="height: 38px; min-width: 38px; box-shadow: 0 1px 4px rgba(158, 0, 68, 0.2);" />
+                            </MudTooltip>
+                        </div>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="NuevoDocenteNombreManual" 
+                                      Label="O Nombre Docente (Manual sin catálogo)" 
+                                      Variant="Variant.Outlined" 
+                                      Margin="Margin.Dense" 
+                                      Placeholder="Ej: Lic. Mario Vargas" 
+                                      FullWidth="true"
+                                      Disabled="@(NuevoDocenteId.HasValue && NuevoDocenteId.Value > 0)"
+                                      HelperText="@(NuevoDocenteId.HasValue && NuevoDocenteId.Value > 0 ? "Desactivado (seleccionaste del catálogo)" : "Nombre directo si no está en catálogo")" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="NuevoDocenteEmailManual" 
+                                      Label="Email Docente (Manual, opcional @@univalle.edu)" 
+                                      Variant="Variant.Outlined" 
+                                      Margin="Margin.Dense" 
+                                      Placeholder="mario.vargas@univalle.edu" 
+                                      FullWidth="true"
+                                      Disabled="@(NuevoDocenteId.HasValue && NuevoDocenteId.Value > 0)" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="NuevoGrupoParalelo" Label="Grupo / Paralelo" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Ej: Grupo 1 / Paralelo A" FullWidth="true" />
+                    </MudItem>
+                }
+
                 <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="NuevaDescripcion" Label="Descripción / Materia" Variant="Variant.Outlined" Placeholder="Ej: Sistemas Operativos / Receso Mañana" FullWidth="true" />
+                    <MudTextField @bind-Value="NuevaDescripcion" Label="Notas / Observaciones" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Ej: Taller práctico / Examen parcial" FullWidth="true" />
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudTimePicker Label="Hora Inicio" @bind-Time="HoraInicioTs" Variant="Variant.Outlined" Required="true" />
+                    <MudTimePicker Label="Hora Inicio" @bind-Time="HoraInicioTs" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudTimePicker Label="Hora Fin" @bind-Time="HoraFinTs" Variant="Variant.Outlined" Required="true" />
+                    <MudTimePicker Label="Hora Fin" @bind-Time="HoraFinTs" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
                 </MudItem>
             </MudGrid>
         </EditForm>
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDialog">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="GuardarBloqueHorarioAsync">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDialog" Class="rounded-lg" Style="text-transform: none;">
+            Cancelar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="GuardarBloqueHorarioAsync" Class="rounded-lg font-weight-bold" Style="text-transform: none;">
             @(IsSaving ? "Guardando..." : (IsEditMode ? "Actualizar Bloque" : "Guardar Bloque"))
         </MudButton>
     </DialogActions>
@@ -310,19 +645,23 @@ else
 <!-- MODAL PARA REPLICAR HORARIOS A OTROS DÍAS -->
 <MudDialog @bind-Visible="MostrarModalClonar" Options="_dialogOptions">
     <TitleContent>
-        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Secondary">
-            <MudIcon Icon="@Icons.Material.Filled.ContentCopy" Class="mr-2" />
-            Replicar Horarios a Otros Días
-        </MudText>
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-md" style="background: rgba(37, 99, 235, 0.1);">
+                <MudIcon Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Primary" Size="Size.Small" />
+            </div>
+            <MudText Typo="Typo.h6" Class="font-weight-bold" Style="font-size: 1.1rem;">
+                Replicar Horarios a Otros Días
+            </MudText>
+        </div>
     </TitleContent>
     <DialogContent>
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-            Copia todos los bloques de clase y recesos del día seleccionado hacia los días destino elegidos.
+            Copia todos los bloques de clase y recesos del día seleccionado hacia los días destino elegidos para ahorrar tiempo.
         </MudText>
 
-        <MudGrid>
+        <MudGrid Spacing="3">
             <MudItem xs="12">
-                <MudSelect T="DiaSemana" @bind-Value="DiaOrigenClonacion" Label="Día Origen (Modelo a Copiar)" Variant="Variant.Outlined">
+                <MudSelect T="DiaSemana" @bind-Value="DiaOrigenClonacion" Label="Día Origen (Modelo a Copiar)" Variant="Variant.Outlined" Margin="Margin.Dense">
                     @foreach (var dia in Enum.GetValues<DiaSemana>().Where(d => d != DiaSemana.Domingo))
                     {
                         <MudSelectItem T="DiaSemana" Value="@dia">@dia.ToString() (@ListaHorarios.Count(h => h.DiaSemana == dia) bloques)</MudSelectItem>
@@ -331,8 +670,10 @@ else
             </MudItem>
 
             <MudItem xs="12">
-                <MudText Typo="Typo.subtitle2" Class="mb-2 font-weight-bold">Seleccionar Días Destino:</MudText>
-                <div class="d-flex flex-wrap gap-4">
+                <MudText Typo="Typo.subtitle2" Class="mb-2 font-weight-bold" Style="font-size: 0.85rem;">
+                    Seleccionar Días Destino:
+                </MudText>
+                <div class="d-flex flex-wrap gap-4 pa-3 rounded-lg" style="background: rgba(148, 163, 184, 0.05); border: 1px solid var(--mud-palette-lines-default);">
                     <MudCheckBox T="bool" @bind-Value="ClonarMartes" Label="Martes" Color="Color.Primary" />
                     <MudCheckBox T="bool" @bind-Value="ClonarMiercoles" Label="Miércoles" Color="Color.Primary" />
                     <MudCheckBox T="bool" @bind-Value="ClonarJueves" Label="Jueves" Color="Color.Primary" />
@@ -343,9 +684,187 @@ else
         </MudGrid>
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalClonar = false">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.PlayArrow" OnClick="EjecutarClonacionHorariosAsync">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalClonar = false" Class="rounded-lg" Style="text-transform: none;">
+            Cancelar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.PlayArrow" OnClick="EjecutarClonacionHorariosAsync" Class="rounded-lg font-weight-bold" Style="text-transform: none;">
             @(IsSaving ? "Replicando..." : "Ejecutar Replicación")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- MODAL RÁPIDO PARA CREAR MATERIA -->
+<MudDialog @bind-Visible="MostrarModalMateriaRapida" Options="_subDialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Primary" />
+            <MudText Typo="Typo.h6" Class="font-weight-bold">Alta Rápida de Materia</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(ErrorMateriaRapida))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3" Variant="Variant.Filled">@ErrorMateriaRapida</MudAlert>
+        }
+        <MudGrid Spacing="2" Class="pt-1">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="RapidaMateriaSigla" Label="Sigla" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Placeholder="Ej: SIS-211" />
+            </MudItem>
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="RapidaMateriaNombre" Label="Nombre Materia" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Placeholder="Ej: Sistemas Operativos I" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="RapidaMateriaCarrera" Label="Carrera / Facultad" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Ej: Ingeniería de Sistemas" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalMateriaRapida = false" Class="rounded-lg" Style="text-transform: none;">
+            Cancelar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@GuardandoMateriaRapida" StartIcon="@Icons.Material.Filled.Save" OnClick="GuardarMateriaRapidaAsync" Class="rounded-lg font-weight-bold" Style="text-transform: none;">
+            @(GuardandoMateriaRapida ? "Guardando..." : "Crear y Asignar")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- MODAL RÁPIDO PARA CREAR DOCENTE -->
+<MudDialog @bind-Visible="MostrarModalDocenteRapido" Options="_subDialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.School" Color="Color.Primary" />
+            <MudText Typo="Typo.h6" Class="font-weight-bold">Alta Rápida de Docente</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(ErrorDocenteRapido))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3" Variant="Variant.Filled">@ErrorDocenteRapido</MudAlert>
+        }
+        <MudGrid Spacing="2" Class="pt-1">
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="RapidoDocenteNombres" Label="Nombres" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Placeholder="Ej: Carlos" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="RapidoDocenteApellidos" Label="Apellidos" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Placeholder="Ej: Fernandez" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="RapidoDocenteEmail" Label="Email Institucional" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Placeholder="carlos.fernandez@univalle.edu" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalDocenteRapido = false" Class="rounded-lg" Style="text-transform: none;">
+            Cancelar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@GuardandoDocenteRapido" StartIcon="@Icons.Material.Filled.Save" OnClick="GuardarDocenteRapidoAsync" Class="rounded-lg font-weight-bold" Style="text-transform: none;">
+            @(GuardandoDocenteRapido ? "Guardando..." : "Crear y Asignar")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- MODAL PARA GESTIÓN DE SEMESTRES / PERIODOS ACADÉMICOS -->
+<MudDialog @bind-Visible="MostrarModalGestionPeriodos" Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-md" style="background: rgba(37, 99, 235, 0.1);">
+                <MudIcon Icon="@Icons.Material.Filled.DateRange" Color="Color.Primary" Size="Size.Small" />
+            </div>
+            <div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold" Style="font-size: 1.1rem;">
+                    Gestión de Semestres y Periodos Académicos
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Administra semestres vigentes, activa nuevos periodos o consulta horarios históricos
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(ErrorGestionPeriodos))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3" Variant="Variant.Filled">@ErrorGestionPeriodos</MudAlert>
+        }
+
+        <!-- TABLA DE SEMESTRES EXISTENTES -->
+        <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-2">Semestres Registrados</MudText>
+        <MudTable Items="ListaPeriodos" Dense="true" Hover="true" Elevation="0" Outlined="true" Class="mb-4 rounded-lg">
+            <HeaderContent>
+                <MudTh>Semestre</MudTh>
+                <MudTh>Rango de Fechas</MudTh>
+                <MudTh>Estado</MudTh>
+                <MudTh Style="text-align: right;">Acciones</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Semestre">
+                    <span class="font-weight-bold">@context.Nombre</span>
+                </MudTd>
+                <MudTd DataLabel="Fechas">
+                    @context.FechaInicio.ToString("dd/MM/yyyy") - @context.FechaFin.ToString("dd/MM/yyyy")
+                </MudTd>
+                <MudTd DataLabel="Estado">
+                    @if (context.EsActual)
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Star">
+                            Semestre Actual
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">
+                            Histórico
+                        </MudChip>
+                    }
+                </MudTd>
+                <MudTd Style="text-align: right;">
+                    @if (!context.EsActual)
+                    {
+                        <MudButton Variant="Variant.Outlined" 
+                                   Color="Color.Primary" 
+                                   Size="Size.Small" 
+                                   StartIcon="@Icons.Material.Filled.CheckCircle"
+                                   OnClick="() => ActivarPeriodoAsync(context.Id)"
+                                   Class="rounded-lg"
+                                   Style="text-transform: none;">
+                            Activar como Actual
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <span style="font-size: 0.8rem; color: #16a34a; font-weight: bold;">En vigor</span>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        <MudDivider Class="my-3" />
+
+        <!-- FORMULARIO PARA CREAR NUEVO SEMESTRE -->
+        <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-2">Aperturar Nuevo Semestre</MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="NuevoPeriodoNombre" Label="Nombre Gestión / Semestre" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Ej: I-2027" Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudDatePicker @bind-Date="NuevoPeriodoFechaInicio" Label="Fecha Inicio" Variant="Variant.Outlined" Margin="Margin.Dense" DateFormat="dd/MM/yyyy" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudDatePicker @bind-Date="NuevoPeriodoFechaFin" Label="Fecha Fin" Variant="Variant.Outlined" Margin="Margin.Dense" DateFormat="dd/MM/yyyy" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudCheckBox T="bool" @bind-Value="NuevoPeriodoEsActual" Label="Establecer inmediatamente como semestre activo" Color="Color.Primary" Dense="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudCheckBox T="bool" @bind-Value="NuevoPeriodoClonarHorarios" Label="Replicar horarios del semestre actual a este nuevo semestre" Color="Color.Secondary" Dense="true" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalGestionPeriodos = false" Class="rounded-lg" Style="text-transform: none;">
+            Cerrar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@GuardandoPeriodo" StartIcon="@Icons.Material.Filled.Add" OnClick="GuardarNuevoPeriodoAsync" Class="rounded-lg font-weight-bold" Style="text-transform: none;">
+            @(GuardandoPeriodo ? "Guardando..." : "Crear Semestre")
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -353,15 +872,30 @@ else
 @code {
     private List<AulaDto> ListaAulas = [];
     private List<BloqueHorarioDto> ListaHorarios = [];
+    private List<MateriaDto> ListaMaterias = [];
+    private List<DocenteDto> ListaDocentes = [];
+    private List<PeriodoAcademicoModel> ListaPeriodos = [];
     private int AulaSeleccionadaId = 0;
+    private int PeriodoSeleccionadoId = 0;
     private bool IsLoading = true;
     private bool MostrarModal = false;
     private bool MostrarModalClonar = false;
+    private bool MostrarModalGestionPeriodos = false;
     private bool IsSaving = false;
     private bool IsEditMode = false;
     private bool _vistaGrilla = true;
     private int BloqueIdSeleccionado = 0;
     private string? MensajeError;
+    private string BusquedaMateria = "";
+
+    // Formulario de Semestre / Periodo
+    private string NuevoPeriodoNombre = "";
+    private DateTime? NuevoPeriodoFechaInicio = DateTime.Today;
+    private DateTime? NuevoPeriodoFechaFin = DateTime.Today.AddMonths(5);
+    private bool NuevoPeriodoEsActual = false;
+    private bool NuevoPeriodoClonarHorarios = true;
+    private bool GuardandoPeriodo = false;
+    private string? ErrorGestionPeriodos = null;
 
     // Formulario de Bloque
     private int NuevoAulaId = 0;
@@ -370,6 +904,28 @@ else
     private TimeSpan? HoraFinTs = new TimeSpan(9, 0, 0);
     private bool EsRecreo = false;
     private string? NuevaDescripcion;
+    private int? NuevoMateriaId;
+    private int? NuevoDocenteId;
+    private string? NuevoGrupoParalelo;
+    private string? NuevoMateriaNombreManual;
+    private string? NuevoDocenteNombreManual;
+    private string? NuevoDocenteEmailManual;
+
+    // Modales rápidos
+    private bool MostrarModalMateriaRapida = false;
+    private string RapidaMateriaSigla = "";
+    private string RapidaMateriaNombre = "";
+    private string? RapidaMateriaCarrera = "";
+    private string? ErrorMateriaRapida = null;
+    private bool GuardandoMateriaRapida = false;
+
+    private bool MostrarModalDocenteRapido = false;
+    private string RapidoDocenteNombres = "";
+    private string RapidoDocenteApellidos = "";
+    private string RapidoDocenteEmail = "";
+    private string? RapidoDocenteTelefono = "";
+    private string? ErrorDocenteRapido = null;
+    private bool GuardandoDocenteRapido = false;
 
     // Clonación
     private DiaSemana DiaOrigenClonacion = DiaSemana.Lunes;
@@ -387,9 +943,27 @@ else
         Position = DialogPosition.Center
     };
 
+    private readonly DialogOptions _subDialogOptions = new()
+    {
+        CloseButton = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        Position = DialogPosition.Center
+    };
+
     protected override async Task OnInitializedAsync()
     {
         ListaAulas = await ApiClient.GetAulasAsync();
+        ListaMaterias = await ApiClient.GetMateriasAsync();
+        ListaDocentes = await ApiClient.GetDocentesAsync();
+        ListaPeriodos = await ApiClient.GetPeriodosAcademicosAsync();
+
+        var actual = ListaPeriodos.FirstOrDefault(p => p.EsActual) ?? ListaPeriodos.FirstOrDefault();
+        if (actual != null)
+        {
+            PeriodoSeleccionadoId = actual.Id;
+        }
+
         if (ListaAulas.Any())
         {
             AulaSeleccionadaId = ListaAulas.First().Id;
@@ -406,8 +980,19 @@ else
     {
         if (AulaSeleccionadaId <= 0) return;
         IsLoading = true;
-        ListaHorarios = await ApiClient.GetHorariosByAulaAsync(AulaSeleccionadaId);
-        IsLoading = false;
+        try
+        {
+            ListaHorarios = await ApiClient.GetHorariosByAulaAsync(AulaSeleccionadaId, PeriodoSeleccionadoId > 0 ? PeriodoSeleccionadoId : null);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar horarios: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task OnAulaSeleccionadaChanged(int id)
@@ -415,6 +1000,109 @@ else
         AulaSeleccionadaId = id;
         NuevoAulaId = id;
         await CargarHorariosAsync();
+    }
+
+    private async Task OnPeriodoSeleccionadoChanged(int id)
+    {
+        PeriodoSeleccionadoId = id;
+        await CargarHorariosAsync();
+    }
+
+    private void OpenGestionPeriodosDialog()
+    {
+        NuevoPeriodoNombre = "";
+        NuevoPeriodoFechaInicio = DateTime.Today;
+        NuevoPeriodoFechaFin = DateTime.Today.AddMonths(5);
+        NuevoPeriodoEsActual = false;
+        NuevoPeriodoClonarHorarios = true;
+        ErrorGestionPeriodos = null;
+        GuardandoPeriodo = false;
+        MostrarModalGestionPeriodos = true;
+    }
+
+    private async Task ActivarPeriodoAsync(int id)
+    {
+        bool ok = await ApiClient.SetPeriodoAcademicoActualAsync(id);
+        if (ok)
+        {
+            ListaPeriodos = await ApiClient.GetPeriodosAcademicosAsync();
+            PeriodoSeleccionadoId = id;
+            Snackbar.Add("¡Semestre activado exitosamente!", Severity.Success);
+            await CargarHorariosAsync();
+        }
+        else
+        {
+            Snackbar.Add("No se pudo activar el semestre.", Severity.Error);
+        }
+    }
+
+    private async Task GuardarNuevoPeriodoAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NuevoPeriodoNombre))
+        {
+            ErrorGestionPeriodos = "El nombre del semestre (ej: I-2027) es obligatorio.";
+            return;
+        }
+
+        if (!NuevoPeriodoFechaInicio.HasValue || !NuevoPeriodoFechaFin.HasValue || NuevoPeriodoFechaFin <= NuevoPeriodoFechaInicio)
+        {
+            ErrorGestionPeriodos = "La fecha fin debe ser posterior a la fecha inicio.";
+            return;
+        }
+
+        GuardandoPeriodo = true;
+        ErrorGestionPeriodos = null;
+
+        var periodoOrigenActual = ListaPeriodos.FirstOrDefault(p => p.EsActual);
+
+        bool exito = await ApiClient.CreatePeriodoAcademicoAsync(
+            NuevoPeriodoNombre.Trim().ToUpperInvariant(),
+            NuevoPeriodoFechaInicio.Value,
+            NuevoPeriodoFechaFin.Value,
+            NuevoPeriodoEsActual
+        );
+
+        if (exito)
+        {
+            ListaPeriodos = await ApiClient.GetPeriodosAcademicosAsync();
+            var nuevo = ListaPeriodos.FirstOrDefault(p => p.Nombre.Equals(NuevoPeriodoNombre.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (nuevo != null)
+            {
+                if (NuevoPeriodoClonarHorarios && periodoOrigenActual != null)
+                {
+                    var (clonOk, clonados) = await ApiClient.ClonarHorariosSemestreAsync(periodoOrigenActual.Id, nuevo.Id);
+                    if (clonOk)
+                    {
+                        Snackbar.Add($"Se clonaron {clonados} bloques del semestre {periodoOrigenActual.Nombre}.", Severity.Info);
+                    }
+                }
+
+                if (NuevoPeriodoEsActual)
+                {
+                    PeriodoSeleccionadoId = nuevo.Id;
+                }
+            }
+
+            Snackbar.Add($"Semestre '{NuevoPeriodoNombre}' creado exitosamente.", Severity.Success);
+            MostrarModalGestionPeriodos = false;
+            await CargarHorariosAsync();
+        }
+        else
+        {
+            ErrorGestionPeriodos = "No se pudo crear el semestre. Verifique que el nombre sea único.";
+        }
+
+        GuardandoPeriodo = false;
+    }
+
+    private bool CumpleFiltroMateria(BloqueHorarioDto bloque)
+    {
+        if (string.IsNullOrWhiteSpace(BusquedaMateria)) return true;
+        var q = BusquedaMateria.Trim().ToLowerInvariant();
+        return (!string.IsNullOrWhiteSpace(bloque.Descripcion) && bloque.Descripcion.ToLowerInvariant().Contains(q)) ||
+               (bloque.EsRecreo && "recreo".Contains(q)) ||
+               (!bloque.EsRecreo && "clase".Contains(q));
     }
 
     private double CalcularHorasSemanales()
@@ -461,8 +1149,20 @@ else
         HoraFinTs = new TimeSpan(9, 0, 0);
         EsRecreo = false;
         NuevaDescripcion = "";
+        NuevoMateriaId = null;
+        NuevoDocenteId = null;
+        NuevoGrupoParalelo = null;
+        NuevoMateriaNombreManual = null;
+        NuevoDocenteNombreManual = null;
+        NuevoDocenteEmailManual = null;
         MensajeError = null;
         MostrarModal = true;
+    }
+
+    private void OpenCreateDialogForDay(DiaSemana dia)
+    {
+        OpenCreateDialog();
+        NuevoDiaSemana = dia;
     }
 
     private void OpenEditDialog(BloqueHorarioDto bloque)
@@ -475,6 +1175,12 @@ else
         HoraFinTs = bloque.HoraFin;
         EsRecreo = bloque.EsRecreo;
         NuevaDescripcion = bloque.Descripcion;
+        NuevoMateriaId = bloque.MateriaId;
+        NuevoDocenteId = bloque.DocenteId;
+        NuevoGrupoParalelo = bloque.GrupoParalelo;
+        NuevoMateriaNombreManual = bloque.MateriaNombreManual;
+        NuevoDocenteNombreManual = bloque.DocenteNombreManual;
+        NuevoDocenteEmailManual = bloque.DocenteEmailManual;
         MensajeError = null;
         MostrarModal = true;
     }
@@ -516,7 +1222,15 @@ else
                 HoraInicioTs.Value,
                 HoraFinTs.Value,
                 EsRecreo,
-                NuevaDescripcion
+                NuevaDescripcion,
+                NuevoMateriaId,
+                NuevoDocenteId,
+                NuevoGrupoParalelo,
+                esUsoLibre: false,
+                periodoAcademicoId: PeriodoSeleccionadoId > 0 ? PeriodoSeleccionadoId : null,
+                docenteNombreManual: NuevoDocenteNombreManual,
+                docenteEmailManual: NuevoDocenteEmailManual,
+                materiaNombreManual: NuevoMateriaNombreManual
             );
         }
         else
@@ -527,7 +1241,15 @@ else
                 HoraInicioTs.Value,
                 HoraFinTs.Value,
                 EsRecreo,
-                NuevaDescripcion
+                NuevaDescripcion,
+                NuevoMateriaId,
+                NuevoDocenteId,
+                NuevoGrupoParalelo,
+                esUsoLibre: false,
+                periodoAcademicoId: PeriodoSeleccionadoId > 0 ? PeriodoSeleccionadoId : null,
+                docenteNombreManual: NuevoDocenteNombreManual,
+                docenteEmailManual: NuevoDocenteEmailManual,
+                materiaNombreManual: NuevoMateriaNombreManual
             );
         }
 
@@ -582,7 +1304,15 @@ else
                     bloque.HoraInicio,
                     bloque.HoraFin,
                     bloque.EsRecreo,
-                    bloque.Descripcion
+                    bloque.Descripcion,
+                    bloque.MateriaId,
+                    bloque.DocenteId,
+                    bloque.GrupoParalelo,
+                    bloque.EsUsoLibre,
+                    periodoAcademicoId: bloque.PeriodoAcademicoId ?? (PeriodoSeleccionadoId > 0 ? PeriodoSeleccionadoId : null),
+                    docenteNombreManual: bloque.DocenteNombreManual,
+                    docenteEmailManual: bloque.DocenteEmailManual,
+                    materiaNombreManual: bloque.MateriaNombreManual
                 );
                 if (ok) creados++;
             }
@@ -614,5 +1344,96 @@ else
                 Snackbar.Add("No se pudo eliminar el bloque horario.", Severity.Error);
             }
         }
+    }
+
+    private void OpenCrearMateriaRapidaModal()
+    {
+        RapidaMateriaSigla = "";
+        RapidaMateriaNombre = "";
+        RapidaMateriaCarrera = "";
+        ErrorMateriaRapida = null;
+        GuardandoMateriaRapida = false;
+        MostrarModalMateriaRapida = true;
+    }
+
+    private async Task GuardarMateriaRapidaAsync()
+    {
+        if (string.IsNullOrWhiteSpace(RapidaMateriaSigla) || string.IsNullOrWhiteSpace(RapidaMateriaNombre))
+        {
+            ErrorMateriaRapida = "Sigla y Nombre de la materia son obligatorios.";
+            return;
+        }
+
+        GuardandoMateriaRapida = true;
+        ErrorMateriaRapida = null;
+
+        var siglaUpper = RapidaMateriaSigla.Trim().ToUpperInvariant();
+        bool exito = await ApiClient.CreateMateriaAsync(siglaUpper, RapidaMateriaNombre.Trim(), RapidaMateriaCarrera?.Trim());
+        if (exito)
+        {
+            ListaMaterias = await ApiClient.GetMateriasAsync();
+            var creada = ListaMaterias.FirstOrDefault(m => string.Equals(m.Sigla, siglaUpper, StringComparison.OrdinalIgnoreCase));
+            if (creada != null)
+            {
+                NuevoMateriaId = creada.Id;
+            }
+            Snackbar.Add($"Materia '{siglaUpper}' creada y asignada.", Severity.Success);
+            MostrarModalMateriaRapida = false;
+        }
+        else
+        {
+            ErrorMateriaRapida = "No se pudo registrar la materia. Verifique que la sigla sea única.";
+        }
+
+        GuardandoMateriaRapida = false;
+    }
+
+    private void OpenCrearDocenteRapidoModal()
+    {
+        RapidoDocenteNombres = "";
+        RapidoDocenteApellidos = "";
+        RapidoDocenteEmail = "";
+        RapidoDocenteTelefono = "";
+        ErrorDocenteRapido = null;
+        GuardandoDocenteRapido = false;
+        MostrarModalDocenteRapido = true;
+    }
+
+    private async Task GuardarDocenteRapidoAsync()
+    {
+        if (string.IsNullOrWhiteSpace(RapidoDocenteNombres) || string.IsNullOrWhiteSpace(RapidoDocenteApellidos) || string.IsNullOrWhiteSpace(RapidoDocenteEmail))
+        {
+            ErrorDocenteRapido = "Nombres, Apellidos y Email son obligatorios.";
+            return;
+        }
+
+        if (!RapidoDocenteEmail.Contains("@"))
+        {
+            ErrorDocenteRapido = "El correo institucional no es válido.";
+            return;
+        }
+
+        GuardandoDocenteRapido = true;
+        ErrorDocenteRapido = null;
+
+        var emailTrim = RapidoDocenteEmail.Trim().ToLowerInvariant();
+        bool exito = await ApiClient.CreateDocenteAsync(RapidoDocenteNombres.Trim(), RapidoDocenteApellidos.Trim(), emailTrim, string.IsNullOrWhiteSpace(RapidoDocenteTelefono) ? null : RapidoDocenteTelefono.Trim());
+        if (exito)
+        {
+            ListaDocentes = await ApiClient.GetDocentesAsync();
+            var creado = ListaDocentes.FirstOrDefault(d => string.Equals(d.EmailInstitucional, emailTrim, StringComparison.OrdinalIgnoreCase));
+            if (creado != null)
+            {
+                NuevoDocenteId = creado.Id;
+            }
+            Snackbar.Add($"Docente '{RapidoDocenteNombres} {RapidoDocenteApellidos}' creado y asignado.", Severity.Success);
+            MostrarModalDocenteRapido = false;
+        }
+        else
+        {
+            ErrorDocenteRapido = "No se pudo registrar el docente. Verifique que el correo no esté en uso.";
+        }
+
+        GuardandoDocenteRapido = false;
     }
 }

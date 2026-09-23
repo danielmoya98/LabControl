@@ -1,9 +1,904 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --app-font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
 
 html, body {
-    font-family: 'Outfit', 'Roboto', sans-serif;
+    font-family: var(--app-font-family) !important;
     margin: 0;
     padding: 0;
-    background-color: #090d16;
-    color: #f8fafc;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Aplicar la fuente tipográfica globalmente sin afectar tamaños */
+body, button, input, select, textarea, .mud-typography {
+    font-family: var(--app-font-family) !important;
+}
+
+/* Transiciones globales suaves para cambio de tema */
+.mud-layout,
+.mud-appbar,
+.mud-drawer,
+.mud-paper,
+.mud-card,
+.mud-table-container,
+.mud-input-control {
+    transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.2s ease,
+                box-shadow 0.25s ease !important;
+}
+
+/* Estilo de Tarjetas Soft SaaS Premium (Inspirado en Radzen / Tailwind UI) */
+.saas-card {
+    border-radius: 10px !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    background: var(--mud-palette-surface) !important;
+    box-shadow: 0 2px 12px -2px rgba(15, 23, 42, 0.04), 0 1px 4px -1px rgba(15, 23, 42, 0.02) !important;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.2s ease !important;
+}
+
+.saas-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.03) !important;
+}
+
+/* Adaptación de sombras para tema oscuro */
+.mud-theme-dark .saas-card,
+[data-mud-theme="dark"] .saas-card {
+    box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Encabezados y Números de Métricas */
+.kpi-title {
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 1px !important;
+    text-transform: uppercase !important;
+    color: var(--mud-palette-text-secondary) !important;
+    line-height: 1.2 !important;
+}
+
+.kpi-number {
+    font-size: 2.3rem !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.02em !important;
+    color: var(--mud-palette-text-primary) !important;
+}
+
+/* Cajas de Iconos en Tarjetas KPI */
+.kpi-icon-box {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.kpi-icon-error {
+    background-color: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+.kpi-icon-primary {
+    background-color: rgba(158, 0, 68, 0.12);
+    color: #9e0044;
+}
+
+.kpi-icon-success {
+    background-color: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+}
+
+.kpi-icon-purple {
+    background-color: rgba(124, 58, 237, 0.12);
+    color: #7c3aed;
+}
+
+/* Badges / Píldoras Suaves de Estado */
+.badge-soft {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.badge-soft-error {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.badge-soft-info {
+    background-color: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+}
+
+.badge-soft-guindo {
+    background-color: #fdf2f4;
+    color: #9e0044;
+    border: 1px solid #f8c8d2;
+}
+
+.badge-soft-success {
+    background-color: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+}
+
+.badge-soft-purple {
+    background-color: #faf5ff;
+    color: #7c3aed;
+    border: 1px solid #e9d5ff;
+}
+
+.badge-soft-warning {
+    background-color: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+}
+
+/* Ajustes de badges en modo oscuro */
+.mud-theme-dark .badge-soft-error {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.35);
+}
+
+.mud-theme-dark .badge-soft-info {
+    background-color: rgba(56, 189, 248, 0.2);
+    color: #7dd3fc;
+    border-color: rgba(56, 189, 248, 0.35);
+}
+
+.mud-theme-dark .badge-soft-guindo {
+    background-color: rgba(158, 0, 68, 0.2);
+    color: #fca5c2;
+    border-color: rgba(158, 0, 68, 0.35);
+}
+
+.mud-theme-dark .badge-soft-success {
+    background-color: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+    border-color: rgba(34, 197, 94, 0.35);
+}
+
+.mud-theme-dark .badge-soft-purple {
+    background-color: rgba(168, 85, 247, 0.2);
+    color: #d8b4fe;
+    border-color: rgba(168, 85, 247, 0.35);
+}
+
+.mud-theme-dark .badge-soft-warning {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: #fcd34d;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+/* Indicadores de Punto para Estados de Terminales */
+.pulse-dot-green {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #16a34a;
+    display: inline-block;
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
+}
+
+.dot-blue {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #2563eb;
+    display: inline-block;
+}
+
+.dot-red {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #dc2626;
+    display: inline-block;
+}
+
+/* Botón Circular de Refresco */
+.refresh-btn {
+    border-radius: 50% !important;
+    width: 42px !important;
+    height: 42px !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    background: var(--mud-palette-surface) !important;
+    color: var(--mud-palette-primary) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+                background-color 0.2s ease,
+                border-color 0.2s ease !important;
+}
+
+.refresh-btn:hover {
+    transform: rotate(90deg) scale(1.05);
+    background-color: rgba(158, 0, 68, 0.08) !important;
+    border-color: var(--mud-palette-primary) !important;
+}
+
+/* Selector de Rango en Píldora (3M, 6M, 12M, 24M) */
+.range-pill-group {
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px solid var(--mud-palette-lines-default);
+    padding: 3px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.range-pill-btn {
+    border: none !important;
+    background: transparent;
+    padding: 4px 12px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    border-radius: 9999px !important;
+    cursor: pointer !important;
+    color: var(--mud-palette-text-secondary) !important;
+    transition: all 0.18s ease !important;
+}
+
+.range-pill-btn.active {
+    background: var(--mud-palette-primary) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(158, 0, 68, 0.3) !important;
+}
+
+.range-pill-btn:not(.active):hover {
+    color: var(--mud-palette-text-primary) !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Botón Flotante de Acción Rápida (FAB) */
+.saas-fab {
+    position: fixed !important;
+    bottom: 28px !important;
+    right: 28px !important;
+    z-index: 999 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 12px 24px -4px rgba(158, 0, 68, 0.4) !important;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease !important;
+}
+
+.saas-fab:hover {
+    transform: scale(1.08) translateY(-2px) !important;
+    box-shadow: 0 16px 32px -4px rgba(158, 0, 68, 0.5) !important;
+}
+
+/* Scrollbar sutil y moderno */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.6);
+}
+
+/* ==========================================================================
+   ESTILOS DE LOGIN SPLIT-SCREEN (Slider Izquierdo + Formulario Derecho)
+   ========================================================================== */
+
+.login-split-root {
+    min-height: 100vh;
+    width: 100vw;
+    display: flex;
+    overflow-x: hidden;
+    background: var(--mud-palette-background);
+}
+
+/* Panel Izquierdo: Showcase & Slider */
+.login-showcase-panel {
+    flex: 1.15;
+    min-height: 100vh;
+    background: radial-gradient(circle at 15% 20%, rgba(158, 0, 68, 0.35) 0%, transparent 45%),
+                radial-gradient(circle at 85% 75%, rgba(190, 18, 60, 0.25) 0%, transparent 50%),
+                linear-gradient(145deg, #0d0f14 0%, #170d13 50%, #200814 100%);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 48px 56px;
+    overflow: hidden;
+    color: #ffffff;
+}
+
+/* Malla decorativa de fondo */
+.login-showcase-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+/* Header del panel izquierdo (Logo) */
+.login-showcase-header {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.login-logo-glow {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #9e0044, #be123c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px -4px rgba(158, 0, 68, 0.55);
+    color: #ffffff;
+}
+
+.login-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    background: rgba(158, 0, 68, 0.2);
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    backdrop-filter: blur(8px);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #fda4af;
+    text-transform: uppercase;
+}
+
+/* Slider / Carousel Central */
+.login-slider-container {
+    position: relative;
+    z-index: 2;
+    margin: auto 0;
+    width: 100%;
+    max-width: 580px;
+}
+
+.login-slide {
+    animation: slideFadeIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.slide-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+}
+
+.slide-badge-blue {
+    background: rgba(158, 0, 68, 0.25);
+    color: #fda4af;
+    border: 1px solid rgba(158, 0, 68, 0.45);
+}
+
+.slide-badge-amber {
+    background: rgba(245, 158, 11, 0.25);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+}
+
+.slide-badge-emerald {
+    background: rgba(16, 185, 129, 0.25);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.45);
+}
+
+.slide-title {
+    font-size: 2.1rem;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+    color: #ffffff;
+    margin-bottom: 12px;
+}
+
+.slide-description {
+    font-size: 0.98rem;
+    line-height: 1.55;
+    color: #cbd5e1;
+    margin-bottom: 28px;
+}
+
+/* Placeholder visual interactivo para cada slide */
+.slide-visual-mockup {
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    padding: 22px;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.45);
+    margin-bottom: 8px;
+}
+
+/* Footer del Slider */
+.login-showcase-footer {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding-top: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+/* Paginación de píldoras del slider */
+.slider-pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.slider-dot {
+    height: 8px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.25);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.slider-dot.inactive {
+    width: 8px;
+}
+
+.slider-dot.inactive:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.slider-dot.active {
+    width: 32px;
+    background: linear-gradient(90deg, #e11d48, #9e0044);
+    box-shadow: 0 0 12px rgba(225, 29, 72, 0.6);
+}
+
+.slider-arrow-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.slider-arrow-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    transform: scale(1.05);
+}
+
+/* Panel Derecho: Formulario de Autenticación */
+.login-form-panel {
+    flex: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 24px;
+    background: var(--mud-palette-background);
+}
+
+.login-form-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 40px 36px;
+    border-radius: 20px;
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.07), 0 4px 10px -2px rgba(15, 23, 42, 0.03);
+}
+
+.mud-theme-dark .login-form-card {
+    background: #111827;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.5);
+}
+
+.btn-primary-gradient {
+    background: linear-gradient(135deg, #9e0044 0%, #7d0036 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px 0 rgba(158, 0, 68, 0.38) !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    padding: 12px 0 !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.btn-primary-gradient:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px 0 rgba(158, 0, 68, 0.5) !important;
+}
+
+.demo-credentials-box {
+    background: rgba(158, 0, 68, 0.04);
+    border: 1px dashed rgba(158, 0, 68, 0.28);
+    border-radius: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.demo-credentials-box:hover {
+    background: rgba(158, 0, 68, 0.08);
+    border-color: rgba(158, 0, 68, 0.5);
+}
+
+@media (max-width: 960px) {
+    .login-split-root {
+        flex-direction: column;
+    }
+    .login-showcase-panel {
+        min-height: 440px;
+        padding: 32px 24px;
+    }
+    .slide-title {
+        font-size: 1.65rem;
+    }
+    .slide-visual-mockup {
+        display: none;
+    }
+    .login-form-panel {
+        min-height: auto;
+        padding: 32px 20px;
+    }
+}
+
+/* ==========================================================================
+   Dashboard Chart Container - Full Width Expansion & Refined SaaS Style
+   ========================================================================== */
+.dashboard-chart-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.dashboard-chart-wrapper .mud-chart {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: center !important;
+}
+
+.dashboard-chart-wrapper .mud-chart svg,
+.dashboard-chart-wrapper .mud-chart svg.mud-chart-bar,
+.dashboard-chart-wrapper svg.mud-chart-bar {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    margin: 0 auto;
+}
+
+.dashboard-chart-wrapper .mud-chart-legend {
+    margin-top: 14px;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+/* ==========================================================================
+   Sidebar & NavMenu Refined SaaS Styles (8-10px Corner Radius)
+   ========================================================================== */
+.mud-navmenu {
+    padding-bottom: 0.5rem;
+}
+
+.mud-navmenu .mud-nav-link {
+    border-radius: 8px !important;
+    margin: 2px 8px !important;
+    padding: 8px 12px !important;
+    font-size: 0.84rem !important;
+    font-weight: 500 !important;
+    color: var(--mud-palette-text-secondary) !important;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border-left: 3px solid transparent !important;
+}
+
+.mud-navmenu .mud-nav-link .mud-nav-link-icon {
+    margin-right: 10px !important;
+    color: var(--mud-palette-text-secondary) !important;
+    transition: color 0.18s ease !important;
+}
+
+.mud-navmenu .mud-nav-link:hover {
+    background-color: rgba(158, 0, 68, 0.06) !important;
+    color: var(--mud-palette-primary) !important;
+}
+
+.mud-navmenu .mud-nav-link:hover .mud-nav-link-icon {
+    color: var(--mud-palette-primary) !important;
+}
+
+.mud-navmenu .mud-nav-link.active:not(.mud-nav-link-disabled) {
+    background-color: rgba(158, 0, 68, 0.08) !important;
+    color: var(--mud-palette-primary) !important;
+    font-weight: 600 !important;
+    border-left: 3px solid #9e0044 !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+.mud-navmenu .mud-nav-link.active:not(.mud-nav-link-disabled) .mud-nav-link-icon {
+    color: var(--mud-palette-primary) !important;
+}
+
+.mud-theme-dark .mud-navmenu .mud-nav-link.active:not(.mud-nav-link-disabled) {
+    background-color: rgba(244, 63, 94, 0.15) !important;
+    color: #fb7185 !important;
+    border-left-color: #fb7185 !important;
+}
+
+.mud-theme-dark .mud-navmenu .mud-nav-link.active:not(.mud-nav-link-disabled) .mud-nav-link-icon {
+    color: #fb7185 !important;
+}
+
+.nav-section-title {
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    color: var(--mud-palette-text-secondary) !important;
+    text-transform: uppercase !important;
+    padding: 8px 16px 4px 16px !important;
+    display: block !important;
+}
+
+/* ==========================================================================
+   Topbar (AppBar) Refined SaaS Styles
+   ========================================================================== */
+.saas-appbar {
+    height: 70px !important;
+    min-height: 70px !important;
+    background: var(--mud-palette-surface) !important;
+    border-bottom: 1px solid var(--mud-palette-lines-default) !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02) !important;
+    backdrop-filter: blur(12px) !important;
+    transition: background-color 0.2s ease, border-color 0.2s ease !important;
+}
+
+.saas-appbar .mud-toolbar {
+    height: 70px !important;
+    min-height: 70px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 24px !important;
+    box-sizing: border-box !important;
+}
+
+.saas-appbar .mud-spacer {
+    flex-grow: 1 !important;
+    flex-shrink: 1 !important;
+}
+
+.topbar-notification-badge {
+    top: 6px !important;
+    right: 6px !important;
+    transform: none !important;
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    line-height: 18px !important;
+    padding: 0 4px !important;
+    border: 2px solid var(--mud-palette-surface) !important;
+    border-radius: 9999px !important;
+    box-sizing: content-box !important;
+}
+
+.mud-main-content {
+    padding-top: 92px !important;
+}
+
+.user-menu-trigger {
+    border-radius: 8px !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    background: var(--mud-palette-surface) !important;
+    padding: 4px 12px 4px 6px !important;
+    text-transform: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.user-menu-trigger:hover {
+    border-color: var(--mud-palette-primary) !important;
+    background: rgba(158, 0, 68, 0.04) !important;
+}
+
+.topbar-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: rgba(34, 197, 94, 0.08);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.mud-theme-dark .topbar-badge-pill {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+/* ==========================================================================
+   Command Palette & Quick Search (Ctrl+K)
+   ========================================================================== */
+.command-palette-trigger-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 0.82rem;
+    color: var(--mud-palette-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.command-palette-trigger-btn:hover {
+    background: rgba(158, 0, 68, 0.06);
+    border-color: var(--mud-palette-primary);
+    color: var(--mud-palette-text-primary);
+}
+
+.command-kbd {
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 4px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.08);
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    color: var(--mud-palette-text-secondary);
+    letter-spacing: 0.5px;
+    font-family: inherit;
+}
+
+.command-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--mud-palette-text-primary);
+}
+
+.command-item:hover {
+    background-color: rgba(158, 0, 68, 0.08);
+    color: var(--mud-palette-primary);
+}
+
+.mud-theme-dark .command-item:hover {
+    background-color: rgba(244, 63, 94, 0.16);
+    color: #fb7185;
+}
+
+/* ==========================================================================
+   Micro-interacciones: Botón de Copiado con Feedback Visual
+   ========================================================================== */
+.btn-copy-micro {
+    padding: 2px 4px !important;
+    border-radius: 4px !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--mud-palette-text-secondary) !important;
+    transition: all 0.18s ease !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    vertical-align: middle !important;
+}
+
+.btn-copy-micro:hover {
+    color: var(--mud-palette-primary) !important;
+    background: rgba(158, 0, 68, 0.08) !important;
+}
+
+.btn-copy-micro.copied {
+    color: #16a34a !important;
+    background: rgba(22, 163, 74, 0.12) !important;
+    animation: pulse-copy 0.3s ease-out;
+}
+
+@keyframes pulse-copy {
+    0% { transform: scale(0.92); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* ==========================================================================
+   Modo Monitor / Sala de Control (NOC Fullscreen Mode)
+   ========================================================================== */
+.noc-fullscreen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    background: #090d16;
+    overflow-y: auto;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.noc-exit-btn {
+    position: fixed;
+    top: 18px;
+    right: 24px;
+    z-index: 10000;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5) !important;
 }

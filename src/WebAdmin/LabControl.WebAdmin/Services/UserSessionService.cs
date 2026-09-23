@@ -6,6 +6,7 @@ public class UserSession
     public string Email { get; set; } = default!;
     public string NombreCompleto { get; set; } = default!;
     public string Rol { get; set; } = default!;
+    public string? FotoUrl { get; set; }
 }
 
 public class UserSessionService
@@ -21,6 +22,16 @@ public class UserSessionService
         NotifyStateChanged();
     }
 
+    public void UpdateProfile(string nombreCompleto, string? fotoUrl = null)
+    {
+        if (CurrentUser != null)
+        {
+            CurrentUser.NombreCompleto = nombreCompleto;
+            CurrentUser.FotoUrl = string.IsNullOrWhiteSpace(fotoUrl) ? null : fotoUrl;
+            NotifyStateChanged();
+        }
+    }
+
     public void Logout()
     {
         CurrentUser = null;
@@ -29,3 +40,4 @@ public class UserSessionService
 
     private void NotifyStateChanged() => OnChange?.Invoke();
 }
+

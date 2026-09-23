@@ -215,4 +215,51 @@ public static class SqliteOfflineService
 
         await command.ExecuteNonQueryAsync();
     }
+
+    /// <summary>
+    /// Al arrancar la aplicación, verifica si la sesión previa no tuvo un cierre formal
+    /// (ej: el estudiante apagó la PC con el botón físico o hubo un corte de energía).
+    /// Si existe, la cierra marcando tipo 7 (ApagadoForzado) para que se sincronice con el servidor central.
+    /// </summary>
+    public static async Task RecuperarSesionesHuerfanasAsync()
+    {
+        await InicializarBaseDeDatosAsync();
+
+        using var connection = new SqliteConnection(ConnectionString);
+        await connection.OpenAsync();
+
+        var selectQuery = "SELECT Id, FechaHoraInicio FROM OfflineSesionesQueue WHERE FechaHoraFin IS NULL;";
+        var huerfanas = new List<(int Id, DateTime Inicio)>();
+
+        using (var cmd = new SqliteCommand(selectQuery, connection))
+        using (var reader = await cmd.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                int id = reader.GetInt32(0);
+                if (DateTime.TryParse(reader.GetString(1), out var inicio))
+                {
+                    huerfanas.Add((id, inicio));
+                }
+            }
+        }
+
+        foreach (var (id, inicio) in huerfanas)
+        {
+            // Se asume como fin 5 minutos tras el inicio o hasta la última actividad
+            var finEstimado = inicio.AddMinutes(5);
+            var updateQuery = @"
+                UPDATE OfflineSesionesQueue
+                SET FechaHoraFin = @FechaHoraFin,
+                    DuracionMinutos = 5,
+                    TipoCierre = 7, -- ApagadoForzado
+                    EstadoSync = 'Pendiente'
+                WHERE Id = @Id;";
+
+            using var updateCmd = new SqliteCommand(updateQuery, connection);
+            updateCmd.Parameters.AddWithValue("@Id", id);
+            updateCmd.Parameters.AddWithValue("@FechaHoraFin", finEstimado.ToString("o"));
+            await updateCmd.ExecuteNonQueryAsync();
+        }
+    }
 }

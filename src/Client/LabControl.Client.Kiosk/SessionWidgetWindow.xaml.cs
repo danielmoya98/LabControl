@@ -1,72 +1,69 @@
+using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using LabControl.Client.Kiosk.Services;
 
 namespace LabControl.Client.Kiosk;
 
 public partial class SessionWidgetWindow : Window
 {
-    private readonly DispatcherTimer _timer;
+    private readonly Action<int> _onCerrarCallback; // int: 1 = Manual, 2 = FinPeriodo, 3 = AdminRemoto, 4 = Inactividad
+    private DispatcherTimer? _countdownTimer;
     private TimeSpan _tiempoRestante;
-    private readonly Action<int> _onCerrarCallback; // int: 1 = Manual, 2 = FinPeriodo
 
     public SessionWidgetWindow(string emailEstudiante, string aulaNombre, int minutosLimite, Action<int> onCerrarCallback)
     {
         InitializeComponent();
 
         _onCerrarCallback = onCerrarCallback;
-        _tiempoRestante = TimeSpan.FromMinutes(minutosLimite);
 
         TxtEmailEstudiante.Text = emailEstudiante;
-        TxtDetalleAula.Text = $"{aulaNombre} | Activo";
-        ActualizarTextoContador();
+        TxtDetalleAula.Text = $"{aulaNombre} | Terminal Activa";
 
-        // Posicionar en la esquina superior derecha
+        _tiempoRestante = TimeSpan.FromMinutes(minutosLimite > 0 ? minutosLimite : 90);
+        ActualizarTextoTiempo();
+        IniciarTimer();
+
+        // Posicionar en la esquina superior derecha de la pantalla principal
         Left = SystemParameters.WorkArea.Right - Width - 25;
         Top = 25;
+    }
 
-        // Configurar timer a 1 segundo
-        _timer = new DispatcherTimer
+    private void OnWindowLoaded(object sender, RoutedEventArgs e)
+    {
+        // Activar desenfoque acrílico esmerilado detrás de la ventana con tinte oscuro y acento sutil
+        WindowBlurHelper.EnableBlur(this, alpha: 170, r: 16, g: 22, b: 32);
+    }
+
+    private void IniciarTimer()
+    {
+        _countdownTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(1)
         };
-        _timer.Tick += OnTimerTick;
-        _timer.Start();
+        _countdownTimer.Tick += (s, e) =>
+        {
+            if (_tiempoRestante.TotalSeconds > 0)
+            {
+                _tiempoRestante = _tiempoRestante.Subtract(TimeSpan.FromSeconds(1));
+                ActualizarTextoTiempo();
+            }
+            else
+            {
+                _countdownTimer.Stop();
+                CerrarYNotificar(2); // 2 = FinPeriodo
+            }
+        };
+        _countdownTimer.Start();
     }
 
-    private void OnTimerTick(object? sender, EventArgs e)
+    private void ActualizarTextoTiempo()
     {
-        if (_tiempoRestante.TotalSeconds > 0)
-        {
-            _tiempoRestante = _tiempoRestante.Subtract(TimeSpan.FromSeconds(1));
-            ActualizarTextoContador();
-
-            // Advertencias visuales según tiempo restante
-            if (_tiempoRestante.TotalMinutes <= 1)
-            {
-                TxtContador.Foreground = System.Windows.Media.Brushes.Red;
-            }
-            else if (_tiempoRestante.TotalMinutes <= 5)
-            {
-                TxtContador.Foreground = System.Windows.Media.Brushes.Orange;
-            }
-            else if (_tiempoRestante.TotalMinutes <= 10)
-            {
-                TxtContador.Foreground = System.Windows.Media.Brushes.Yellow;
-            }
-        }
-        else
-        {
-            _timer.Stop();
-            MessageBox.Show("⏰ El tiempo de uso asignado ha concluido. La terminal se bloqueará automáticamente.",
-                "Fin de Sesión", MessageBoxButton.OK, MessageBoxImage.Warning);
-            CerrarYNotificar(2); // 2 = FinPeriodo
-        }
-    }
-
-    private void ActualizarTextoContador()
-    {
-        TxtContador.Text = _tiempoRestante.ToString(@"hh\:mm\:ss");
+        TxtTiempoRestante.Text = _tiempoRestante.Hours > 0
+            ? _tiempoRestante.ToString(@"hh\:mm\:ss")
+            : _tiempoRestante.ToString(@"mm\:ss");
     }
 
     private void OnBorderMouseDown(object sender, MouseButtonEventArgs e)
@@ -85,7 +82,6 @@ public partial class SessionWidgetWindow : Window
 
         if (result == MessageBoxResult.Yes)
         {
-            _timer.Stop();
             CerrarYNotificar(1); // 1 = Manual
         }
     }
@@ -93,42 +89,68 @@ public partial class SessionWidgetWindow : Window
     private void OnFinalizarYApagarClick(object sender, RoutedEventArgs e)
     {
         var result = MessageBox.Show(
-            "¿Desea finalizar su uso y apagar el equipo físico ahora?\n\nAl confirmar, su sesión se cerrará y la computadora se apagará para optimizar el consumo de energía.",
+            "¿Desea finalizar su uso y apagar el equipo físico ahora?\n\nAl confirmar, su sesión se cerrará y la computadora se apagará para optimizar el consumo de energía del campus.",
             "Finalizar Clase y Apagar", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
         if (result == MessageBoxResult.Yes)
         {
-            _timer.Stop();
             CerrarYNotificar(1); // 1 = Manual
 
             try
             {
-                var psi = new System.Diagnostics.ProcessStartInfo("shutdown.exe", "/s /t 2 /f")
+                Process.Start(new ProcessStartInfo
                 {
+                    FileName = "shutdown.exe",
+                    Arguments = "/s /t 2 /f",
                     CreateNoWindow = true,
                     UseShellExecute = false
-                };
-                System.Diagnostics.Process.Start(psi);
+                });
             }
             catch
             {
-                // Fallback
+                // Silencioso
             }
         }
     }
 
     public void CerrarPorComandoRemoto()
     {
-        _timer.Stop();
         Dispatcher.Invoke(() =>
         {
-            CerrarYNotificar(5); // 5 = AdminRemoto
+            CerrarYNotificar(3); // 3 = AdminRemoto
         });
     }
 
-    private void CerrarYNotificar(int tipoCierre)
+    public void CerrarPorInactividad(bool apagar)
     {
-        _onCerrarCallback.Invoke(tipoCierre);
-        Close();
+        Dispatcher.Invoke(() =>
+        {
+            CerrarYNotificar(4); // 4 = Inactividad
+
+            if (apagar)
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "shutdown.exe",
+                        Arguments = "/s /t 2 /f",
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    });
+                }
+                catch
+                {
+                    // Silencioso
+                }
+            }
+        });
+    }
+
+    private void CerrarYNotificar(int motivoCierre)
+    {
+        _countdownTimer?.Stop();
+        this.Close();
+        _onCerrarCallback?.Invoke(motivoCierre);
     }
 }

@@ -1,9 +1,10 @@
-﻿using FluentValidation;
+using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using LabControl.Application.Common.Interfaces;
 using LabControl.Application.Features.Aulas.Commands.CreateAula;
 using LabControl.Domain.Common;
+using LabControl.Domain.Enums;
 
 namespace LabControl.Application.Features.Aulas.Commands.UpdateAula;
 
@@ -11,8 +12,12 @@ public record UpdateAulaCommand(
     int Id,
     string Nombre,
     int Capacidad,
-    string? Pabellon,
-    bool Activo = true
+    string? Pabellon = null,
+    bool Activo = true,
+    int MinutosInactividad = 15,
+    TipoAccionInactividad AccionInactividad = TipoAccionInactividad.ApagarEquipo,
+    int? BloqueId = null,
+    string? Piso = null
 ) : IRequest<Result<AulaDto>>;
 
 public class UpdateAulaCommandValidator : AbstractValidator<UpdateAulaCommand>
@@ -38,6 +43,7 @@ public class UpdateAulaCommandHandler : IRequestHandler<UpdateAulaCommand, Resul
     {
         var aula = await _context.Aulas
             .Include(a => a.Computadoras)
+            .Include(a => a.Bloque)
             .FirstOrDefaultAsync(a => a.Id == request.Id, cancellationToken);
 
         if (aula == null)
@@ -45,7 +51,7 @@ public class UpdateAulaCommandHandler : IRequestHandler<UpdateAulaCommand, Resul
             return Result<AulaDto>.Failure(Error.NotFound("Aula.NotFound", $"No se encontró el aula con ID {request.Id}."));
         }
 
-        // Verificar si ya existe otra aula con el mismo nombre
+        // Verificar si ya existe otra aula con el mismo nombre en el mismo bloque
         var nombreExiste = await _context.Aulas
             .AnyAsync(a => a.Id != request.Id && a.Nombre.ToLower() == request.Nombre.Trim().ToLower(), cancellationToken);
 
@@ -54,7 +60,16 @@ public class UpdateAulaCommandHandler : IRequestHandler<UpdateAulaCommand, Resul
             return Result<AulaDto>.Failure(Error.Conflict("Aula.DuplicateName", $"Ya existe otra aula con el nombre '{request.Nombre}'."));
         }
 
-        aula.Update(request.Nombre, request.Capacidad, request.Pabellon);
+        aula.Update(
+            request.Nombre, 
+            request.Capacidad, 
+            request.Pabellon, 
+            request.MinutosInactividad, 
+            request.AccionInactividad,
+            request.BloqueId,
+            request.Piso
+        );
+
         if (request.Activo)
         {
             aula.Activar();
@@ -66,13 +81,25 @@ public class UpdateAulaCommandHandler : IRequestHandler<UpdateAulaCommand, Resul
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        string? bloqueNombre = aula.Bloque?.Nombre;
+        if (string.IsNullOrEmpty(bloqueNombre) && aula.BloqueId.HasValue)
+        {
+            var b = await _context.Bloques.FindAsync([aula.BloqueId.Value], cancellationToken);
+            bloqueNombre = b?.Nombre;
+        }
+
         return Result<AulaDto>.Success(new AulaDto(
             aula.Id,
             aula.Nombre,
             aula.Capacidad,
             aula.Pabellon,
             aula.Activo,
-            aula.Computadoras.Count
+            aula.Computadoras.Count,
+            aula.MinutosInactividadMaximo,
+            aula.AccionInactividad,
+            aula.BloqueId,
+            bloqueNombre,
+            aula.Piso
         ));
     }
 }

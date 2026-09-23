@@ -6,5 +6,7 @@ public enum TipoCierreSesion
     FinPeriodo = 2,
     Recreo = 3,
     RelevoForzado = 4,
-    AdminRemoto = 5
+    AdminRemoto = 5,
+    Inactividad = 6,
+    ApagadoForzado = 7
 }

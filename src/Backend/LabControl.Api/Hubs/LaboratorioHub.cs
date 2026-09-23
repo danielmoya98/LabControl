@@ -97,4 +97,15 @@ public class LaboratorioHub : Hub<ILaboratorioClient>
             await Clients.Group("PanelesAdmin").RecibirTelemetria(pc.Id, pc.Hostname, cpuUso, ramUso, discoLibreGb);
         }
     }
+
+    public async Task EnviarMiniaturaPantalla(string hostname, string imagenBase64)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+
+        var pc = await context.Computadoras.FirstOrDefaultAsync(c => c.Hostname.ToLower() == hostname.ToLower());
+        int pcId = pc?.Id ?? 0;
+
+        await Clients.Group("PanelesAdmin").RecibirMiniaturaPantalla(pcId, hostname, imagenBase64);
+    }
 }

@@ -30,7 +30,7 @@ public class LoginStudentCommandValidator : AbstractValidator<LoginStudentComman
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("El correo es requerido.")
             .Must(email => EmailInstitucional.Create(email).IsSuccess)
-            .WithMessage("Acceso restringido: Ingrese un correo @est.univalle.edu válido.");
+            .WithMessage("Acceso restringido: Ingrese un correo institucional válido (@est.univalle.edu o @univalle.edu).");
 
         RuleFor(x => x.Hostname)
             .NotEmpty().WithMessage("El hostname de la terminal es requerido.");

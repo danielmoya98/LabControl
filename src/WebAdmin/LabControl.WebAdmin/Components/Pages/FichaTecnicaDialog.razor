@@ -15,13 +15,13 @@
         <MudGrid Spacing="2">
             <!-- Procesador -->
             <MudItem xs="12" md="6">
-                <MudPaper Elevation="2" Class="pa-3 rounded-lg d-flex align-center" Style="background: #1e293b;">
+                <MudPaper Elevation="0" Class="pa-3 rounded-xl d-flex align-center saas-card">
                     <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Class="mr-3">
                         <MudIcon Icon="@Icons.Material.Filled.DeveloperBoard" />
                     </MudAvatar>
                     <div style="overflow: hidden;" title="@(Pc.CpuModelo ?? "No reportado")">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">PROCESADOR (CPU)</MudText>
-                        <MudText Typo="Typo.body2" Class="font-weight-bold text-truncate">
+                        <span class="kpi-title">PROCESADOR (CPU)</span>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold text-truncate mt-1">
                             @(string.IsNullOrWhiteSpace(Pc.CpuModelo) ? "Pendiente de reporte" : Pc.CpuModelo)
                         </MudText>
                     </div>
@@ -30,13 +30,13 @@
 
             <!-- Memoria RAM -->
             <MudItem xs="12" md="6">
-                <MudPaper Elevation="2" Class="pa-3 rounded-lg d-flex align-center" Style="background: #1e293b;">
+                <MudPaper Elevation="0" Class="pa-3 rounded-xl d-flex align-center saas-card">
                     <MudAvatar Color="Color.Tertiary" Variant="Variant.Filled" Class="mr-3">
                         <MudIcon Icon="@Icons.Material.Filled.Memory" />
                     </MudAvatar>
                     <div>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">MEMORIA RAM INSTALADA</MudText>
-                        <MudText Typo="Typo.body2" Class="font-weight-bold">
+                        <span class="kpi-title">MEMORIA RAM INSTALADA</span>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold mt-1">
                             @(Pc.RamTotalGb.HasValue && Pc.RamTotalGb > 0 ? $"{Pc.RamTotalGb.Value} GB RAM Física" : "Pendiente")
                         </MudText>
                     </div>
@@ -45,7 +45,7 @@
 
             <!-- Almacenamiento C: -->
             <MudItem xs="12">
-                <MudPaper Elevation="2" Class="pa-3 rounded-lg" Style="background: #1e293b;">
+                <MudPaper Elevation="0" Class="pa-3 rounded-xl saas-card">
                     <div class="d-flex justify-space-between align-center mb-1">
                         <div class="d-flex align-center">
                             <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Info" Class="mr-2" />
@@ -79,13 +79,13 @@
 
             <!-- Sistema Operativo & Uptime -->
             <MudItem xs="12" md="6">
-                <MudPaper Elevation="2" Class="pa-3 rounded-lg d-flex align-center" Style="background: #1e293b;">
+                <MudPaper Elevation="0" Class="pa-3 rounded-xl d-flex align-center saas-card">
                     <MudAvatar Color="Color.Secondary" Variant="Variant.Filled" Class="mr-3">
                         <MudIcon Icon="@Icons.Material.Filled.LaptopWindows" />
                     </MudAvatar>
                     <div style="overflow: hidden;" title="@(Pc.SistemaOperativo ?? "Windows")">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">SISTEMA OPERATIVO</MudText>
-                        <MudText Typo="Typo.body2" Class="font-weight-bold text-truncate">
+                        <span class="kpi-title">SISTEMA OPERATIVO</span>
+                        <MudText Typo="Typo.body2" Class="font-weight-bold text-truncate mt-1">
                             @(string.IsNullOrWhiteSpace(Pc.SistemaOperativo) ? "Microsoft Windows" : Pc.SistemaOperativo)
                         </MudText>
                     </div>
@@ -93,12 +93,12 @@
             </MudItem>
 
             <MudItem xs="12" md="6">
-                <MudPaper Elevation="2" Class="pa-3 rounded-lg d-flex align-center" Style="background: #1e293b;">
+                <MudPaper Elevation="0" Class="pa-3 rounded-xl d-flex align-center saas-card">
                     <MudAvatar Color="@(Pc.UptimeHoras.GetValueOrDefault(0) > 12 ? Color.Warning : Color.Success)" Variant="Variant.Filled" Class="mr-3">
                         <MudIcon Icon="@Icons.Material.Filled.Timer" />
                     </MudAvatar>
                     <div>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">TIEMPO ENCENDIDO (UPTIME)</MudText>
+                        <span class="kpi-title">TIEMPO ENCENDIDO (UPTIME)</span>
                         <MudText Typo="Typo.body2" Class="font-weight-bold">
                             @if (Pc.UptimeHoras.HasValue)
                             {

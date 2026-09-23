@@ -10,6 +10,7 @@ public class SignalRClientService : IAsyncDisposable
 
     public event Action<int, string, EstadoComputadora, string?>? OnEstadoComputadoraCambiado;
     public event Action<int, string, int, int, int>? OnTelemetriaRecibida;
+    public event Action<int, string, string>? OnMiniaturaPantallaRecibida;
 
     public async Task StartAsync(string hubUrl)
     {
@@ -32,6 +33,13 @@ public class SignalRClientService : IAsyncDisposable
             (computadoraId, hostname, cpuUso, ramUso, discoLibreGb) =>
             {
                 OnTelemetriaRecibida?.Invoke(computadoraId, hostname, cpuUso, ramUso, discoLibreGb);
+            });
+
+        _hubConnection.On<int, string, string>(
+            "RecibirMiniaturaPantalla",
+            (computadoraId, hostname, imagenBase64) =>
+            {
+                OnMiniaturaPantallaRecibida?.Invoke(computadoraId, hostname, imagenBase64);
             });
 
         try

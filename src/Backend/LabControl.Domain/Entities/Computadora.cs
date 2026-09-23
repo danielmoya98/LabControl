@@ -8,6 +8,7 @@ public class Computadora : AggregateRoot
 {
     public int AulaId { get; private set; }
     public Aula Aula { get; private set; } = default!;
+    public int NumeroPuesto { get; private set; } = 1;
     public string Hostname { get; private set; } = default!;
     public string IpActual { get; private set; } = default!;
     public string MacAddress { get; private set; } = default!;
@@ -33,7 +34,7 @@ public class Computadora : AggregateRoot
 
     private Computadora() { } // EF Core
 
-    public static Result<Computadora> Create(int aulaId, string hostname, IpAddress ip, MacAddress mac)
+    public static Result<Computadora> Create(int aulaId, string hostname, IpAddress ip, MacAddress mac, int numeroPuesto = 1)
     {
         if (aulaId <= 0)
         {
@@ -48,6 +49,7 @@ public class Computadora : AggregateRoot
         var computadora = new Computadora
         {
             AulaId = aulaId,
+            NumeroPuesto = numeroPuesto > 0 ? numeroPuesto : 1,
             Hostname = hostname.Trim().ToUpperInvariant(),
             IpActual = ip.Value,
             MacAddress = mac.Value,
@@ -56,6 +58,15 @@ public class Computadora : AggregateRoot
         };
 
         return Result<Computadora>.Success(computadora);
+    }
+
+    public void AsignarNumeroPuesto(int numeroPuesto)
+    {
+        if (numeroPuesto > 0)
+        {
+            NumeroPuesto = numeroPuesto;
+            FechaModificacionUtc = DateTime.UtcNow;
+        }
     }
 
     public void ActualizarHeartbeat(IpAddress ip)

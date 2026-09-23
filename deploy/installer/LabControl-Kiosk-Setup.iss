@@ -1,0 +1,240 @@
+; ==============================================================================
+; LabControl Kiosk - Script de Instalación Oficial para Terminales de Laboratorio
+; Universidad del Valle (Univalle)
+; Compatible con Inno Setup 6.x
+; ==============================================================================
+
+#define MyAppName "LabControl Kiosk"
+#define MyAppVersion "1.0.0"
+#define MyAppPublisher "Universidad del Valle"
+#define MyAppURL "https://www.univalle.edu"
+#define MyAppExeName "LabControl.Client.Kiosk.exe"
+#define DefaultApiUrl "http://192.168.50.10:5256"
+#define DefaultAulaId "1"
+#define MasterTechnicianKey "AdminLab@2026"
+
+[Setup]
+; Identificador único de aplicación para evitar instalaciones duplicadas
+AppId={{8B84976A-4DC2-4FD8-BD48-F517227491C3}
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
+AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}
+AppUpdatesURL={#MyAppURL}
+
+; Ubicación por defecto en Program Files (Permite al técnico elegir otra carpeta)
+DefaultDirName={autopf}\LabControl\Kiosk
+DefaultGroupName={#MyAppName}
+DisableProgramGroupPage=yes
+
+; Configuración de salida del ejecutable Setup
+OutputDir=..\..\dist\installer
+OutputBaseFilename=LabControl_Kiosk_Setup_v1.0
+Compression=lzma2/ultra64
+SolidCompression=yes
+
+; Apariencia moderna idéntica a los estándares de Windows
+WizardStyle=modern
+WizardSizePercent=100
+DisableDirPage=no
+
+; Requerir privilegios de Administrador para proteger archivos del sistema
+PrivilegesRequired=admin
+PrivilegesRequiredOverridesAllowed=commandline
+
+; Arquitectura de 64 bits nativa
+ArchitecturesInstallIn64BitMode=x64compatible
+
+; Cierre forzado de instancias previas antes de actualizar
+CloseApplications=force
+CloseApplicationsFilter=*.exe
+
+; Desinstalador seguro
+UninstallDisplayName={#MyAppName} - Terminal de Laboratorio
+UninstallDisplayIcon={app}\{#MyAppExeName}
+
+[Languages]
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
+
+[Dirs]
+; Restricción estricta de permisos NTFS en la carpeta de instalación:
+; Administradores y SYSTEM tienen control total.
+; Usuarios estándar (estudiantes) solo tienen permiso de lectura y ejecución.
+Name: "{app}"; Permissions: users-readexec authusers-readexec admins-full system-full
+
+[Files]
+; Binarios compilados autónomos (Self-Contained win-x64)
+Source: "..\..\dist\LabControl-Kiosk-Client\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Permissions: users-readexec authusers-readexec admins-full system-full
+
+[Registry]
+; 1. Arranque automático estándar en Registro de Windows (Run)
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "LabControlKiosk"; ValueData: """{app}\{#MyAppExeName}"""; Flags: uninsdeletevalue
+
+[Run]
+; 2. Crear Tarea Programada en Task Scheduler (Arranque con máximos privilegios garantizados al encender/iniciar sesión)
+Filename: "schtasks.exe"; Parameters: "/Create /TN ""LabControlKioskStartup"" /TR """"{app}\{#MyAppExeName}"""" /SC ONLOGON /RL HIGHEST /F"; Flags: runhidden
+
+; 3. Endurecimiento de permisos NTFS (Anti-borrado y Anti-manipulación por estudiantes)
+; Otorga solo lectura y ejecución al grupo Usuarios y deniega escritura/eliminación
+Filename: "icacls.exe"; Parameters: """{app}"" /grant *S-1-5-32-545:(OI)(CI)RX /grant *S-1-5-32-544:(OI)(CI)F /grant *S-1-5-18:(OI)(CI)F /inheritance:r"; Flags: runhidden
+
+; 4. Lanzar la aplicación inmediatamente al finalizar la instalación
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+; Matar proceso si está activo antes de desinstalar
+Filename: "taskkill.exe"; Parameters: "/F /IM {#MyAppExeName}"; Flags: runhidden; RunOnceId: "KillKioskProcess"
+
+; Eliminar la Tarea Programada de arranque
+Filename: "schtasks.exe"; Parameters: "/Delete /TN ""LabControlKioskStartup"" /F"; Flags: runhidden; RunOnceId: "DelScheduledTask"
+
+; Restaurar política del Administrador de Tareas en caso de estar deshabilitado
+Filename: "reg.exe"; Parameters: "delete ""HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System"" /v DisableTaskMgr /f"; Flags: runhidden; RunOnceId: "DelTaskMgrPolicy"
+
+[Code]
+var
+  ConfigPage: TInputQueryWizardPage;
+
+// ==============================================================================
+// 1. PÁGINA PERSONALIZADA DE CONFIGURACIÓN DEL SERVIDOR Y AULA
+// ==============================================================================
+procedure InitializeWizard;
+begin
+  ConfigPage := CreateInputQueryPage(
+    wpSelectDir,
+    'Configuración de Servidor y Laboratorio',
+    'Parámetros de conexión al sistema central de Univalle',
+    'Por favor verifique la dirección del servidor API central y el código del aula asignada para este equipo:'
+  );
+
+  ConfigPage.Add('URL del Servidor Central (API):', False);
+  ConfigPage.Add('Identificador / Número de Aula:', False);
+  ConfigPage.Add('Clave de Desbloqueo Técnico:', True);
+
+  // Valores predeterminados iniciales
+  ConfigPage.Values[0] := ExpandConstant('{#DefaultApiUrl}');
+  ConfigPage.Values[1] := ExpandConstant('{#DefaultAulaId}');
+  ConfigPage.Values[2] := ExpandConstant('{#MasterTechnicianKey}');
+end;
+
+// ==============================================================================
+// 2. GENERACIÓN AUTOMÁTICA DEL ARCHIVO kiosk-config.json AL INSTALAR
+// ==============================================================================
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ConfigJson: String;
+  ConfigFilePath: String;
+  ServerUrl: String;
+  AulaIdStr: String;
+  ClaveTec: String;
+  Hostname: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    // Leer parámetros ingresados o usar los pasados por línea de comandos
+    ServerUrl := ExpandConstant('{param:APIURL|' + ConfigPage.Values[0] + '}');
+    AulaIdStr := ExpandConstant('{param:AULAID|' + ConfigPage.Values[1] + '}');
+    ClaveTec := ExpandConstant('{param:CLAVETECNICO|' + ConfigPage.Values[2] + '}');
+    Hostname := ExpandConstant('{%COMPUTERNAME}');
+
+    if Trim(ServerUrl) = '' then
+      ServerUrl := '{#DefaultApiUrl}';
+    if Trim(AulaIdStr) = '' then
+      AulaIdStr := '{#DefaultAulaId}';
+    if Trim(ClaveTec) = '' then
+      ClaveTec := '{#MasterTechnicianKey}';
+
+    // Generar JSON de configuración del Kiosk
+    ConfigJson :=
+      '{' + #13#10 +
+      '  "ApiBaseUrl": "' + ServerUrl + '",' + #13#10 +
+      '  "AulaId": ' + AulaIdStr + ',' + #13#10 +
+      '  "AulaNombre": "Aula ' + AulaIdStr + '",' + #13#10 +
+      '  "ComputadoraId": 0,' + #13#10 +
+      '  "Hostname": "' + Hostname + '",' + #13#10 +
+      '  "MacAddress": "00:00:00:00:00:00",' + #13#10 +
+      '  "ClaveTecnico": "' + ClaveTec + '"' + #13#10 +
+      '}';
+
+    ConfigFilePath := ExpandConstant('{app}\kiosk-config.json');
+    SaveStringToFile(ConfigFilePath, ConfigJson, False);
+  end;
+end;
+
+// ==============================================================================
+// 3. SEGURIDAD ANTI-SABOTAJE: DESINSTALACIÓN PROTEGIDA CON CONTRASEÑA
+// Evita que estudiantes curiosos ejecuten unins000.exe para quitar el programa.
+// ==============================================================================
+function InitializeUninstall(): Boolean;
+var
+  Form: TSetupForm;
+  Lbl: TLabel;
+  Edit: TPasswordEdit;
+  BtnOk, BtnCancel: TNewButton;
+  W: Integer;
+begin
+  Form := CreateCustomForm(ScaleX(360), ScaleY(150), False, True);
+  try
+    Form.Caption := 'Desinstalación Protegida de Laboratorio';
+
+    Lbl := TLabel.Create(Form);
+    Lbl.Parent := Form;
+    Lbl.Left := ScaleX(16);
+    Lbl.Top := ScaleY(14);
+    Lbl.Width := ScaleX(328);
+    Lbl.Caption := 'Esta acción dejará el equipo desprotegido.' + #13#10 +
+                   'Ingrese la Clave Maestra de Técnico Autorizado:';
+
+    Edit := TPasswordEdit.Create(Form);
+    Edit.Parent := Form;
+    Edit.Left := ScaleX(16);
+    Edit.Top := ScaleY(56);
+    Edit.Width := ScaleX(328);
+    Edit.Height := ScaleY(23);
+
+    BtnOk := TNewButton.Create(Form);
+    BtnOk.Parent := Form;
+    BtnOk.Caption := 'Aceptar';
+    BtnOk.Left := ScaleX(170);
+    BtnOk.Top := ScaleY(96);
+    BtnOk.Height := ScaleY(24);
+    BtnOk.ModalResult := mrOk;
+    BtnOk.Default := True;
+
+    BtnCancel := TNewButton.Create(Form);
+    BtnCancel.Parent := Form;
+    BtnCancel.Caption := 'Cancelar';
+    BtnCancel.Left := ScaleX(260);
+    BtnCancel.Top := ScaleY(96);
+    BtnCancel.Height := ScaleY(24);
+    BtnCancel.ModalResult := mrCancel;
+    BtnCancel.Cancel := True;
+
+    W := Form.CalculateButtonWidth([BtnOk.Caption, BtnCancel.Caption]);
+    BtnOk.Width := W;
+    BtnCancel.Width := W;
+
+    Form.ActiveControl := Edit;
+
+    if Form.ShowModal() = mrOk then
+    begin
+      if Edit.Text = '{#MasterTechnicianKey}' then
+      begin
+        Result := True;
+      end
+      else
+      begin
+        MsgBox('ERROR DE AUTENTICACIÓN: Clave de técnico incorrecta.' + #13#10 +
+               'La desinstalación ha sido bloqueada por seguridad.', mbCriticalError, MB_OK);
+        Result := False;
+      end;
+    end
+    else
+    begin
+      Result := False;
+    end;
+  finally
+    Form.Free();
+  end;
+end;

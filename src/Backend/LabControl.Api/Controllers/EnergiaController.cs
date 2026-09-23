@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using LabControl.Application.Common.Interfaces;
 using LabControl.Application.Features.Energia.Commands.EvaluarEquiposEncendidos;
 using LabControl.Application.Features.Energia.Queries.GetReporteEnergia;
@@ -85,5 +85,55 @@ public class EnergiaController : ApiControllerBase
         var bytes = _reporteService.GenerarReporteEnergiaCsv(incidentesExport);
         var nombreArchivo = $"Auditoria_Energia_LabControl_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
         return File(bytes, "text/csv; charset=utf-8", nombreArchivo);
+    }
+
+    [HttpGet("exportar/pdf")]
+    public async Task<IActionResult> ExportarPdf(
+        [FromQuery] DateTime? fechaInicio,
+        [FromQuery] DateTime? fechaFin,
+        [FromQuery] int? aulaId,
+        [FromQuery] string? emailEstudiante,
+        [FromServices] IReportePdfService pdfService,
+        [FromServices] IApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(new GetReporteEnergiaQuery(fechaInicio, fechaFin, aulaId, emailEstudiante), cancellationToken);
+        if (result.IsFailure) return BadRequest(new { error = result.Error.Message });
+
+        var incidentesExport = result.Value.Incidentes.Select(i => new RegistroEnergiaExportDto(
+            i.Id,
+            i.AulaNombre,
+            i.Hostname,
+            i.UltimoEstudianteEmail,
+            i.UltimoEstudianteNombre,
+            i.FechaDeteccionUtc,
+            i.HorasInactivaEncendida,
+            i.MotivoInfraccion
+        )).ToList();
+
+        var topInfractores = result.Value.TopInfractores.Select(t => new InfractorItemDto(
+            t.EstudianteEmail,
+            t.EstudianteNombre,
+            t.CantidadIncidentes,
+            t.TotalHorasDesperdiciadas
+        )).ToList();
+
+        var sede = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(context.Sedes, cancellationToken);
+        string sedeNombre = sede?.Nombre ?? "Universidad del Valle - Sede Sucre";
+
+        var pdfDto = new ReporteEnergiaPdfDto(
+            sedeNombre,
+            fechaInicio,
+            fechaFin,
+            result.Value.TotalHorasDesperdiciadas,
+            result.Value.TotalIncidentes,
+            result.Value.TotalEquiposAfectados,
+            incidentesExport,
+            topInfractores
+        );
+
+        var bytes = pdfService.GenerarReporteEnergia(pdfDto);
+        var nombreArchivo = $"Auditoria_Energia_LabControl_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+        return File(bytes, "application/pdf", nombreArchivo);
     }
 }

@@ -6,7 +6,7 @@ using LabControl.Domain.Common;
 
 namespace LabControl.Application.Features.Horarios.Queries.GetHorariosByAula;
 
-public record GetHorariosByAulaQuery(int AulaId) : IRequest<Result<List<BloqueHorarioDto>>>;
+public record GetHorariosByAulaQuery(int AulaId, int? PeriodoAcademicoId = null) : IRequest<Result<List<BloqueHorarioDto>>>;
 
 public class GetHorariosByAulaQueryHandler : IRequestHandler<GetHorariosByAulaQuery, Result<List<BloqueHorarioDto>>>
 {
@@ -19,8 +19,29 @@ public class GetHorariosByAulaQueryHandler : IRequestHandler<GetHorariosByAulaQu
 
     public async Task<Result<List<BloqueHorarioDto>>> Handle(GetHorariosByAulaQuery request, CancellationToken cancellationToken)
     {
-        var bloques = await _context.BloquesHorarios
-            .Where(b => b.AulaId == request.AulaId)
+        var query = _context.BloquesHorarios
+            .AsNoTracking()
+            .Include(b => b.Materia)
+            .Include(b => b.Docente)
+            .Include(b => b.PeriodoAcademico)
+            .Where(b => b.AulaId == request.AulaId);
+
+        if (request.PeriodoAcademicoId.HasValue && request.PeriodoAcademicoId.Value > 0)
+        {
+            query = query.Where(b => b.PeriodoAcademicoId == request.PeriodoAcademicoId.Value);
+        }
+        else
+        {
+            var periodoActivo = await _context.PeriodosAcademicos
+                .FirstOrDefaultAsync(p => p.EsActual, cancellationToken);
+
+            if (periodoActivo != null)
+            {
+                query = query.Where(b => b.PeriodoAcademicoId == periodoActivo.Id || b.PeriodoAcademicoId == null);
+            }
+        }
+
+        var bloques = await query
             .OrderBy(b => b.DiaSemana)
             .ThenBy(b => b.HoraInicio)
             .Select(b => new BloqueHorarioDto(
@@ -30,7 +51,19 @@ public class GetHorariosByAulaQueryHandler : IRequestHandler<GetHorariosByAulaQu
                 b.HoraInicio,
                 b.HoraFin,
                 b.EsRecreo,
-                b.Descripcion
+                b.Descripcion,
+                b.MateriaId,
+                b.Materia != null ? b.Materia.Sigla : null,
+                b.Materia != null ? b.Materia.Nombre : b.MateriaNombreManual,
+                b.DocenteId,
+                b.Docente != null ? b.Docente.NombreCompleto : b.DocenteNombreManual,
+                b.GrupoParalelo,
+                b.EsUsoLibre,
+                b.PeriodoAcademicoId,
+                b.PeriodoAcademico != null ? b.PeriodoAcademico.Nombre : null,
+                b.DocenteNombreManual,
+                b.DocenteEmailManual,
+                b.MateriaNombreManual
             ))
             .ToListAsync(cancellationToken);
 

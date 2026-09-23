@@ -14,7 +14,15 @@ public record CreateBloqueHorarioCommand(
     TimeSpan HoraInicio,
     TimeSpan HoraFin,
     bool EsRecreo,
-    string? Descripcion
+    string? Descripcion,
+    int? MateriaId = null,
+    int? DocenteId = null,
+    string? GrupoParalelo = null,
+    bool EsUsoLibre = false,
+    int? PeriodoAcademicoId = null,
+    string? DocenteNombreManual = null,
+    string? DocenteEmailManual = null,
+    string? MateriaNombreManual = null
 ) : IRequest<Result<BloqueHorarioDto>>;
 
 public record BloqueHorarioDto(
@@ -24,7 +32,19 @@ public record BloqueHorarioDto(
     TimeSpan HoraInicio,
     TimeSpan HoraFin,
     bool EsRecreo,
-    string? Descripcion
+    string? Descripcion,
+    int? MateriaId = null,
+    string? MateriaSigla = null,
+    string? MateriaNombre = null,
+    int? DocenteId = null,
+    string? DocenteNombre = null,
+    string? GrupoParalelo = null,
+    bool EsUsoLibre = false,
+    int? PeriodoAcademicoId = null,
+    string? PeriodoNombre = null,
+    string? DocenteNombreManual = null,
+    string? DocenteEmailManual = null,
+    string? MateriaNombreManual = null
 );
 
 public class CreateBloqueHorarioCommandValidator : AbstractValidator<CreateBloqueHorarioCommand>
@@ -47,13 +67,39 @@ public class CreateBloqueHorarioCommandHandler : IRequestHandler<CreateBloqueHor
 
     public async Task<Result<BloqueHorarioDto>> Handle(CreateBloqueHorarioCommand request, CancellationToken cancellationToken)
     {
+        int? periodoId = request.PeriodoAcademicoId;
+        string? periodoNombre = null;
+
+        if (periodoId.HasValue && periodoId.Value > 0)
+        {
+            var p = await _context.PeriodosAcademicos.FindAsync([periodoId.Value], cancellationToken);
+            periodoNombre = p?.Nombre;
+        }
+        else
+        {
+            var pActivo = await _context.PeriodosAcademicos.FirstOrDefaultAsync(p => p.EsActual, cancellationToken);
+            if (pActivo != null)
+            {
+                periodoId = pActivo.Id;
+                periodoNombre = pActivo.Nombre;
+            }
+        }
+
         var bloqueResult = BloqueHorario.Create(
             request.AulaId,
             request.DiaSemana,
             request.HoraInicio,
             request.HoraFin,
             request.EsRecreo,
-            request.Descripcion
+            request.Descripcion,
+            request.MateriaId,
+            request.DocenteId,
+            request.GrupoParalelo,
+            request.EsUsoLibre,
+            periodoId,
+            request.DocenteNombreManual,
+            request.DocenteEmailManual,
+            request.MateriaNombreManual
         );
 
         if (bloqueResult.IsFailure) return Result<BloqueHorarioDto>.Failure(bloqueResult.Error);
@@ -62,6 +108,22 @@ public class CreateBloqueHorarioCommandHandler : IRequestHandler<CreateBloqueHor
         _context.BloquesHorarios.Add(bloque);
         await _context.SaveChangesAsync(cancellationToken);
 
+        string? materiaSigla = null;
+        string? materiaNombre = bloque.MateriaNombreManual;
+        if (bloque.MateriaId.HasValue)
+        {
+            var mat = await _context.Materias.FindAsync([bloque.MateriaId.Value], cancellationToken);
+            materiaSigla = mat?.Sigla;
+            materiaNombre = mat?.Nombre ?? materiaNombre;
+        }
+
+        string? docenteNombre = bloque.DocenteNombreManual;
+        if (bloque.DocenteId.HasValue)
+        {
+            var doc = await _context.Docentes.FindAsync([bloque.DocenteId.Value], cancellationToken);
+            docenteNombre = doc?.NombreCompleto ?? docenteNombre;
+        }
+
         return Result<BloqueHorarioDto>.Success(new BloqueHorarioDto(
             bloque.Id,
             bloque.AulaId,
@@ -69,7 +131,19 @@ public class CreateBloqueHorarioCommandHandler : IRequestHandler<CreateBloqueHor
             bloque.HoraInicio,
             bloque.HoraFin,
             bloque.EsRecreo,
-            bloque.Descripcion
+            bloque.Descripcion,
+            bloque.MateriaId,
+            materiaSigla,
+            materiaNombre,
+            bloque.DocenteId,
+            docenteNombre,
+            bloque.GrupoParalelo,
+            bloque.EsUsoLibre,
+            bloque.PeriodoAcademicoId,
+            periodoNombre,
+            bloque.DocenteNombreManual,
+            bloque.DocenteEmailManual,
+            bloque.MateriaNombreManual
         ));
     }
 }

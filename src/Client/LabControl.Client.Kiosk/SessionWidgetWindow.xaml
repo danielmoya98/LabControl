@@ -1,65 +1,85 @@
 <Window x:Class="LabControl.Client.Kiosk.SessionWidgetWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Sesión Activa - Univalle LabControl"
-        Width="520" Height="78"
+        Title="Sesión Activa — Univalle LabControl"
+        Width="580" Height="64"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
         Topmost="True"
         ShowInTaskbar="False"
         ResizeMode="NoResize"
-        WindowStartupLocation="Manual">
-    <Border Background="#1E293B" CornerRadius="14" BorderBrush="#38BDF8" BorderThickness="1.5"
-            Padding="12,8" MouseDown="OnBorderMouseDown" Cursor="SizeAll">
+        WindowStartupLocation="Manual"
+        Loaded="OnWindowLoaded">
+    <Border Background="{StaticResource UnivalleGlassBackgroundBrush}" 
+            CornerRadius="18" 
+            BorderBrush="{StaticResource UnivalleGlassBorderBrush}" 
+            BorderThickness="1.2"
+            Padding="14,6" 
+            MouseDown="OnBorderMouseDown" 
+            Cursor="SizeAll">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="15" ShadowDepth="4" Opacity="0.45" Color="#000000"/>
+            <DropShadowEffect BlurRadius="28" ShadowDepth="4" Opacity="0.45" Color="#000000"/>
         </Border.Effect>
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+        <Grid VerticalAlignment="Center">
+            <!-- Bisel reflectivo superior sutil (Specular Highlight) -->
+            <Border Height="1" VerticalAlignment="Top" Background="#33FFFFFF" Margin="10,0,10,0" CornerRadius="1" Focusable="False"/>
 
-            <!-- Icono y Contador -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
-                <TextBlock Text="⏱️" FontSize="18" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <TextBlock x:Name="TxtContador" Text="01:30:00" FontSize="18" FontWeight="Bold"
-                           FontFamily="Consolas, Segoe UI" Foreground="#38BDF8" VerticalAlignment="Center"/>
-            </StackPanel>
+            <Grid VerticalAlignment="Center" Margin="0,2,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-            <!-- Información Estudiante / Aula -->
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
-                <TextBlock x:Name="TxtEmailEstudiante" Text="estudiante@est.univalle.edu"
-                           FontSize="11" FontWeight="SemiBold" Foreground="#F1F5F9"
-                           TextTrimming="CharacterEllipsis"/>
-                <TextBlock x:Name="TxtDetalleAula" Text="Aula 302 | Sesión Activa"
-                           FontSize="10" Foreground="#94A3B8" Margin="0,2,0,0"/>
-            </StackPanel>
+                <!-- Miniatura Sello Univalle -->
+                <Image Grid.Column="0" 
+                       Source="pack://application:,,,/Assets/logo_univalle.png" 
+                       Width="26" Height="26" 
+                       Margin="0,0,10,0" 
+                       VerticalAlignment="Center" 
+                       RenderOptions.BitmapScalingMode="HighQuality" />
 
-            <!-- Acciones: Cambiar Usuario & Finalizar y Apagar -->
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button Content="Cambiar Usuario" Click="OnCerrarSesionClick"
-                        Height="32" Padding="8,0" Background="#334155" Foreground="#E2E8F0"
-                        FontSize="10" FontWeight="SemiBold" Cursor="Hand" Margin="0,0,6,0">
-                    <Button.Resources>
-                        <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="6"/>
-                        </Style>
-                    </Button.Resources>
-                </Button>
+                <!-- Badge de Estado En Uso Vidrio Esmeralda -->
+                <Border Grid.Column="1" Background="#33064E3B" BorderBrush="#5510B981" BorderThickness="1" 
+                        CornerRadius="12" Padding="8,3" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="7" Height="7" Fill="#34D399" Margin="0,0,5,0"/>
+                        <TextBlock Text="EN USO" FontSize="10" FontWeight="Bold" Foreground="#6EE7B7"/>
+                    </StackPanel>
+                </Border>
 
-                <Button Content="⏻ Finalizar y Apagar" Click="OnFinalizarYApagarClick"
-                        Height="32" Padding="10,0" Background="#DC2626" Foreground="#FFFFFF"
-                        FontSize="11" FontWeight="Bold" Cursor="Hand">
-                    <Button.Resources>
-                        <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="6"/>
-                        </Style>
-                    </Button.Resources>
-                </Button>
-            </StackPanel>
+                <!-- Información Estudiante / Aula -->
+                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock x:Name="TxtEmailEstudiante" Text="estudiante@est.univalle.edu"
+                               FontSize="12" FontWeight="Bold" Foreground="#F8FAFC"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock x:Name="TxtDetalleAula" Text="Laboratorio 1 | Terminal Activa"
+                               FontSize="10" Foreground="#CBD5E1" Margin="0,1,0,0"/>
+                </StackPanel>
+
+                <!-- Temporizador Flotante de la Sesión -->
+                <Border Grid.Column="3" Background="#339E0044" BorderBrush="#55BE123C" BorderThickness="1" 
+                        CornerRadius="10" Padding="8,4" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="⏱️" FontSize="10" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="TxtTiempoRestante" Text="01:30:00" FontSize="11" FontWeight="Bold" Foreground="#FDA4AF" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Acciones Acrílicas: Cambiar Usuario & Finalizar y Apagar -->
+                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="Cambiar Usuario" Click="OnCerrarSesionClick"
+                            Height="32" Padding="12,0" Style="{StaticResource UnivalleGlassOutlineButton}"
+                            FontSize="11" Margin="0,0,6,0" />
+
+                    <Button Content="⏻ Finalizar y Apagar" Click="OnFinalizarYApagarClick"
+                            Height="32" Padding="12,0" Style="{StaticResource UnivalleGlassDangerButton}"
+                            FontSize="11" />
+                </StackPanel>
+            </Grid>
         </Grid>
     </Border>
 </Window>

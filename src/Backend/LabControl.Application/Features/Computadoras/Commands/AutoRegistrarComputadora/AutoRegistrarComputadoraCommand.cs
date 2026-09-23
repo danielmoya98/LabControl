@@ -28,7 +28,9 @@ public record AutoRegistroResultadoDto(
     string Hostname,
     string IpActual,
     string MacAddress,
-    string EstadoActual
+    string EstadoActual,
+    int MinutosInactividadMaximo = 15,
+    int AccionInactividad = 0
 );
 
 public class AutoRegistrarComputadoraCommandValidator : AbstractValidator<AutoRegistrarComputadoraCommand>
@@ -108,13 +110,19 @@ public class AutoRegistrarComputadoraCommandHandler : IRequestHandler<AutoRegist
             cancellationToken
         );
 
+        var aula = await _context.Aulas.FindAsync(new object[] { computadora.AulaId }, cancellationToken);
+        int minutosInactividad = aula?.MinutosInactividadMaximo ?? 15;
+        int accionInactividad = (int)(aula?.AccionInactividad ?? TipoAccionInactividad.ApagarEquipo);
+
         return Result<AutoRegistroResultadoDto>.Success(new AutoRegistroResultadoDto(
             computadora.Id,
             computadora.AulaId,
             computadora.Hostname,
             computadora.IpActual,
             computadora.MacAddress,
-            computadora.EstadoActual.ToString()
+            computadora.EstadoActual.ToString(),
+            minutosInactividad,
+            accionInactividad
         ));
     }
 }

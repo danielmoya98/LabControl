@@ -1,4 +1,4 @@
-﻿<Window x:Class="LabControl.Client.Kiosk.SecondaryMonitorBlockerWindow"
+<Window x:Class="LabControl.Client.Kiosk.SecondaryMonitorBlockerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Terminal Bloqueada — Pantalla Secundaria"
@@ -11,22 +11,51 @@
         PreviewKeyDown="OnPreviewKeyDown"
         MouseDown="OnMouseDown">
     <Grid>
-        <!-- Fondo Decorativo -->
-        <Border Margin="0" Background="#090D16">
+        <!-- Fondo Decorativo con resplandor Univalle -->
+        <Border Margin="0">
+            <Border.Background>
+                <RadialGradientBrush Center="0.5,0.4" GradientOrigin="0.5,0.4" RadiusX="0.65" RadiusY="0.65">
+                    <GradientStop Color="#280A16" Offset="0.0" />
+                    <GradientStop Color="#14070E" Offset="0.55" />
+                    <GradientStop Color="#090B0E" Offset="1.0" />
+                </RadialGradientBrush>
+            </Border.Background>
             <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
                 <!-- Tarjeta Glassmorphic -->
-                <Border Width="480" Padding="40" Background="#1E293B" CornerRadius="20" BorderBrush="#334155" BorderThickness="1">
+                <Border Width="480" Padding="35,30" Background="{StaticResource UnivalleCardBgBrush}" CornerRadius="20" BorderBrush="{StaticResource UnivalleCardBorderBrush}" BorderThickness="1">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="30" ShadowDepth="4" Opacity="0.55" Color="#000000"/>
+                    </Border.Effect>
                     <StackPanel HorizontalAlignment="Center">
-                        <!-- Logo e Icono -->
-                        <TextBlock Text="🔒 TERMINAL BLOQUEADA" FontSize="14" FontWeight="Bold" Foreground="#38BDF8" HorizontalAlignment="Center"/>
-                        <TextBlock Text="Pantalla Secundaria" FontSize="26" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" Margin="0,6,0,0"/>
-                        <TextBlock Text="Universidad del Valle — Control de Laboratorios" FontSize="13" Foreground="#94A3B8" HorizontalAlignment="Center" Margin="0,4,0,25"/>
+                        <!-- Logo Univalle Oficial -->
+                        <Image Source="pack://application:,,,/Assets/logo_univalle.png" 
+                               Width="64" Height="64" 
+                               HorizontalAlignment="Center" 
+                               Margin="0,0,0,10" 
+                               RenderOptions.BitmapScalingMode="HighQuality" />
 
-                        <Border Background="#0F172A" CornerRadius="12" Padding="20" BorderBrush="#334155" BorderThickness="1">
+                        <!-- Píldora de Estado -->
+                        <Border Background="{StaticResource UnivallePillBgBrush}" 
+                                BorderBrush="{StaticResource UnivallePillBorderBrush}" 
+                                BorderThickness="1" 
+                                CornerRadius="12" 
+                                Padding="10,3" 
+                                HorizontalAlignment="Center" 
+                                Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔒 " FontSize="10" VerticalAlignment="Center"/>
+                                <TextBlock Text="TERMINAL BLOQUEADA" FontSize="10" FontWeight="Bold" Foreground="{StaticResource UnivallePillTextBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Pantalla Secundaria" FontSize="24" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Universidad del Valle — Control de Laboratorios" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource UnivalleGuindoHoverBrush}" HorizontalAlignment="Center" Margin="0,2,0,20"/>
+
+                        <Border Background="#0F172A" CornerRadius="12" Padding="20" BorderBrush="{StaticResource UnivalleCardBorderBrush}" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Text="🖥️ Inicie sesión en la pantalla principal" FontSize="15" FontWeight="SemiBold" Foreground="#E2E8F0" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                <TextBlock Text="🖥️ Inicie sesión en la pantalla principal" FontSize="14" FontWeight="Bold" Foreground="#E2E8F0" HorizontalAlignment="Center" Margin="0,0,0,8"/>
                                 <TextBlock Text="El formulario de acceso del estudiante y las herramientas del laboratorio se encuentran activos en el monitor principal." 
-                                           FontSize="13" Foreground="#94A3B8" TextWrapping="Wrap" TextAlignment="Center"/>
+                                           FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" TextAlignment="Center" LineHeight="18"/>
                             </StackPanel>
                         </Border>
 

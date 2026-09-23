@@ -20,4 +20,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0-preview.1.25077.9" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Resource Include="Assets\**\*" />
+  </ItemGroup>
+
 </Project>

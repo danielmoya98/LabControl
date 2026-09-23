@@ -1,0 +1,430 @@
+@page "/materias"
+@using Microsoft.AspNetCore.Components.Web
+@using LabControl.Application.Features.Materias.Queries.GetMaterias
+@using LabControl.WebAdmin.Services
+@inject LabApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Gestión de Materias — Control de Laboratorios</PageTitle>
+
+<!-- Cabecera de Página -->
+<div class="d-flex flex-wrap justify-space-between align-center gap-4 mb-5">
+    <div>
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-lg d-flex align-center justify-center" style="background: rgba(158, 0, 68, 0.1); width: 38px; height: 38px;">
+                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Primary" Size="Size.Small" />
+            </div>
+            <MudText Typo="Typo.h5" Class="font-weight-bold" Style="font-size: 1.35rem; letter-spacing: -0.02em;">
+                Catálogo de Materias y Asignaturas
+            </MudText>
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1" Style="font-size: 0.85rem;">
+            Administra las materias académicas y carreras asignadas a los laboratorios de cómputo
+        </MudText>
+    </div>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog"
+               Class="rounded-lg px-4 font-weight-bold"
+               Style="box-shadow: 0 2px 8px rgba(158, 0, 68, 0.25); text-transform: none;">
+        Nueva Materia
+    </MudButton>
+</div>
+
+<!-- Barra Exterior de Filtros & Búsqueda -->
+<MudPaper Elevation="0" Outlined="true" Class="pa-3 mb-4 rounded-lg d-flex flex-wrap align-center justify-space-between gap-3"
+          Style="background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default);">
+    <div class="d-flex flex-wrap align-center gap-3" style="flex: 1;">
+        <!-- Buscador en tiempo real -->
+        <MudTextField T="string"
+                      @bind-Value="TextoBusqueda"
+                      Immediate="true"
+                      Placeholder="Buscar por sigla, nombre o carrera..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.Search"
+                      Clearable="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="min-width: 280px; max-width: 360px;" />
+
+        <!-- Filtro por Carrera -->
+        @if (ListaCarreras.Count > 0)
+        {
+            <MudSelect T="string"
+                       @bind-Value="CarreraFiltro"
+                       Label="Carrera / Programa"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       AnchorOrigin="Origin.BottomLeft"
+                       TransformOrigin="Origin.TopLeft"
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Outlined.School"
+                       Style="min-width: 200px;">
+                <MudSelectItem T="string" Value="@((string?)null)">Todas las Carreras</MudSelectItem>
+                @foreach (var c in ListaCarreras)
+                {
+                    <MudSelectItem T="string" Value="@c">@c</MudSelectItem>
+                }
+            </MudSelect>
+        }
+
+        <!-- Filtro por Estado -->
+        <MudSelect T="bool?"
+                   @bind-Value="EstadoFiltro"
+                   Label="Estado"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Outlined.ToggleOn"
+                   Style="min-width: 160px;">
+            <MudSelectItem T="bool?" Value="@((bool?)null)">Todos</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@((bool?)true)">🟢 Activas</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@((bool?)false)">🔴 Inactivas</MudSelectItem>
+        </MudSelect>
+
+        @if (HasActiveFilters)
+        {
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Outlined.FilterAltOff"
+                       OnClick="LimpiarFiltros"
+                       Size="Size.Small"
+                       Style="text-transform: none; font-size: 0.8rem;">
+                Limpiar filtros
+            </MudButton>
+        }
+    </div>
+</MudPaper>
+
+<!-- Modal Centrado para Crear / Editar Materia -->
+<MudDialog @bind-Visible="MostrarModal" Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.MenuBook)" Color="Color.Primary" />
+            <MudText Typo="Typo.h6" Class="font-weight-bold">
+                @(IsEditMode ? $"Editar Materia: {NuevaSigla}" : "Registrar Nueva Materia")
+            </MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(MensajeError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">@MensajeError</MudAlert>
+        }
+
+        <EditForm Model="this" OnValidSubmit="GuardarMateriaAsync">
+            <MudGrid Spacing="3" Class="pt-2">
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="NuevaSigla" Label="Sigla" Variant="Variant.Outlined" Required="true"
+                                  Placeholder="Ej: SIS-211" FullWidth="true" Margin="Margin.Dense"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Tag" />
+                </MudItem>
+                <MudItem xs="12" sm="8">
+                    <MudTextField @bind-Value="NuevoNombre" Label="Nombre de la Materia" Variant="Variant.Outlined" Required="true"
+                                  Placeholder="Ej: Sistemas Operativos I" FullWidth="true" Margin="Margin.Dense"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Book" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="NuevaCarrera" Label="Carrera / Facultad" Variant="Variant.Outlined"
+                                  Placeholder="Ej: Ingeniería de Sistemas" FullWidth="true" Margin="Margin.Dense"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.School" />
+                </MudItem>
+                @if (IsEditMode)
+                {
+                    <MudItem xs="12">
+                        <MudSwitch @bind-Value="NuevoActivo" Label="Materia Activa en el Sistema" Color="Color.Success" />
+                    </MudItem>
+                }
+            </MudGrid>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDialog" Class="rounded-lg" Style="text-transform: none;">
+            Cancelar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="GuardarMateriaAsync" Class="rounded-lg font-weight-bold" Style="text-transform: none;">
+            @(IsSaving ? "Guardando..." : (IsEditMode ? "Actualizar Materia" : "Registrar Materia"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Tabla de Materias -->
+<MudTable Items="@MateriasFiltradas"
+          Hover="true"
+          Breakpoint="Breakpoint.Sm"
+          Loading="@IsLoading"
+          LoadingProgressColor="Color.Primary"
+          Elevation="0"
+          Outlined="true"
+          Class="rounded-lg saas-card"
+          Style="border: 1px solid var(--mud-palette-lines-default);">
+
+    <HeaderContent>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Sigla</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Nombre de la Asignatura</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Carrera / Programa</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase; text-align: center;">Estado</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase; text-align: right;">Acciones</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Sigla">
+            <span class="badge-soft-guindo font-weight-bold" style="font-size: 0.8rem; font-family: monospace;">
+                @context.Sigla
+            </span>
+        </MudTd>
+        <MudTd DataLabel="Nombre">
+            <MudText Typo="Typo.body2" Class="font-weight-bold">@context.Nombre</MudText>
+        </MudTd>
+        <MudTd DataLabel="Carrera">
+            <div class="d-flex align-center gap-1">
+                <MudIcon Icon="@Icons.Material.Outlined.School" Size="Size.Small" Color="Color.Secondary" Style="font-size: 1rem;" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @(string.IsNullOrWhiteSpace(context.Carrera) ? "Tronco Común / Sin Carrera" : context.Carrera)
+                </MudText>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Estado" Style="text-align: center;">
+            @if (context.Activo)
+            {
+                <span class="badge-soft-success font-weight-bold" style="font-size: 0.75rem;">🟢 Activa</span>
+            }
+            else
+            {
+                <span class="badge-soft-error font-weight-bold" style="font-size: 0.75rem;">🔴 Inactiva</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Acciones" Style="text-align: right;">
+            <MudTooltip Text="Editar Materia">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               OnClick="@(() => OpenEditDialog(context))" />
+            </MudTooltip>
+            <MudTooltip Text="Eliminar Materia">
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                               Color="Color.Error"
+                               Size="Size.Small"
+                               OnClick="@(() => ConfirmarEliminarMateriaAsync(context))" />
+            </MudTooltip>
+        </MudTd>
+    </RowTemplate>
+
+    <NoRecordsContent>
+        <div class="pa-8 d-flex flex-column align-center justify-center text-center">
+            @if (HasActiveFilters)
+            {
+                <div class="pa-4 rounded-circle mb-3" style="background: rgba(148, 163, 184, 0.1);">
+                    <MudIcon Icon="@Icons.Material.Outlined.FilterAltOff" Size="Size.Large" Color="Color.Secondary" Style="font-size: 2.8rem;" />
+                </div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">No se encontraron materias</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4" Style="max-width: 420px; font-size: 0.85rem;">
+                    No existen materias que coincidan con los criterios de búsqueda o filtros seleccionados.
+                </MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.RestartAlt"
+                           OnClick="LimpiarFiltros"
+                           Class="rounded-lg">
+                    Restablecer Filtros
+                </MudButton>
+            }
+            else
+            {
+                <div class="pa-4 rounded-circle mb-3" style="background: rgba(158, 0, 68, 0.08);">
+                    <MudIcon Icon="@Icons.Material.Outlined.MenuBook" Size="Size.Large" Color="Color.Primary" Style="font-size: 3rem;" />
+                </div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">No hay materias registradas</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4" Style="max-width: 440px; font-size: 0.85rem;">
+                    Aún no se han configurado materias en el sistema. Registra la primera asignatura para asignarla a los bloques de clase en laboratorios.
+                </MudText>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="OpenCreateDialog"
+                           Class="rounded-lg px-4 font-weight-bold"
+                           Style="box-shadow: 0 2px 8px rgba(158, 0, 68, 0.25); text-transform: none;">
+                    Crear Primera Materia
+                </MudButton>
+            }
+        </div>
+    </NoRecordsContent>
+
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }"
+                       InfoFormat="{first_item}-{last_item} de {all_items}"
+                       RowsPerPageString="Filas por página:" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private List<MateriaDto> ListaMaterias = [];
+    private bool IsLoading = true;
+    private bool MostrarModal = false;
+    private bool IsSaving = false;
+    private bool IsEditMode = false;
+    private int MateriaIdSeleccionada = 0;
+    private string? MensajeError;
+
+    // Filtros
+    private string TextoBusqueda = "";
+    private string? CarreraFiltro = null;
+    private bool? EstadoFiltro = null;
+    private bool HasActiveFilters => !string.IsNullOrWhiteSpace(TextoBusqueda) || !string.IsNullOrWhiteSpace(CarreraFiltro) || EstadoFiltro != null;
+
+    // Formulario
+    private string NuevaSigla = "";
+    private string NuevoNombre = "";
+    private string? NuevaCarrera = "";
+    private bool NuevoActivo = true;
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseButton = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        Position = DialogPosition.Center
+    };
+
+    private List<string> ListaCarreras => ListaMaterias
+        .Where(m => !string.IsNullOrWhiteSpace(m.Carrera))
+        .Select(m => m.Carrera!.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(c => c)
+        .ToList();
+
+    private IEnumerable<MateriaDto> MateriasFiltradas
+    {
+        get
+        {
+            return ListaMaterias.Where(m =>
+            {
+                if (EstadoFiltro.HasValue && m.Activo != EstadoFiltro.Value)
+                    return false;
+
+                if (!string.IsNullOrWhiteSpace(CarreraFiltro) && !string.Equals(m.Carrera, CarreraFiltro, StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                if (!string.IsNullOrWhiteSpace(TextoBusqueda))
+                {
+                    var q = TextoBusqueda.Trim().ToLowerInvariant();
+                    bool match = m.Sigla.ToLowerInvariant().Contains(q) ||
+                                 m.Nombre.ToLowerInvariant().Contains(q) ||
+                                 (!string.IsNullOrEmpty(m.Carrera) && m.Carrera.ToLowerInvariant().Contains(q));
+                    if (!match) return false;
+                }
+
+                return true;
+            });
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarMateriasAsync();
+    }
+
+    private async Task CargarMateriasAsync()
+    {
+        IsLoading = true;
+        ListaMaterias = await ApiClient.GetMateriasAsync();
+        IsLoading = false;
+    }
+
+    private void LimpiarFiltros()
+    {
+        TextoBusqueda = "";
+        CarreraFiltro = null;
+        EstadoFiltro = null;
+    }
+
+    private void OpenCreateDialog()
+    {
+        IsEditMode = false;
+        MateriaIdSeleccionada = 0;
+        NuevaSigla = "";
+        NuevoNombre = "";
+        NuevaCarrera = "";
+        NuevoActivo = true;
+        MensajeError = null;
+        MostrarModal = true;
+    }
+
+    private void OpenEditDialog(MateriaDto materia)
+    {
+        IsEditMode = true;
+        MateriaIdSeleccionada = materia.Id;
+        NuevaSigla = materia.Sigla;
+        NuevoNombre = materia.Nombre;
+        NuevaCarrera = materia.Carrera;
+        NuevoActivo = materia.Activo;
+        MensajeError = null;
+        MostrarModal = true;
+    }
+
+    private void CloseDialog()
+    {
+        MostrarModal = false;
+    }
+
+    private async Task GuardarMateriaAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NuevaSigla) || string.IsNullOrWhiteSpace(NuevoNombre))
+        {
+            MensajeError = "Por favor ingrese la sigla y el nombre de la materia.";
+            return;
+        }
+
+        IsSaving = true;
+        MensajeError = null;
+
+        bool exito;
+        if (IsEditMode)
+        {
+            exito = await ApiClient.UpdateMateriaAsync(MateriaIdSeleccionada, NuevaSigla.Trim().ToUpperInvariant(), NuevoNombre.Trim(), NuevaCarrera?.Trim(), NuevoActivo);
+        }
+        else
+        {
+            exito = await ApiClient.CreateMateriaAsync(NuevaSigla.Trim().ToUpperInvariant(), NuevoNombre.Trim(), NuevaCarrera?.Trim());
+        }
+
+        if (exito)
+        {
+            Snackbar.Add(IsEditMode ? $"¡Materia '{NuevaSigla}' actualizada exitosamente!" : $"¡Materia '{NuevaSigla}' registrada exitosamente!", Severity.Success);
+            MostrarModal = false;
+            await CargarMateriasAsync();
+        }
+        else
+        {
+            MensajeError = IsEditMode ? "No se pudo actualizar la materia. Verifique que no exista otra con la misma sigla." : "No se pudo registrar la materia. Verifique que la sigla sea única.";
+        }
+
+        IsSaving = false;
+    }
+
+    private async Task ConfirmarEliminarMateriaAsync(MateriaDto materia)
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Eliminación",
+            $"¿Está seguro que desea eliminar la materia '{materia.Sigla} - {materia.Nombre}'?\nSi tiene bloques de horarios asociados, se desactivará lógicamente.",
+            yesText: "Sí, Eliminar", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            bool exito = await ApiClient.DeleteMateriaAsync(materia.Id);
+            if (exito)
+            {
+                Snackbar.Add($"Materia '{materia.Sigla}' procesada exitosamente.", Severity.Info);
+                await CargarMateriasAsync();
+            }
+            else
+            {
+                Snackbar.Add("No se pudo eliminar la materia. Verifique la conexión con el servidor.", Severity.Error);
+            }
+        }
+    }
+}

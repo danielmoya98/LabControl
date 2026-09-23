@@ -31,7 +31,10 @@ public record ComputadoraTarjetaDto(
     int? DiscoLibreGb = null,
     string? SistemaOperativo = null,
     double? UptimeHoras = null
-);
+)
+{
+    public string? MiniaturaBase64 { get; set; }
+};
 
 public class GetEstadoAulasMapaQueryHandler : IRequestHandler<GetEstadoAulasMapaQuery, Result<List<AulaEstadoDto>>>
 {

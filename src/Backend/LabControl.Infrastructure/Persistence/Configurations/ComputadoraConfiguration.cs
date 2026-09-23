@@ -12,6 +12,10 @@ public class ComputadoraConfiguration : IEntityTypeConfiguration<Computadora>
 
         builder.HasKey(c => c.Id);
 
+        builder.Property(c => c.NumeroPuesto)
+            .HasDefaultValue(1)
+            .IsRequired();
+
         builder.Property(c => c.Hostname)
             .HasMaxLength(100)
             .IsRequired();

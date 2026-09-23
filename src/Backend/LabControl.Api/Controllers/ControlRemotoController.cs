@@ -1,14 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using LabControl.Application.Common.Interfaces;
+using LabControl.Domain.Entities;
 using LabControl.Domain.Enums;
 using LabControl.Domain.ValueObjects;
+using Serilog;
 
 namespace LabControl.Api.Controllers;
 
 public record DesloguearRequest(string? Hostname, int? AulaId, TipoCierreSesion Motivo = TipoCierreSesion.AdminRemoto);
 public record EnviarMensajeRequest(string Mensaje, string? Hostname = null, int? AulaId = null);
 public record HeartbeatRequest(string Hostname, string MacAddress, string Ip);
+public record ReportarApagadoForzadoRequest(string Hostname, DateTime? FechaHoraEventoUtc, int EventId, string? Detalle, string? UltimoEmailDetectado = null);
 
 [ApiController]
 [Route("api/control")]
@@ -201,5 +204,64 @@ public class ControlRemotoController : ControllerBase
         }
 
         return Ok(new { ok = true, estado = pc.EstadoActual.ToString() });
+    }
+
+    [HttpPost("reportar-apagado-forzado")]
+    public async Task<IActionResult> ReportarApagadoForzado([FromBody] ReportarApagadoForzadoRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Hostname))
+        {
+            return BadRequest(new { error = "Hostname requerido." });
+        }
+
+        var hostNorm = request.Hostname.Trim().ToUpperInvariant();
+        var pc = await _context.Computadoras
+            .FirstOrDefaultAsync(c => c.Hostname == hostNorm, cancellationToken);
+
+        if (pc == null)
+        {
+            return NotFound(new { error = $"No se encontró la computadora '{request.Hostname}'." });
+        }
+
+        var fechaEvento = request.FechaHoraEventoUtc ?? DateTime.UtcNow;
+
+        // Buscar si había una sesión abierta en esta máquina
+        var sesion = await _context.SesionesUso
+            .Where(s => s.ComputadoraId == pc.Id && s.FechaHoraFin == null)
+            .OrderByDescending(s => s.FechaHoraInicio)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        string emailAfectado = sesion?.EmailEstudiante 
+            ?? (!string.IsNullOrWhiteSpace(request.UltimoEmailDetectado) ? request.UltimoEmailDetectado : (pc.UltimoEstudianteEmail ?? "sin-usuario@est.univalle.edu"));
+
+        if (sesion != null)
+        {
+            sesion.Finalizar(TipoCierreSesion.ApagadoForzado, fechaEvento);
+        }
+
+        // Registrar o certificar el incidente de energía con evidencia de Event Log
+        var motivo = $"Apagado abrupto de fuerza bruta confirmado por Windows Event Log (Event ID {request.EventId}): {request.Detalle ?? "Corte de energía / Kernel-Power"}";
+        
+        var regEnergia = RegistroConsumoEnergia.Create(
+            pc.Id,
+            pc.AulaId,
+            emailAfectado,
+            null,
+            0.1,
+            motivo,
+            sesion?.Id
+        );
+
+        if (regEnergia.IsSuccess)
+        {
+            _context.RegistrosConsumoEnergia.Add(regEnergia.Value);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        Log.Warning("Auditoría de Apagado Forzado registrada para {Hostname} (Usuario: {Email}, EventId: {EventId}).",
+            pc.Hostname, emailAfectado, request.EventId);
+
+        return Ok(new { ok = true, mensaje = "Incidente de apagado forzado auditado correctamente en la base de datos." });
     }
 }

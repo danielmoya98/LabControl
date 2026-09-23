@@ -25,6 +25,8 @@ public partial class MainWindow : Window
     private DispatcherTimer? _heartbeatTimer;
     private OfflineSyncWorker? _offlineSyncWorker;
     private readonly List<SecondaryMonitorBlockerWindow> _secondaryBlockers = new();
+    private readonly InactivityMonitorService _inactivityService = new();
+    private DispatcherTimer? _screenCaptureTimer;
 
     public MainWindow()
     {
@@ -51,6 +53,8 @@ public partial class MainWindow : Window
         // Garantizar liberación de recursos del sistema al cerrar
         WindowsHookManager.UninstallHook();
         TaskManagerHelper.EnableTaskManager();
+        _screenCaptureTimer?.Stop();
+        _inactivityService.Stop();
         _offlineSyncWorker?.Dispose();
     }
 
@@ -152,9 +156,13 @@ public partial class MainWindow : Window
         // Asegurar auto-registro en la base de datos PostgreSQL
         await AsegurarRegistroComputadoraAsync(currentIp);
 
+        // Auditar y reportar a la API si la computadora sufrió un corte previo de energía o apagado de fuerza bruta
+        _ = WindowsEventLogService.VerificarYReportarApagadoForzadoAsync(_apiService, _config);
+
         await ConectarSignalRAsync();
 
         IniciarHeartbeatTimer();
+        IniciarScreenCaptureTimer();
     }
 
     private async Task AsegurarRegistroComputadoraAsync(string currentIp)
@@ -172,6 +180,8 @@ public partial class MainWindow : Window
             if (respuesta != null && respuesta.ComputadoraId > 0)
             {
                 _config.ComputadoraId = respuesta.ComputadoraId;
+                _config.MinutosInactividadMaximo = respuesta.MinutosInactividadMaximo;
+                _config.AccionInactividad = respuesta.AccionInactividad;
                 LocalStorageService.SaveConfig(_config);
             }
         }
@@ -179,6 +189,34 @@ public partial class MainWindow : Window
         {
             // Si la API no está disponible en este instante, continuará en modo local
         }
+    }
+
+    private void IniciarScreenCaptureTimer()
+    {
+        _screenCaptureTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(4)
+        };
+        _screenCaptureTimer.Tick += async (s, e) =>
+        {
+            if (_hubConnection != null && _hubConnection.State == HubConnectionState.Connected && _config != null)
+            {
+                try
+                {
+                    var bytes = ScreenCaptureService.CapturarPantallaMiniatura();
+                    if (bytes != null && bytes.Length > 0)
+                    {
+                        var base64 = Convert.ToBase64String(bytes);
+                        await _hubConnection.InvokeAsync("EnviarMiniaturaPantalla", _config.Hostname, base64);
+                    }
+                }
+                catch
+                {
+                    // Silencioso
+                }
+            }
+        };
+        _screenCaptureTimer.Start();
     }
 
     private async Task ConectarSignalRAsync()
@@ -239,13 +277,13 @@ public partial class MainWindow : Window
                 });
             });
 
-            // Escuchar alertas y mensajes transmitidos desde el WebAdmin
+            // Escuchar alertas y mensajes transmitidos desde el WebAdmin (Banner flotante no intrusivo)
             _hubConnection.On<string>("RecibirAlertaTerminal", (mensaje) =>
             {
                 Dispatcher.Invoke(() =>
                 {
-                    var alerta = new AlertaMensajeDialog(mensaje);
-                    alerta.ShowDialog();
+                    var toast = new NotificationToastWindow(mensaje);
+                    toast.Show();
                 });
             });
 
@@ -353,12 +391,12 @@ public partial class MainWindow : Window
     {
         var email = TxtEmail.Text.Trim();
 
-        // Validar expresión regular de correo institucional @est.univalle.edu
-        var regex = new Regex(@"^[a-zA-Z0-9._%+-]+@est\.univalle\.edu$");
+        // Validar expresión regular de correo institucional (@est.univalle.edu o @univalle.edu)
+        var regex = new Regex(@"^[a-zA-Z0-9._%+-]+@(est\.univalle\.edu|univalle\.edu)$", RegexOptions.IgnoreCase);
 
         if (!regex.IsMatch(email))
         {
-            TxtAlert.Text = "⚠️ Formato inválido. Debe ingresar su correo institucional (@est.univalle.edu).";
+            TxtAlert.Text = "⚠️ Formato inválido. Ingrese su correo institucional (@est.univalle.edu o @univalle.edu).";
             AlertBorder.Visibility = Visibility.Visible;
             return;
         }
@@ -374,25 +412,34 @@ public partial class MainWindow : Window
         _emailSesionActual = email;
 
         // Intentar registrar el inicio de sesión en PostgreSQL vía API central
-        IniciarSesionApiResponse? res = null;
+        IniciarSesionResult res;
         try
         {
             res = await _apiService.IniciarSesionAsync(_config?.ComputadoraId, _config?.Hostname, email, 90);
         }
         catch
         {
-            res = null;
+            res = new IniciarSesionResult { Exito = false, EsErrorConexion = true };
         }
 
-        if (res != null)
+        if (res.Exito && res.Datos != null)
         {
+            var datos = res.Datos;
+
             // ===== CASO ONLINE =====
-            _sesionActualId = res.SesionId;
+            _sesionActualId = datos.SesionId;
             _sesionOfflineId = null;
 
-            if (res.ComputadoraId > 0 && _config != null)
+            if (datos.ComputadoraId > 0 && _config != null)
             {
-                _config.ComputadoraId = res.ComputadoraId;
+                _config.ComputadoraId = datos.ComputadoraId;
+            }
+
+            // Persistir usuario activo en configuración local para certificar posibles cortes abruptos de energía
+            if (_config != null)
+            {
+                _config.UltimoEstudianteSesion = email;
+                LocalStorageService.SaveConfig(_config);
             }
 
             // Liberar hooks y ocultar ventanas de bloqueo (pantalla principal y secundarias)
@@ -401,14 +448,37 @@ public partial class MainWindow : Window
             CerrarPantallasSecundarias();
             this.Hide();
 
-            // Abrir widget flotante con cronómetro en vivo
+            // Abrir widget flotante con cronómetro en vivo sincronizado con el bloque
             _sessionWidget = new SessionWidgetWindow(
                 email,
                 _config?.AulaNombre ?? "Laboratorio",
-                res.MinutosLimite,
+                datos.MinutosLimite,
                 OnSesionTerminada
             );
             _sessionWidget.Show();
+
+            // Iniciar monitoreo de inactividad física
+            _inactivityService.Start(
+                _config?.MinutosInactividadMaximo ?? 15,
+                (_config?.AccionInactividad ?? 0) == 0,
+                (esApagar) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (_sessionWidget != null)
+                        {
+                            _sessionWidget.CerrarPorInactividad(esApagar);
+                        }
+                    });
+                }
+            );
+        }
+        else if (!res.EsErrorConexion && !string.IsNullOrWhiteSpace(res.MensajeError))
+        {
+            // Rechazado por reglas institucionales de horario (ej. receso o clase por comenzar)
+            TxtAlert.Text = $"⚠️ {res.MensajeError}";
+            AlertBorder.Visibility = Visibility.Visible;
+            return;
         }
         else
         {
@@ -443,6 +513,21 @@ public partial class MainWindow : Window
                         OnSesionTerminada
                     );
                     _sessionWidget.Show();
+
+                    _inactivityService.Start(
+                        _config?.MinutosInactividadMaximo ?? 15,
+                        (_config?.AccionInactividad ?? 0) == 0,
+                        (esApagar) =>
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                if (_sessionWidget != null)
+                                {
+                                    _sessionWidget.CerrarPorInactividad(esApagar);
+                                }
+                            });
+                        }
+                    );
                 }
                 catch (Exception)
                 {
@@ -458,8 +543,18 @@ public partial class MainWindow : Window
         }
     }
 
+    public void FinalizarSesionPorApagadoSistema()
+    {
+        if (_sesionActualId.HasValue || _sesionOfflineId.HasValue)
+        {
+            // Tipo 7 = ApagadoForzado
+            OnSesionTerminada(7);
+        }
+    }
+
     private async void OnSesionTerminada(int tipoCierre)
     {
+        _inactivityService.Stop();
         var fechaFin = DateTime.UtcNow;
 
         // 1. Si la sesión inició en modo offline:
@@ -521,6 +616,12 @@ public partial class MainWindow : Window
         _emailSesionActual = null;
         _fechaInicioSesion = null;
 
+        if (_config != null)
+        {
+            _config.UltimoEstudianteSesion = null;
+            LocalStorageService.SaveConfig(_config);
+        }
+
         // Restaurar pantalla completa de bloqueo y reinstalar hooks
         Dispatcher.Invoke(() =>
         {
@@ -534,7 +635,14 @@ public partial class MainWindow : Window
             BloquearPantallasSecundarias();
 
             TxtEmail.Text = "";
-            TxtAlert.Text = "ℹ️ La sesión ha concluido. Terminal bloqueada.";
+            if (tipoCierre == 4)
+            {
+                TxtAlert.Text = "⚠️ Sesión cerrada automáticamente por inactividad física prolongada.";
+            }
+            else
+            {
+                TxtAlert.Text = "ℹ️ La sesión ha concluido. Terminal bloqueada.";
+            }
             AlertBorder.Visibility = Visibility.Visible;
         });
     }

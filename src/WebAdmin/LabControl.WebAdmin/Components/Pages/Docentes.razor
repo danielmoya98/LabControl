@@ -1,0 +1,431 @@
+@page "/docentes"
+@using Microsoft.AspNetCore.Components.Web
+@using LabControl.Application.Features.Docentes.Queries.GetDocentes
+@using LabControl.WebAdmin.Services
+@inject LabApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Gestión de Docentes — Control de Laboratorios</PageTitle>
+
+<!-- Cabecera de Página -->
+<div class="d-flex flex-wrap justify-space-between align-center gap-4 mb-5">
+    <div>
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-lg d-flex align-center justify-center" style="background: rgba(158, 0, 68, 0.1); width: 38px; height: 38px;">
+                <MudIcon Icon="@Icons.Material.Filled.School" Color="Color.Primary" Size="Size.Small" />
+            </div>
+            <MudText Typo="Typo.h5" Class="font-weight-bold" Style="font-size: 1.35rem; letter-spacing: -0.02em;">
+                Cuerpo Docente
+            </MudText>
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1" Style="font-size: 0.85rem;">
+            Registro y administración de profesores titulares y encargados de prácticas de laboratorio
+        </MudText>
+    </div>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.PersonAdd"
+               OnClick="OpenCreateDialog"
+               Class="rounded-lg px-4 font-weight-bold"
+               Style="box-shadow: 0 2px 8px rgba(158, 0, 68, 0.25); text-transform: none;">
+        Nuevo Docente
+    </MudButton>
+</div>
+
+<!-- Barra Exterior de Filtros & Búsqueda -->
+<MudPaper Elevation="0" Outlined="true" Class="pa-3 mb-4 rounded-lg d-flex flex-wrap align-center justify-space-between gap-3"
+          Style="background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default);">
+    <div class="d-flex flex-wrap align-center gap-3" style="flex: 1;">
+        <!-- Buscador en tiempo real -->
+        <MudTextField T="string"
+                      @bind-Value="TextoBusqueda"
+                      Immediate="true"
+                      Placeholder="Buscar por nombres, apellidos o email institucional..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.Search"
+                      Clearable="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="min-width: 300px; max-width: 400px;" />
+
+        <!-- Filtro por Estado -->
+        <MudSelect T="bool?"
+                   @bind-Value="EstadoFiltro"
+                   Label="Estado"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Outlined.ToggleOn"
+                   Style="min-width: 160px;">
+            <MudSelectItem T="bool?" Value="@((bool?)null)">Todos</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@((bool?)true)">🟢 Activos</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@((bool?)false)">🔴 Inactivos</MudSelectItem>
+        </MudSelect>
+
+        @if (HasActiveFilters)
+        {
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Outlined.FilterAltOff"
+                       OnClick="LimpiarFiltros"
+                       Size="Size.Small"
+                       Style="text-transform: none; font-size: 0.8rem;">
+                Limpiar filtros
+            </MudButton>
+        }
+    </div>
+</MudPaper>
+
+<!-- Modal Centrado para Crear / Editar Docente -->
+<MudDialog @bind-Visible="MostrarModal" Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.School)" Color="Color.Primary" />
+            <MudText Typo="Typo.h6" Class="font-weight-bold">
+                @(IsEditMode ? $"Editar Docente: {NuevoNombres} {NuevoApellidos}" : "Registrar Nuevo Docente")
+            </MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(MensajeError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">@MensajeError</MudAlert>
+        }
+
+        <EditForm Model="this" OnValidSubmit="GuardarDocenteAsync">
+            <MudGrid Spacing="3" Class="pt-2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="NuevoNombres" Label="Nombres" Variant="Variant.Outlined" Required="true"
+                                  Placeholder="Ej: Carlos Alberto" FullWidth="true" Margin="Margin.Dense"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Person" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="NuevoApellidos" Label="Apellidos" Variant="Variant.Outlined" Required="true"
+                                  Placeholder="Ej: Fernandez Rios" FullWidth="true" Margin="Margin.Dense"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Badge" />
+                </MudItem>
+                <MudItem xs="12" sm="7">
+                    <MudTextField @bind-Value="NuevoEmail" Label="Correo Electrónico Institucional" Variant="Variant.Outlined" Required="true"
+                                  Placeholder="carlos.fernandez@univalle.edu" FullWidth="true" Margin="Margin.Dense"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Email" />
+                </MudItem>
+                <MudItem xs="12" sm="5">
+                    <MudTextField @bind-Value="NuevoTelefono" Label="Teléfono / Celular (Opcional)" Variant="Variant.Outlined"
+                                  Placeholder="Ej: 71234567" FullWidth="true" Margin="Margin.Dense"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Phone" />
+                </MudItem>
+                @if (IsEditMode)
+                {
+                    <MudItem xs="12">
+                        <MudSwitch @bind-Value="NuevoActivo" Label="Docente Activo para asignación de horarios" Color="Color.Success" />
+                    </MudItem>
+                }
+            </MudGrid>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="CloseDialog" Class="rounded-lg" Style="text-transform: none;">
+            Cancelar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@IsSaving" StartIcon="@Icons.Material.Filled.Save" OnClick="GuardarDocenteAsync" Class="rounded-lg font-weight-bold" Style="text-transform: none;">
+            @(IsSaving ? "Guardando..." : (IsEditMode ? "Actualizar Docente" : "Registrar Docente"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Tabla de Docentes -->
+<MudTable Items="@DocentesFiltrados"
+          Hover="true"
+          Breakpoint="Breakpoint.Sm"
+          Loading="@IsLoading"
+          LoadingProgressColor="Color.Primary"
+          Elevation="0"
+          Outlined="true"
+          Class="rounded-lg saas-card"
+          Style="border: 1px solid var(--mud-palette-lines-default);">
+
+    <HeaderContent>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Docente</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Email Institucional</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Contacto</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase; text-align: center;">Estado</MudTh>
+        <MudTh Style="font-weight: 700; font-size: 0.8rem; text-transform: uppercase; text-align: right;">Acciones</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Docente">
+            <div class="d-flex align-center gap-3">
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Style="font-size: 0.8rem; font-weight: bold;">
+                    @(string.IsNullOrEmpty(context.Nombres) ? "D" : context.Nombres[0].ToString().ToUpper())
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.body2" Class="font-weight-bold">
+                        @context.NombreCompleto
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        ID: #@context.Id
+                    </MudText>
+                </div>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Email">
+            <div class="d-flex align-center gap-1">
+                <MudIcon Icon="@Icons.Material.Outlined.Email" Size="Size.Small" Color="Color.Secondary" Style="font-size: 1rem;" />
+                <MudLink Href="@($"mailto:{context.EmailInstitucional}")" Typo="Typo.body2" Style="color: var(--mud-palette-text-primary);">
+                    @context.EmailInstitucional
+                </MudLink>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Contacto">
+            @if (!string.IsNullOrWhiteSpace(context.TelefonoContacto))
+            {
+                <div class="d-flex align-center gap-1">
+                    <MudIcon Icon="@Icons.Material.Outlined.Phone" Size="Size.Small" Color="Color.Secondary" Style="font-size: 1rem;" />
+                    <MudText Typo="Typo.body2">@context.TelefonoContacto</MudText>
+                </div>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Sin teléfono</MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Estado" Style="text-align: center;">
+            @if (context.Activo)
+            {
+                <span class="badge-soft-success font-weight-bold" style="font-size: 0.75rem;">🟢 Activo</span>
+            }
+            else
+            {
+                <span class="badge-soft-error font-weight-bold" style="font-size: 0.75rem;">🔴 Inactivo</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Acciones" Style="text-align: right;">
+            <MudTooltip Text="Editar Docente">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               OnClick="@(() => OpenEditDialog(context))" />
+            </MudTooltip>
+            <MudTooltip Text="Eliminar Docente">
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                               Color="Color.Error"
+                               Size="Size.Small"
+                               OnClick="@(() => ConfirmarEliminarDocenteAsync(context))" />
+            </MudTooltip>
+        </MudTd>
+    </RowTemplate>
+
+    <NoRecordsContent>
+        <div class="pa-8 d-flex flex-column align-center justify-center text-center">
+            @if (HasActiveFilters)
+            {
+                <div class="pa-4 rounded-circle mb-3" style="background: rgba(148, 163, 184, 0.1);">
+                    <MudIcon Icon="@Icons.Material.Outlined.FilterAltOff" Size="Size.Large" Color="Color.Secondary" Style="font-size: 2.8rem;" />
+                </div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">No se encontraron docentes</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4" Style="max-width: 420px; font-size: 0.85rem;">
+                    No existen docentes que coincidan con los criterios de búsqueda o filtros seleccionados.
+                </MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.RestartAlt"
+                           OnClick="LimpiarFiltros"
+                           Class="rounded-lg">
+                    Restablecer Filtros
+                </MudButton>
+            }
+            else
+            {
+                <div class="pa-4 rounded-circle mb-3" style="background: rgba(158, 0, 68, 0.08);">
+                    <MudIcon Icon="@Icons.Material.Outlined.School" Size="Size.Large" Color="Color.Primary" Style="font-size: 3rem;" />
+                </div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">No hay docentes registrados</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4" Style="max-width: 440px; font-size: 0.85rem;">
+                    Aún no se han configurado docentes en el sistema. Registra el primer catedrático para asignarlo a los turnos y clases en laboratorio.
+                </MudText>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PersonAdd"
+                           OnClick="OpenCreateDialog"
+                           Class="rounded-lg px-4 font-weight-bold"
+                           Style="box-shadow: 0 2px 8px rgba(158, 0, 68, 0.25); text-transform: none;">
+                    Registrar Primer Docente
+                </MudButton>
+            }
+        </div>
+    </NoRecordsContent>
+
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }"
+                       InfoFormat="{first_item}-{last_item} de {all_items}"
+                       RowsPerPageString="Filas por página:" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private List<DocenteDto> ListaDocentes = [];
+    private bool IsLoading = true;
+    private bool MostrarModal = false;
+    private bool IsSaving = false;
+    private bool IsEditMode = false;
+    private int DocenteIdSeleccionado = 0;
+    private string? MensajeError;
+
+    // Filtros
+    private string TextoBusqueda = "";
+    private bool? EstadoFiltro = null;
+    private bool HasActiveFilters => !string.IsNullOrWhiteSpace(TextoBusqueda) || EstadoFiltro != null;
+
+    // Formulario
+    private string NuevoNombres = "";
+    private string NuevoApellidos = "";
+    private string NuevoEmail = "";
+    private string? NuevoTelefono = "";
+    private bool NuevoActivo = true;
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseButton = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        Position = DialogPosition.Center
+    };
+
+    private IEnumerable<DocenteDto> DocentesFiltrados
+    {
+        get
+        {
+            return ListaDocentes.Where(d =>
+            {
+                if (EstadoFiltro.HasValue && d.Activo != EstadoFiltro.Value)
+                    return false;
+
+                if (!string.IsNullOrWhiteSpace(TextoBusqueda))
+                {
+                    var q = TextoBusqueda.Trim().ToLowerInvariant();
+                    bool match = d.NombreCompleto.ToLowerInvariant().Contains(q) ||
+                                 d.EmailInstitucional.ToLowerInvariant().Contains(q) ||
+                                 (!string.IsNullOrEmpty(d.TelefonoContacto) && d.TelefonoContacto.ToLowerInvariant().Contains(q));
+                    if (!match) return false;
+                }
+
+                return true;
+            });
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDocentesAsync();
+    }
+
+    private async Task CargarDocentesAsync()
+    {
+        IsLoading = true;
+        ListaDocentes = await ApiClient.GetDocentesAsync();
+        IsLoading = false;
+    }
+
+    private void LimpiarFiltros()
+    {
+        TextoBusqueda = "";
+        EstadoFiltro = null;
+    }
+
+    private void OpenCreateDialog()
+    {
+        IsEditMode = false;
+        DocenteIdSeleccionado = 0;
+        NuevoNombres = "";
+        NuevoApellidos = "";
+        NuevoEmail = "";
+        NuevoTelefono = "";
+        NuevoActivo = true;
+        MensajeError = null;
+        MostrarModal = true;
+    }
+
+    private void OpenEditDialog(DocenteDto docente)
+    {
+        IsEditMode = true;
+        DocenteIdSeleccionado = docente.Id;
+        NuevoNombres = docente.Nombres;
+        NuevoApellidos = docente.Apellidos;
+        NuevoEmail = docente.EmailInstitucional;
+        NuevoTelefono = docente.TelefonoContacto;
+        NuevoActivo = docente.Activo;
+        MensajeError = null;
+        MostrarModal = true;
+    }
+
+    private void CloseDialog()
+    {
+        MostrarModal = false;
+    }
+
+    private async Task GuardarDocenteAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NuevoNombres) || string.IsNullOrWhiteSpace(NuevoApellidos) || string.IsNullOrWhiteSpace(NuevoEmail))
+        {
+            MensajeError = "Por favor complete los nombres, apellidos y correo electrónico del docente.";
+            return;
+        }
+
+        if (!NuevoEmail.Contains("@"))
+        {
+            MensajeError = "Ingrese una dirección de correo electrónico válida.";
+            return;
+        }
+
+        IsSaving = true;
+        MensajeError = null;
+
+        bool exito;
+        if (IsEditMode)
+        {
+            exito = await ApiClient.UpdateDocenteAsync(DocenteIdSeleccionado, NuevoNombres.Trim(), NuevoApellidos.Trim(), NuevoEmail.Trim(), NuevoTelefono?.Trim(), NuevoActivo);
+        }
+        else
+        {
+            exito = await ApiClient.CreateDocenteAsync(NuevoNombres.Trim(), NuevoApellidos.Trim(), NuevoEmail.Trim(), NuevoTelefono?.Trim());
+        }
+
+        if (exito)
+        {
+            Snackbar.Add(IsEditMode ? $"¡Docente '{NuevoNombres} {NuevoApellidos}' actualizado exitosamente!" : $"¡Docente '{NuevoNombres} {NuevoApellidos}' registrado exitosamente!", Severity.Success);
+            MostrarModal = false;
+            await CargarDocentesAsync();
+        }
+        else
+        {
+            MensajeError = IsEditMode ? "No se pudo actualizar el docente. Verifique que no exista otro con el mismo email institucional." : "No se pudo registrar el docente. Verifique que el correo electrónico no esté ya registrado.";
+        }
+
+        IsSaving = false;
+    }
+
+    private async Task ConfirmarEliminarDocenteAsync(DocenteDto docente)
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Eliminación",
+            $"¿Está seguro que desea eliminar al docente '{docente.NombreCompleto}'?\nSi tiene bloques de horario asignados, se desactivará lógicamente.",
+            yesText: "Sí, Eliminar", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            bool exito = await ApiClient.DeleteDocenteAsync(docente.Id);
+            if (exito)
+            {
+                Snackbar.Add($"Docente '{docente.NombreCompleto}' procesado exitosamente.", Severity.Info);
+                await CargarDocentesAsync();
+            }
+            else
+            {
+                Snackbar.Add("No se pudo eliminar el docente. Verifique la conexión con el servidor.", Severity.Error);
+            }
+        }
+    }
+}

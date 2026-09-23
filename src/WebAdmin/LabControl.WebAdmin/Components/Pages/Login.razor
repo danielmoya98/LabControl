@@ -5,62 +5,362 @@
 @inject UserSessionService SessionService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@implements IDisposable
 
-<PageTitle>Iniciar Sesión — Panel Administrativo</PageTitle>
+<PageTitle>Acceso Administrativo — Control de Laboratorios</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center justify-center min-vh-100" Style="min-height: 85vh;">
-    <MudPaper Elevation="8" Class="pa-8 rounded-xl mud-width-full" Style="background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08);">
-        <div class="text-center mb-6">
-            <MudIcon Icon="@Icons.Material.Filled.DesktopMac" Color="Color.Primary" Size="Size.Large" Class="mb-2" />
-            <MudText Typo="Typo.h4" Class="font-weight-bold" Style="background: linear-gradient(135deg, #38bdf8 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                Control de Laboratorios
-            </MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">Acceso Administrativo Intranet Univalle</MudText>
+<div class="login-split-root">
+    <!-- =========================================================================
+         SECCIÓN IZQUIERDA: SLIDER CON ILUSTRACIONES PLACEHOLDER, LOGO Y FOOTER
+         ========================================================================= -->
+    <div class="login-showcase-panel">
+        <!-- Logo y Marca Superior -->
+        <div class="login-showcase-header">
+            <img src="images/logo_univalle.png" alt="Univalle Logo" style="height: 48px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));" />
+            <div>
+                <div class="d-flex align-center gap-2">
+                    <MudText Typo="Typo.h6" Class="font-weight-bold" Style="color: #ffffff; letter-spacing: -0.3px;">
+                        LabControl
+                    </MudText>
+                    <span class="login-badge-pill">Univalle</span>
+                </div>
+                <MudText Typo="Typo.caption" Style="color: #94a3b8; font-size: 0.75rem;">
+                    Control & Gestión Centralizada de Salas
+                </MudText>
+            </div>
         </div>
 
-        @if (!string.IsNullOrEmpty(ErrorMessage))
-        {
-            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4" CloseIcon="@Icons.Material.Filled.Close">
-                @ErrorMessage
-            </MudAlert>
-        }
+        <!-- Slider Dinámico Central con Animación Suave -->
+        <div class="login-slider-container">
+            @if (_currentSlide == 0)
+            {
+                <div class="login-slide" @key="0">
+                    <div class="slide-badge slide-badge-blue">
+                        <MudIcon Icon="@Icons.Material.Filled.Sensors" Size="Size.Small" Style="font-size: 15px;" />
+                        <span>Supervisión en Tiempo Real</span>
+                    </div>
+                    <h2 class="slide-title">Monitoreo y Mosaico en Vivo de Terminales</h2>
+                    <p class="slide-description">
+                        Supervisa en tiempo real la pantalla de cada estudiante, el uso de CPU y memoria RAM con SignalR de baja latencia y control remoto inmediato.
+                    </p>
 
-        <EditForm Model="LoginModel" OnValidSubmit="HandleLoginAsync">
-            <MudTextField @bind-Value="LoginModel.Email" 
-                          Label="Correo Institucional" 
-                          Variant="Variant.Outlined" 
-                          InputType="InputType.Email" 
-                          Adornment="Adornment.Start" 
-                          AdornmentIcon="@Icons.Material.Filled.Email" 
-                          Class="mb-4" 
-                          Required="true" />
+                    <!-- Placeholder visual: Maqueta interactiva de mosaico de terminales -->
+                    <div class="slide-visual-mockup">
+                        <div class="d-flex justify-space-between align-center mb-3">
+                            <div class="d-flex align-center gap-2">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e;"></span>
+                                <span style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0;">LABORATORIO A-302 • 26 PCs</span>
+                            </div>
+                            <span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; background: rgba(34, 197, 94, 0.15); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.3);">
+                                SignalR Activo (14ms)
+                            </span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <div style="flex: 1; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 10px;">
+                                <div class="d-flex justify-space-between" style="font-size: 0.7rem; color: #94a3b8;">
+                                    <span>PC-01</span>
+                                    <span style="color: #4ade80;">En Uso</span>
+                                </div>
+                                <div style="height: 40px; background: rgba(15, 23, 42, 0.8); border-radius: 6px; margin: 6px 0; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: #64748b;">
+                                    [Miniatura Live]
+                                </div>
+                                <div style="font-size: 0.65rem; color: #cbd5e1;">CPU: 18% | RAM: 42%</div>
+                            </div>
+                            <div style="flex: 1; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 10px;">
+                                <div class="d-flex justify-space-between" style="font-size: 0.7rem; color: #94a3b8;">
+                                    <span>PC-02</span>
+                                    <span style="color: #60a5fa;">Disponible</span>
+                                </div>
+                                <div style="height: 40px; background: rgba(15, 23, 42, 0.8); border-radius: 6px; margin: 6px 0; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: #64748b;">
+                                    [Kiosko Espera]
+                                </div>
+                                <div style="font-size: 0.65rem; color: #cbd5e1;">Lista para usuario</div>
+                            </div>
+                            <div style="flex: 1; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 10px;">
+                                <div class="d-flex justify-space-between" style="font-size: 0.7rem; color: #94a3b8;">
+                                    <span>PC-03</span>
+                                    <span style="color: #4ade80;">En Uso</span>
+                                </div>
+                                <div style="height: 40px; background: rgba(15, 23, 42, 0.8); border-radius: 6px; margin: 6px 0; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: #64748b;">
+                                    [Miniatura Live]
+                                </div>
+                                <div style="font-size: 0.65rem; color: #cbd5e1;">CPU: 34% | RAM: 58%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else if (_currentSlide == 1)
+            {
+                <div class="login-slide" @key="1">
+                    <div class="slide-badge slide-badge-amber">
+                        <MudIcon Icon="@Icons.Material.Filled.Bolt" Size="Size.Small" Style="font-size: 15px;" />
+                        <span>Eficiencia Energética</span>
+                    </div>
+                    <h2 class="slide-title">Ahorro Inteligente y Políticas de Inactividad</h2>
+                    <p class="slide-description">
+                        Detecta automáticamente la ausencia física de estudiantes, apaga equipos ociados y previene el desperdicio eléctrico fuera de horarios académicos.
+                    </p>
 
-            <MudTextField @bind-Value="LoginModel.Password" 
-                          Label="Contraseña" 
-                          Variant="Variant.Outlined" 
-                          InputType="InputType.Password" 
-                          Adornment="Adornment.Start" 
-                          AdornmentIcon="@Icons.Material.Filled.Lock" 
-                          Class="mb-6" 
-                          Required="true" />
+                    <!-- Placeholder visual: Métricas de ahorro y ecología -->
+                    <div class="slide-visual-mockup">
+                        <div class="d-flex justify-space-between align-center mb-3">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0;">POLÍTICAS DE ENERGÍA Y SOSTENIBILIDAD</span>
+                            <span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3);">
+                                ⚡ -38% Consumo
+                            </span>
+                        </div>
+                        <div class="d-flex gap-3">
+                            <div style="flex: 1; background: rgba(30, 41, 59, 0.8); border-radius: 10px; padding: 12px; border-left: 3px solid #f59e0b;">
+                                <div style="font-size: 0.68rem; color: #94a3b8; text-transform: uppercase;">Ahorro Acumulado</div>
+                                <div style="font-size: 1.25rem; font-weight: 800; color: #fef08a; margin-top: 4px;">184.2 hrs</div>
+                                <div style="font-size: 0.65rem; color: #cbd5e1;">Equipos apagados por inactividad</div>
+                            </div>
+                            <div style="flex: 1; background: rgba(30, 41, 59, 0.8); border-radius: 10px; padding: 12px; border-left: 3px solid #10b981;">
+                                <div style="font-size: 0.68rem; color: #94a3b8; text-transform: uppercase;">Apagado Programado</div>
+                                <div style="font-size: 1.25rem; font-weight: 800; color: #86efac; margin-top: 4px;">21:30 PM</div>
+                                <div style="font-size: 0.65rem; color: #cbd5e1;">Cierre automático nocturno</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="login-slide" @key="2">
+                    <div class="slide-badge slide-badge-emerald">
+                        <MudIcon Icon="@Icons.Material.Filled.Shield" Size="Size.Small" Style="font-size: 15px;" />
+                        <span>Auditoría & Trazabilidad</span>
+                    </div>
+                    <h2 class="slide-title">Registro Seguro de Sesiones y Contingencia</h2>
+                    <p class="slide-description">
+                        Registro inmutable de accesos por estudiante, exportación a Excel para jefatura académica y sincronización local SQLite ante cortes de red.
+                    </p>
 
-            <MudButton ButtonType="ButtonType.Submit" 
-                       Variant="Variant.Filled" 
-                       Color="Color.Primary" 
-                       FullWidth="true" 
-                       Size="Size.Large" 
-                       Disabled="@IsLoading" 
-                       StartIcon="@Icons.Material.Filled.Login">
-                @(IsLoading ? "Autenticando..." : "Ingresar al Panel")
-            </MudButton>
-        </EditForm>
-    </MudPaper>
-</MudContainer>
+                    <!-- Placeholder visual: Tabla de auditoría y reportes -->
+                    <div class="slide-visual-mockup">
+                        <div class="d-flex justify-space-between align-center mb-3">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0;">AUDITORÍA DE SESIONES RECIENTES</span>
+                            <span style="font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; background: rgba(158, 0, 68, 0.15); color: #fda4af; border: 1px solid rgba(158, 0, 68, 0.3);">
+                                📥 Exportable .xlsx
+                            </span>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.9); border-radius: 8px; padding: 8px; font-size: 0.68rem; color: #cbd5e1;">
+                            <div class="d-flex justify-space-between py-1 border-b" style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+                                <span>estudiante.garcia@univalle.edu</span>
+                                <span style="color: #94a3b8;">PC-12 (45 min)</span>
+                                <span style="color: #4ade80;">Normal</span>
+                            </div>
+                            <div class="d-flex justify-space-between py-1 border-b" style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+                                <span>estudiante.mendoza@univalle.edu</span>
+                                <span style="color: #94a3b8;">PC-05 (15 min)</span>
+                                <span style="color: #f59e0b;">Inactividad</span>
+                            </div>
+                            <div class="d-flex justify-space-between py-1">
+                                <span>estudiante.roca@univalle.edu</span>
+                                <span style="color: #94a3b8;">PC-22 (60 min)</span>
+                                <span style="color: #4ade80;">Normal</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Footer del Slider con Paginación y Controles -->
+        <div class="login-showcase-footer">
+            <div class="slider-pagination">
+                <button type="button" class="slider-dot @(_currentSlide == 0 ? "active" : "inactive")" 
+                        @onclick="() => IrASlide(0)" aria-label="Slide 1"></button>
+                <button type="button" class="slider-dot @(_currentSlide == 1 ? "active" : "inactive")" 
+                        @onclick="() => IrASlide(1)" aria-label="Slide 2"></button>
+                <button type="button" class="slider-dot @(_currentSlide == 2 ? "active" : "inactive")" 
+                        @onclick="() => IrASlide(2)" aria-label="Slide 3"></button>
+            </div>
+
+            <div class="d-flex align-center gap-2">
+                <button type="button" class="slider-arrow-btn" @onclick="SlideAnterior" aria-label="Slide anterior">
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" />
+                </button>
+                <button type="button" class="slider-arrow-btn" @onclick="SiguienteSlide" aria-label="Siguiente slide">
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                </button>
+            </div>
+
+            <div style="font-size: 0.75rem; color: #94a3b8; width: 100%;" class="d-flex justify-space-between align-center mt-2">
+                <span>© 2026 Universidad del Valle</span>
+                <span>Dirección de Tecnologías de Información</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         SECCIÓN DERECHA: FORMULARIO DE INICIO DE SESIÓN ELEGANTE
+         ========================================================================= -->
+    <div class="login-form-panel">
+        <div class="login-form-card">
+            <!-- Encabezado del Formulario -->
+            <div class="mb-6">
+                <div class="d-flex align-center gap-2 mb-2">
+                    <span class="badge-soft badge-soft-guindo" style="font-size: 0.72rem;">
+                        <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" Style="font-size: 14px;" />
+                        Portal Administrativo
+                    </span>
+                </div>
+                <MudText Typo="Typo.h4" Class="font-weight-bold" Style="font-size: 1.85rem; letter-spacing: -0.03em;">
+                    Iniciar Sesión
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1" Style="font-size: 0.92rem;">
+                    Ingresa con tus credenciales institucionales para acceder a la gestión de laboratorios.
+                </MudText>
+            </div>
+
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-5 rounded-lg" CloseIcon="@Icons.Material.Filled.Close">
+                    @ErrorMessage
+                </MudAlert>
+            }
+
+            <!-- Formulario de Credenciales -->
+            <EditForm Model="LoginModel" OnValidSubmit="HandleLoginAsync">
+                <div class="mb-4">
+                    <MudTextField @bind-Value="LoginModel.Email" 
+                                  Label="Correo Institucional" 
+                                  Variant="Variant.Outlined" 
+                                  InputType="InputType.Email" 
+                                  Placeholder="usuario@univalle.edu"
+                                  Adornment="Adornment.Start" 
+                                  AdornmentIcon="@Icons.Material.Outlined.Email" 
+                                  AdornmentColor="Color.Primary"
+                                  FullWidth="true"
+                                  Required="true" />
+                </div>
+
+                <div class="mb-5">
+                    <MudTextField @bind-Value="LoginModel.Password" 
+                                  Label="Contraseña" 
+                                  Variant="Variant.Outlined" 
+                                  InputType="@_passwordInputType" 
+                                  Placeholder="••••••••••••"
+                                  Adornment="Adornment.Start" 
+                                  AdornmentIcon="@Icons.Material.Outlined.Lock" 
+                                  AdornmentColor="Color.Primary"
+                                  OnAdornmentClick="TogglePasswordVisibility"
+                                  AdornmentAriaLabel="Mostrar contraseña"
+                                  FullWidth="true"
+                                  Required="true" />
+                </div>
+
+                <div class="d-flex justify-space-between align-center mb-6">
+                    <MudCheckBox @bind-Value="_recordarSesion" Label="Recordar en este equipo" 
+                                 Color="Color.Primary" Dense="true" Size="Size.Small" />
+                </div>
+
+                <MudButton ButtonType="ButtonType.Submit" 
+                           FullWidth="true" 
+                           Size="Size.Large" 
+                           Disabled="@IsLoading" 
+                           Class="btn-primary-gradient py-3">
+                    @if (IsLoading)
+                    {
+                        <MudProgressCircular Color="Color.Default" Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Autenticando usuario...</span>
+                    }
+                    else
+                    {
+                        <span class="d-flex align-center justify-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Login" Size="Size.Small" />
+                            <span>Ingresar al Panel</span>
+                        </span>
+                    }
+                </MudButton>
+            </EditForm>
+
+            <!-- Acceso Rápido para Pruebas / Demostración -->
+            <div class="demo-credentials-box mt-6" @onclick="UsarCredencialesDemo" title="Clic para rellenar credenciales de prueba">
+                <div class="d-flex justify-space-between align-center">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Key" Color="Color.Primary" Size="Size.Small" />
+                        <div>
+                            <div style="font-size: 0.78rem; font-weight: 700; color: var(--mud-palette-primary);">
+                                Credenciales Rápidas de Prueba
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--mud-palette-text-secondary);">
+                                admin@univalle.edu • AdminPass123!
+                            </div>
+                        </div>
+                    </div>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">
+                        Autocompletar
+                    </MudChip>
+                </div>
+            </div>
+
+            <!-- Pie de Seguridad -->
+            <div class="text-center mt-6" style="font-size: 0.75rem; color: var(--mud-palette-text-secondary);">
+                <div class="d-flex align-center justify-center gap-1">
+                    <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="font-size: 13px; color: #10b981;" />
+                    <span>Conexión cifrada de extremo a extremo SSL/TLS</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     private LoginInputModel LoginModel { get; set; } = new();
     private string? ErrorMessage;
     private bool IsLoading;
+    private bool _recordarSesion = true;
+    private bool _showPassword = false;
+
+    private InputType _passwordInputType => _showPassword ? InputType.Text : InputType.Password;
+
+    // Slider State
+    private int _currentSlide = 0;
+    private const int TotalSlides = 3;
+    private Timer? _sliderTimer;
+
+    protected override void OnInitialized()
+    {
+        // Temporizador para cambio automático suave cada 5.5 segundos
+        _sliderTimer = new Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                SiguienteSlide();
+                StateHasChanged();
+            });
+        }, null, 5500, 5500);
+    }
+
+    private void SiguienteSlide()
+    {
+        _currentSlide = (_currentSlide + 1) % TotalSlides;
+    }
+
+    private void SlideAnterior()
+    {
+        _currentSlide = (_currentSlide - 1 + TotalSlides) % TotalSlides;
+    }
+
+    private void IrASlide(int index)
+    {
+        _currentSlide = Math.Clamp(index, 0, TotalSlides - 1);
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        _showPassword = !_showPassword;
+    }
+
+    private void UsarCredencialesDemo()
+    {
+        LoginModel.Email = "admin@univalle.edu";
+        LoginModel.Password = "AdminPass123!";
+        Snackbar.Add("Credenciales de administrador cargadas", Severity.Info);
+    }
 
     private async Task HandleLoginAsync()
     {
@@ -88,6 +388,11 @@
         }
 
         IsLoading = false;
+    }
+
+    public void Dispose()
+    {
+        _sliderTimer?.Dispose();
     }
 
     public class LoginInputModel

@@ -6,288 +6,452 @@
 @using LabControl.Domain.Enums
 @inject LabApiClient ApiClient
 @inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Auditoría y Reportes — Control de Laboratorios</PageTitle>
 
 <!-- ENCABEZADO Y ACCIONES DE EXPORTACIÓN -->
-<div class="d-flex justify-space-between align-center mb-6 flex-wrap gap-4">
+<div class="d-flex justify-space-between align-center mb-5 flex-wrap gap-4">
     <div>
-        <MudText Typo="Typo.h5" Class="font-weight-bold">📋 Módulo de Auditoría y Reportes</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">
-            Registro histórico de accesos a terminales, duraciones y exportación para jefatura académica
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-lg d-flex align-center justify-center" style="background: rgba(37, 99, 235, 0.1); width: 36px; height: 36px;">
+                <MudIcon Icon="@Icons.Material.Filled.Assessment" Color="Color.Primary" Size="Size.Small" />
+            </div>
+            <MudText Typo="Typo.h5" Class="font-weight-bold" Style="font-size: 1.35rem; letter-spacing: -0.02em;">
+                Auditoría y Reportes de Sesiones
+            </MudText>
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1" Style="font-size: 0.85rem;">
+            Registro histórico de accesos a terminales, trazabilidad de duraciones y exportación para jefatura académica
         </MudText>
     </div>
-    <div class="d-flex gap-2 align-center">
+    <div class="d-flex gap-2 align-center flex-wrap">
+        <MudButton Href="@GetPdfExportUrl()"
+                   Target="_blank"
+                   Variant="Variant.Filled"
+                   Color="Color.Error"
+                   StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                   Class="rounded-lg font-weight-bold"
+                   Style="text-transform: none; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);">
+            Exportar a PDF
+        </MudButton>
         <MudButton Href="@GetExcelExportUrl()"
                    Target="_blank"
                    Variant="Variant.Filled"
                    Color="Color.Success"
-                   StartIcon="@Icons.Material.Filled.TableChart">
+                   StartIcon="@Icons.Material.Filled.TableChart"
+                   Class="rounded-lg font-weight-bold"
+                   Style="text-transform: none; box-shadow: 0 2px 8px rgba(22, 163, 74, 0.2);">
             Exportar a Excel (.xlsx)
         </MudButton>
         <MudButton Href="@GetCsvExportUrl()"
                    Target="_blank"
                    Variant="Variant.Outlined"
                    Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.FileDownload">
+                   StartIcon="@Icons.Material.Filled.FileDownload"
+                   Class="rounded-lg font-weight-bold"
+                   Style="text-transform: none;">
             Exportar a CSV
         </MudButton>
     </div>
 </div>
 
-<!-- KPI CARDS (RESUMEN DE AUDITORÍA) -->
-<MudGrid Class="mb-6">
+<!-- KPI CARDS (RESUMEN DE AUDITORÍA CON BORDES SUTILES) -->
+<MudGrid Class="mb-5" Spacing="3">
+    <!-- Card 1: Total Sesiones -->
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 d-flex align-center justify-space-between" Elevation="2" Style="border-left: 4px solid #3b82f6; background: #1e293b;">
+        <MudPaper Class="pa-4 d-flex align-center justify-space-between saas-card rounded-lg" Elevation="0">
             <div>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">TOTAL SESIONES</MudText>
-                <MudText Typo="Typo.h5" Class="font-weight-bold">@(_resultado?.TotalRegistros.ToString("N0") ?? "0")</MudText>
+                <span class="kpi-title">TOTAL SESIONES</span>
+                <MudText Typo="Typo.h5" Class="kpi-number mt-1">@(_resultado?.TotalRegistros.ToString("N0") ?? "0")</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.72rem;">Registros en el período</MudText>
             </div>
-            <MudAvatar Color="Color.Info" Variant="Variant.Filled">
-                <MudIcon Icon="@Icons.Material.Filled.Timeline" />
-            </MudAvatar>
+            <div class="kpi-icon-box kpi-icon-primary">
+                <MudIcon Icon="@Icons.Material.Filled.Timeline" Size="Size.Small" />
+            </div>
         </MudPaper>
     </MudItem>
 
+    <!-- Card 2: Horas-Máquina -->
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 d-flex align-center justify-space-between" Elevation="2" Style="border-left: 4px solid #22c55e; background: #1e293b;">
+        <MudPaper Class="pa-4 d-flex align-center justify-space-between saas-card rounded-lg" Elevation="0">
             <div>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">HORAS-MÁQUINA</MudText>
-                <MudText Typo="Typo.h5" Class="font-weight-bold">
+                <span class="kpi-title">HORAS-MÁQUINA</span>
+                <MudText Typo="Typo.h5" Class="kpi-number mt-1" Style="color: #16a34a;">
                     @(((_resultado?.TotalMinutosUso ?? 0) / 60.0).ToString("F1")) hrs
                 </MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">@(_resultado?.TotalMinutosUso.ToString("N0") ?? "0") minutos</MudText>
-            </div>
-            <MudAvatar Color="Color.Success" Variant="Variant.Filled">
-                <MudIcon Icon="@Icons.Material.Filled.AccessTime" />
-            </MudAvatar>
-        </MudPaper>
-    </MudItem>
-
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 d-flex align-center justify-space-between" Elevation="2" Style="border-left: 4px solid #8b5cf6; background: #1e293b;">
-            <div>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">ESTUDIANTES ÚNICOS</MudText>
-                <MudText Typo="Typo.h5" Class="font-weight-bold">@(_resultado?.TotalEstudiantesUnicos.ToString("N0") ?? "0")</MudText>
-            </div>
-            <MudAvatar Color="Color.Secondary" Variant="Variant.Filled">
-                <MudIcon Icon="@Icons.Material.Filled.School" />
-            </MudAvatar>
-        </MudPaper>
-    </MudItem>
-
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4 d-flex align-center justify-space-between" Elevation="2" Style="border-left: 4px solid #f59e0b; background: #1e293b;">
-            <div>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">PÁGINAS / TOTAL</MudText>
-                <MudText Typo="Typo.h5" Class="font-weight-bold">
-                    @(_resultado?.PaginaActual ?? 1) / @(Math.Max(_resultado?.TotalPaginas ?? 1, 1))
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.72rem;">
+                    @(_resultado?.TotalMinutosUso.ToString("N0") ?? "0") min acumulados
                 </MudText>
             </div>
-            <MudAvatar Color="Color.Warning" Variant="Variant.Filled">
-                <MudIcon Icon="@Icons.Material.Filled.MenuBook" />
-            </MudAvatar>
+            <div class="kpi-icon-box kpi-icon-success">
+                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" />
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    <!-- Card 3: Estudiantes Únicos -->
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex align-center justify-space-between saas-card rounded-lg" Elevation="0">
+            <div>
+                <span class="kpi-title">ESTUDIANTES ÚNICOS</span>
+                <MudText Typo="Typo.h5" Class="kpi-number mt-1" Style="color: #7c3aed;">
+                    @(_resultado?.TotalEstudiantesUnicos.ToString("N0") ?? "0")
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.72rem;">Usuarios con actividad</MudText>
+            </div>
+            <div class="kpi-icon-box kpi-icon-purple">
+                <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Small" />
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    <!-- Card 4: Duración Promedio por Sesión -->
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4 d-flex align-center justify-space-between saas-card rounded-lg" Elevation="0">
+            <div>
+                <span class="kpi-title">DURACIÓN PROMEDIO</span>
+                <MudText Typo="Typo.h5" Class="kpi-number mt-1" Style="color: #d97706;">
+                    @(_resultado != null && _resultado.TotalRegistros > 0 ? $"{(_resultado.TotalMinutosUso / (double)_resultado.TotalRegistros):F1} min" : "0 min")
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.72rem;">Promedio por terminal</MudText>
+            </div>
+            <div class="kpi-icon-box" style="background-color: rgba(217, 119, 6, 0.12); color: #d97706;">
+                <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" />
+            </div>
         </MudPaper>
     </MudItem>
 </MudGrid>
 
-<!-- PANEL DE FILTROS -->
-<MudCard Class="mb-6" Elevation="2" Style="background: #1e293b;">
-    <MudCardHeader>
-        <CardHeaderContent>
-            <MudText Typo="Typo.h6" Class="d-flex align-center font-weight-bold">
-                <MudIcon Icon="@Icons.Material.Filled.FilterAlt" Class="mr-2" Color="Color.Primary" />
-                Filtros de Búsqueda y Segmentación
-            </MudText>
-        </CardHeaderContent>
-    </MudCardHeader>
-    <MudCardContent>
-        <MudGrid>
-            <MudItem xs="12" sm="6" md="4">
-                <MudDateRangePicker @bind-DateRange="_dateRange"
-                                    Label="Rango de Fechas"
-                                    Variant="Variant.Outlined"
-                                    Clearable="true"
-                                    PlaceholderStart="Desde"
-                                    PlaceholderEnd="Hasta" />
-            </MudItem>
+<!-- BARRA DE FILTROS EN TIEMPO REAL (REACTIVA & REORGANIZADA) -->
+<MudPaper Elevation="0" Outlined="true" Class="pa-3 mb-4 rounded-lg d-flex flex-wrap align-center justify-space-between gap-3"
+          Style="background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default);">
+    <div class="d-flex flex-wrap align-center gap-3" style="flex: 1;">
+        <!-- 1. Búsqueda por Estudiante (Email) en tiempo real -->
+        <MudTextField T="string"
+                      Value="_filtroEstudiante"
+                      ValueChanged="OnEstudianteChanged"
+                      Immediate="true"
+                      Label="Buscar Estudiante"
+                      Placeholder="correo@est.univalle.edu..."
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Clearable="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.School"
+                      Style="min-width: 230px; max-width: 280px;" />
 
-            <MudItem xs="12" sm="6" md="2">
-                <MudSelect T="int?" @bind-Value="_filtroAulaId" Label="Aula" Variant="Variant.Outlined">
-                    <MudSelectItem T="int?" Value="@((int?)null)">🏢 Todas</MudSelectItem>
-                    @foreach (var aula in _aulas)
-                    {
-                        <MudSelectItem T="int?" Value="@aula.Id">@aula.Nombre</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
+        <!-- 2. Búsqueda por Terminal / Hostname en tiempo real -->
+        <MudTextField T="string"
+                      Value="_filtroHostname"
+                      ValueChanged="OnHostnameChanged"
+                      Immediate="true"
+                      Label="Terminal / Hostname"
+                      Placeholder="Ej: LAB1-PC01..."
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Clearable="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.Computer"
+                      Style="min-width: 190px; max-width: 230px;" />
 
-            <MudItem xs="12" sm="6" md="3">
-                <MudTextField @bind-Value="_filtroEstudiante"
-                              Label="Estudiante (Email)"
-                              Variant="Variant.Outlined"
-                              Placeholder="correo@est.univalle.edu"
-                              Clearable="true"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search" />
-            </MudItem>
+        <!-- 3. Filtro por Aula en tiempo real -->
+        <MudSelect T="int?"
+                   Value="_filtroAulaId"
+                   ValueChanged="OnAulaChanged"
+                   Label="Aula / Laboratorio"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Outlined.MeetingRoom"
+                   Style="min-width: 180px;">
+            <MudSelectItem T="int?" Value="@((int?)null)">🏢 Todas las Aulas</MudSelectItem>
+            @foreach (var aula in _aulas)
+            {
+                <MudSelectItem T="int?" Value="@((int?)aula.Id)">@aula.Nombre (@aula.Pabellon)</MudSelectItem>
+            }
+        </MudSelect>
 
-            <MudItem xs="12" sm="6" md="3">
-                <MudTextField @bind-Value="_filtroHostname"
-                              Label="Terminal / Hostname"
-                              Variant="Variant.Outlined"
-                              Placeholder="Ej. LAB1-PC01"
-                              Clearable="true"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Computer" />
-            </MudItem>
+        <!-- 4. Filtro por Tipo de Cierre en tiempo real -->
+        <MudSelect T="TipoCierreSesion?"
+                   Value="_filtroTipoCierre"
+                   ValueChanged="OnTipoCierreChanged"
+                   Label="Motivo de Cierre"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   AnchorOrigin="Origin.BottomLeft"
+                   TransformOrigin="Origin.TopLeft"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Outlined.PowerSettingsNew"
+                   Style="min-width: 190px;">
+            <MudSelectItem T="TipoCierreSesion?" Value="@((TipoCierreSesion?)null)">Todos los cierres</MudSelectItem>
+            <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.Manual">🚪 Manual (Estudiante)</MudSelectItem>
+            <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.Inactividad">⏱️ Inactividad Física</MudSelectItem>
+            <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.FinPeriodo">🔔 Fin de Período</MudSelectItem>
+            <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.Recreo">☕ Recreo / Pausa</MudSelectItem>
+            <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.AdminRemoto">🛡️ Admin Remoto</MudSelectItem>
+            <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.ApagadoForzado">⚡ Apagado Forzado</MudSelectItem>
+        </MudSelect>
 
-            <MudItem xs="12" sm="6" md="3">
-                <MudSelect T="TipoCierreSesion?" @bind-Value="_filtroTipoCierre" Label="Tipo de Cierre" Variant="Variant.Outlined" Clearable="true">
-                    <MudSelectItem T="TipoCierreSesion?" Value="@((TipoCierreSesion?)null)">Todos los cierres</MudSelectItem>
-                    <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.Manual">🚪 Manual (Estudiante)</MudSelectItem>
-                    <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.FinPeriodo">🔔 Fin de Período</MudSelectItem>
-                    <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.Recreo">☕ Recreo</MudSelectItem>
-                    <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.RelevoForzado">🔄 Relevo Forzado</MudSelectItem>
-                    <MudSelectItem T="TipoCierreSesion?" Value="@TipoCierreSesion.AdminRemoto">🛡️ Admin Remoto</MudSelectItem>
-                </MudSelect>
-            </MudItem>
+        <!-- 5. Selector de Rango de Fechas -->
+        <div style="min-width: 240px; max-width: 280px;">
+            <MudDateRangePicker DateRange="_dateRange"
+                                DateRangeChanged="OnDateRangeChanged"
+                                Label="Rango de Fechas"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Clearable="true"
+                                PlaceholderStart="Desde"
+                                PlaceholderEnd="Hasta" />
+        </div>
 
-            <MudItem xs="12" sm="6" md="3">
-                <MudSelect T="int" @bind-Value="_tamanioPagina" Label="Registros por Página" Variant="Variant.Outlined">
-                    <MudSelectItem T="int" Value="25">25 filas</MudSelectItem>
-                    <MudSelectItem T="int" Value="50">50 filas</MudSelectItem>
-                    <MudSelectItem T="int" Value="100">100 filas</MudSelectItem>
-                </MudSelect>
-            </MudItem>
+        @if (HasActiveFilters)
+        {
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Outlined.FilterAltOff"
+                       OnClick="LimpiarFiltrosAsync"
+                       Size="Size.Small"
+                       Style="text-transform: none; font-size: 0.8rem;">
+                Limpiar filtros
+            </MudButton>
+        }
+    </div>
+</MudPaper>
 
-            <MudItem xs="12" sm="12" md="6" Class="d-flex align-center justify-end gap-2 mt-2">
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Default"
-                           StartIcon="@Icons.Material.Filled.Clear"
-                           OnClick="LimpiarFiltrosAsync">
-                    Limpiar
-                </MudButton>
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.FilterList"
-                           OnClick="() => CargarAuditoriaAsync(1)"
-                           Disabled="_cargando">
-                    Aplicar Filtros
-                </MudButton>
-            </MudItem>
-        </MudGrid>
-    </MudCardContent>
-</MudCard>
-
-<!-- TABLA DE HISTORIAL DE AUDITORÍA -->
+<!-- TABLA DE HISTORIAL DE AUDITORÍA SAAS REFINADA -->
 <MudTable Items="@_sesiones"
-          Dense="true"
+          Dense="false"
           Hover="true"
-          Bordered="true"
-          Striped="true"
+          Bordered="false"
+          Striped="false"
           Loading="@_cargando"
           LoadingProgressColor="Color.Primary"
-          Elevation="2"
-          Style="background: #1e293b;">
+          Elevation="0"
+          Class="saas-card rounded-lg overflow-hidden">
     <HeaderContent>
-        <MudTh>ID</MudTh>
-        <MudTh>Terminal</MudTh>
-        <MudTh>Aula</MudTh>
-        <MudTh>Estudiante</MudTh>
-        <MudTh>Fecha Inicio</MudTh>
-        <MudTh>Fecha Fin</MudTh>
-        <MudTh>Duración</MudTh>
-        <MudTh>Tipo de Cierre</MudTh>
-        <MudTh>Sincronización</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">TERMINAL &amp; ID</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">AULA / ESPACIO</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">ESTUDIANTE</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">INICIO DE SESIÓN</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">FIN / ESTADO</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">DURACIÓN</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">TIPO DE CIERRE</MudTh>
+        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px; text-align: right;">SINCRONIZACIÓN</MudTh>
     </HeaderContent>
     <RowTemplate>
-        <MudTd DataLabel="ID">#@context.SesionId</MudTd>
+        <!-- 1. Terminal & ID -->
         <MudTd DataLabel="Terminal">
-            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Dark" Icon="@Icons.Material.Filled.Computer">
-                @context.Hostname
-            </MudChip>
+            <div class="d-flex align-center gap-3">
+                <div class="pa-2 rounded-md d-flex align-center justify-center"
+                     style="width: 36px; height: 36px; background: rgba(37, 99, 235, 0.08); flex-shrink: 0;">
+                    <MudIcon Icon="@Icons.Material.Filled.DesktopWindows" Color="Color.Primary" Size="Size.Small" />
+                </div>
+                <div>
+                    <MudText Typo="Typo.body2" Class="font-weight-bold" Color="Color.Primary" Style="font-size: 0.88rem;">
+                        @context.Hostname
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.72rem;">
+                        Sesión #@context.SesionId
+                    </MudText>
+                </div>
+            </div>
         </MudTd>
+
+        <!-- 2. Aula / Espacio -->
         <MudTd DataLabel="Aula">
-            <MudText Typo="Typo.body2" Class="font-weight-medium">@context.NombreAula</MudText>
+            <div class="d-flex align-center gap-2">
+                <div class="pa-1 rounded-md" style="background: rgba(148, 163, 184, 0.1);">
+                    <MudIcon Icon="@Icons.Material.Outlined.MeetingRoom" Size="Size.Small" Color="Color.Secondary" />
+                </div>
+                <MudText Typo="Typo.body2" Class="font-weight-medium">@context.NombreAula</MudText>
+            </div>
         </MudTd>
+
+        <!-- 3. Estudiante -->
         <MudTd DataLabel="Estudiante">
-            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" Icon="@Icons.Material.Filled.School">
-                @context.EmailEstudiante
-            </MudChip>
+            <div class="d-flex align-center gap-2">
+                <MudIcon Icon="@Icons.Material.Outlined.School" Size="Size.Small" Color="Color.Secondary" />
+                <span style="font-size: 0.84rem; font-weight: 500;">
+                    @context.EmailEstudiante
+                </span>
+                <button type="button" class="btn-copy-micro @(EstaCopiado($"aud_email_{context.SesionId}") ? "copied" : "")"
+                        @onclick="@(() => CopiarConFeedbackAsync(context.EmailEstudiante, $"aud_email_{context.SesionId}", "Email"))"
+                        title="Copiar correo del estudiante">
+                    <MudIcon Icon="@(EstaCopiado($"aud_email_{context.SesionId}") ? Icons.Material.Filled.Check : Icons.Material.Outlined.ContentCopy)" Size="Size.Small" />
+                </button>
+            </div>
         </MudTd>
-        <MudTd DataLabel="Fecha Inicio">
-            <MudText Typo="Typo.body2">@context.FechaHoraInicio.ToString("dd/MM/yyyy HH:mm:ss")</MudText>
+
+        <!-- 4. Fecha Inicio -->
+        <MudTd DataLabel="Inicio">
+            <div class="d-flex align-center gap-1">
+                <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" Color="Color.Secondary" Style="font-size: 0.85rem;" />
+                <span style="font-size: 0.82rem;">
+                    @context.FechaHoraInicio.ToString("dd/MM/yyyy HH:mm:ss")
+                </span>
+            </div>
         </MudTd>
-        <MudTd DataLabel="Fecha Fin">
+
+        <!-- 5. Fecha Fin / Estado -->
+        <MudTd DataLabel="Fin">
             @if (context.FechaHoraFin.HasValue)
             {
-                <MudText Typo="Typo.body2">@context.FechaHoraFin.Value.ToString("dd/MM/yyyy HH:mm:ss")</MudText>
+                <span style="font-size: 0.82rem; color: var(--mud-palette-text-secondary);">
+                    @context.FechaHoraFin.Value.ToString("dd/MM/yyyy HH:mm:ss")
+                </span>
             }
             else
             {
-                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">🟢 Sesión Activa</MudChip>
+                <span class="badge-soft badge-soft-success">
+                    <span class="pulse-dot-green"></span>
+                    Sesión Activa
+                </span>
             }
         </MudTd>
+
+        <!-- 6. Duración -->
         <MudTd DataLabel="Duración">
             @if (context.DuracionMinutos.HasValue)
             {
-                <MudText Typo="Typo.body2" Class="font-weight-bold">@context.DuracionMinutos.Value min</MudText>
+                <div class="d-flex align-center gap-1">
+                    <MudIcon Icon="@Icons.Material.Outlined.Timer" Size="Size.Small" Color="Color.Default" Style="font-size: 0.85rem;" />
+                    <span style="font-weight: 700; font-size: 0.85rem;">
+                        @context.DuracionMinutos.Value min
+                    </span>
+                </div>
             }
             else
             {
-                <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                <span style="color: var(--mud-palette-text-disabled);">-</span>
             }
         </MudTd>
-        <MudTd DataLabel="Tipo de Cierre">
-            <MudChip T="string" Size="Size.Small" Color="@GetColorTipoCierre(context.TipoCierre)" Variant="Variant.Filled">
+
+        <!-- 7. Tipo de Cierre -->
+        <MudTd DataLabel="Cierre">
+            <span class="badge-soft @GetBadgeClassTipoCierre(context.TipoCierre)">
                 @GetTextoTipoCierre(context.TipoCierre)
-            </MudChip>
+            </span>
         </MudTd>
-        <MudTd DataLabel="Sincronización">
+
+        <!-- 8. Sincronización -->
+        <MudTd DataLabel="Sincronización" Style="text-align: right;">
             @if (context.SyncStatus == SyncStatus.Online)
             {
-                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text" Icon="@Icons.Material.Filled.CheckCircle">
-                    Online
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text" Icon="@Icons.Material.Outlined.CloudDone" Style="font-size: 0.72rem; height: 22px;">
+                    En Línea
                 </MudChip>
             }
             else
             {
-                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.SyncProblem">
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Outlined.CloudSync" Style="font-size: 0.72rem; height: 22px;">
                     Offline Sync
                 </MudChip>
             }
         </MudTd>
     </RowTemplate>
+
+    <!-- Estado de Carga Shimmer Elegante -->
+    <LoadingContent>
+        <div class="pa-4">
+            @for (int i = 0; i < 5; i++)
+            {
+                <div class="d-flex align-center justify-space-between py-3" style="border-bottom: 1px solid var(--mud-palette-lines-default);">
+                    <div class="d-flex align-center gap-3" style="width: 20%;">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="32px" Height="32px" />
+                        <div style="width: 70%;">
+                            <MudSkeleton SkeletonType="SkeletonType.Text" Width="80%" Height="18px" />
+                            <MudSkeleton SkeletonType="SkeletonType.Text" Width="40%" Height="14px" />
+                        </div>
+                    </div>
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="12%" Height="18px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="20%" Height="18px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="14%" Height="18px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Text" Width="10%" Height="18px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="70px" Height="22px" Class="rounded-pill" />
+                </div>
+            }
+        </div>
+    </LoadingContent>
+
+    <!-- Empty State con Llamada a la Acción -->
     <NoRecordsContent>
-        <div class="pa-8 text-center" style="color: var(--mud-palette-text-secondary);">
-            <MudIcon Icon="@Icons.Material.Filled.FindInPage" Style="font-size: 3rem; opacity: 0.5;" Class="mb-2" />
-            <MudText Typo="Typo.h6">No se encontraron registros de auditoría</MudText>
-            <MudText Typo="Typo.body2">Pruebe ajustando el rango de fechas o limpiando los filtros.</MudText>
+        <div class="d-flex flex-column align-center justify-center pa-10 text-center">
+            @if (HasActiveFilters)
+            {
+                <div class="pa-4 rounded-circle mb-3" style="background: rgba(148, 163, 184, 0.1);">
+                    <MudIcon Icon="@Icons.Material.Outlined.FilterAltOff" Size="Size.Large" Color="Color.Secondary" Style="font-size: 2.8rem;" />
+                </div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">No se encontraron registros</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4" Style="max-width: 420px; font-size: 0.85rem;">
+                    No existen eventos de auditoría que coincidan con el rango de fechas, estudiante o terminal seleccionados.
+                </MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.RestartAlt"
+                           OnClick="LimpiarFiltrosAsync"
+                           Class="rounded-lg">
+                    Restablecer Filtros
+                </MudButton>
+            }
+            else
+            {
+                <div class="pa-4 rounded-circle mb-3" style="background: rgba(37, 99, 235, 0.08);">
+                    <MudIcon Icon="@Icons.Material.Outlined.HistoryEdu" Size="Size.Large" Color="Color.Primary" Style="font-size: 3rem;" />
+                </div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">Sin historial de auditoría</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2" Style="max-width: 440px; font-size: 0.85rem;">
+                    Aún no se han completado sesiones de uso de laboratorio en el sistema.
+                </MudText>
+            }
         </div>
     </NoRecordsContent>
 </MudTable>
 
-<!-- CONTROLES DE PAGINACIÓN -->
-<div class="d-flex justify-space-between align-center mt-4 px-2">
-    <MudText Typo="Typo.body2" Color="Color.Secondary">
-        Mostrando página @(_resultado?.PaginaActual ?? 1) de @(Math.Max(_resultado?.TotalPaginas ?? 1, 1)) (@(_resultado?.TotalRegistros ?? 0) registros en total)
+<!-- PIE DE PAGINACIÓN ELEGANTE Y REORGANIZADO -->
+<div class="d-flex flex-wrap justify-space-between align-center mt-4 px-3 gap-3">
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Style="font-size: 0.85rem;">
+        Página @(_resultado?.PaginaActual ?? 1) de @(Math.Max(_resultado?.TotalPaginas ?? 1, 1)) (@(_resultado?.TotalRegistros ?? 0) registros auditados)
     </MudText>
-    <div class="d-flex gap-2">
-        <MudButton Variant="Variant.Outlined"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.ChevronLeft"
-                   Disabled="@(_paginaActual <= 1 || _cargando)"
-                   OnClick="() => CargarAuditoriaAsync(_paginaActual - 1)">
-            Anterior
-        </MudButton>
-        <MudButton Variant="Variant.Outlined"
-                   Color="Color.Primary"
-                   EndIcon="@Icons.Material.Filled.ChevronRight"
-                   Disabled="@(_paginaActual >= (_resultado?.TotalPaginas ?? 1) || _cargando)"
-                   OnClick="() => CargarAuditoriaAsync(_paginaActual + 1)">
-            Siguiente
-        </MudButton>
+
+    <div class="d-flex align-center gap-4">
+        <!-- Selector de Registros por Página -->
+        <div class="d-flex align-center gap-2">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Filas:</MudText>
+            <MudSelect T="int" Value="_tamanioPagina" ValueChanged="OnTamanioPaginaChanged"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Style="width: 95px;">
+                <MudSelectItem T="int" Value="15">15</MudSelectItem>
+                <MudSelectItem T="int" Value="25">25</MudSelectItem>
+                <MudSelectItem T="int" Value="50">50</MudSelectItem>
+                <MudSelectItem T="int" Value="100">100</MudSelectItem>
+            </MudSelect>
+        </div>
+
+        <!-- Botones de Navegación -->
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Filled.ChevronLeft"
+                       Disabled="@(_paginaActual <= 1 || _cargando)"
+                       OnClick="() => CargarAuditoriaAsync(_paginaActual - 1)"
+                       Class="rounded-lg"
+                       Size="Size.Small"
+                       Style="text-transform: none;">
+                Anterior
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       EndIcon="@Icons.Material.Filled.ChevronRight"
+                       Disabled="@(_paginaActual >= (_resultado?.TotalPaginas ?? 1) || _cargando)"
+                       OnClick="() => CargarAuditoriaAsync(_paginaActual + 1)"
+                       Class="rounded-lg"
+                       Size="Size.Small"
+                       Style="text-transform: none;">
+                Siguiente
+            </MudButton>
+        </div>
     </div>
 </div>
 
@@ -297,7 +461,7 @@
     private ResultadoAuditoriaDto? _resultado;
     private bool _cargando = false;
 
-    // Modelos de Filtro
+    // Modelos de Filtro Reactivos
     private DateRange? _dateRange;
     private int? _filtroAulaId;
     private string? _filtroEstudiante;
@@ -305,6 +469,16 @@
     private TipoCierreSesion? _filtroTipoCierre;
     private int _paginaActual = 1;
     private int _tamanioPagina = 25;
+
+    // Debounce para filtros de texto en tiempo real
+    private CancellationTokenSource? _debounceCts;
+
+    private bool HasActiveFilters =>
+        _dateRange != null ||
+        _filtroAulaId != null ||
+        !string.IsNullOrWhiteSpace(_filtroEstudiante) ||
+        !string.IsNullOrWhiteSpace(_filtroHostname) ||
+        _filtroTipoCierre != null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -324,6 +498,60 @@
         }
     }
 
+    private void TriggerDebouncedSearch()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        var token = _debounceCts.Token;
+
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await Task.Delay(350, token);
+                await CargarAuditoriaAsync(1);
+                StateHasChanged();
+            }
+            catch (TaskCanceledException) { }
+        });
+    }
+
+    private void OnEstudianteChanged(string val)
+    {
+        _filtroEstudiante = val;
+        TriggerDebouncedSearch();
+    }
+
+    private void OnHostnameChanged(string val)
+    {
+        _filtroHostname = val;
+        TriggerDebouncedSearch();
+    }
+
+    private async Task OnAulaChanged(int? val)
+    {
+        _filtroAulaId = val;
+        await CargarAuditoriaAsync(1);
+    }
+
+    private async Task OnTipoCierreChanged(TipoCierreSesion? val)
+    {
+        _filtroTipoCierre = val;
+        await CargarAuditoriaAsync(1);
+    }
+
+    private async Task OnDateRangeChanged(DateRange? val)
+    {
+        _dateRange = val;
+        await CargarAuditoriaAsync(1);
+    }
+
+    private async Task OnTamanioPaginaChanged(int nuevoTamanio)
+    {
+        _tamanioPagina = nuevoTamanio;
+        await CargarAuditoriaAsync(1);
+    }
+
     private async Task CargarAuditoriaAsync(int nuevaPagina = 1)
     {
         _cargando = true;
@@ -336,8 +564,8 @@
             fechaInicio: fechaInicio,
             fechaFin: fechaFin,
             aulaId: _filtroAulaId,
-            emailEstudiante: _filtroEstudiante,
-            hostname: _filtroHostname,
+            emailEstudiante: string.IsNullOrWhiteSpace(_filtroEstudiante) ? null : _filtroEstudiante.Trim(),
+            hostname: string.IsNullOrWhiteSpace(_filtroHostname) ? null : _filtroHostname.Trim(),
             tipoCierre: _filtroTipoCierre,
             pagina: _paginaActual,
             tamanioPagina: _tamanioPagina
@@ -355,8 +583,22 @@
         _filtroHostname = null;
         _filtroTipoCierre = null;
         _paginaActual = 1;
-        _tamanioPagina = 25;
         await CargarAuditoriaAsync(1);
+    }
+
+    private string GetPdfExportUrl()
+    {
+        DateTime? fechaInicio = _dateRange?.Start?.Date;
+        DateTime? fechaFin = _dateRange?.End?.Date.AddDays(1).AddTicks(-1);
+
+        return ApiClient.GetExportarPdfUrl(
+            fechaInicio: fechaInicio,
+            fechaFin: fechaFin,
+            aulaId: _filtroAulaId,
+            emailEstudiante: string.IsNullOrWhiteSpace(_filtroEstudiante) ? null : _filtroEstudiante.Trim(),
+            hostname: string.IsNullOrWhiteSpace(_filtroHostname) ? null : _filtroHostname.Trim(),
+            tipoCierre: _filtroTipoCierre
+        );
     }
 
     private string GetExcelExportUrl()
@@ -368,8 +610,8 @@
             fechaInicio: fechaInicio,
             fechaFin: fechaFin,
             aulaId: _filtroAulaId,
-            emailEstudiante: _filtroEstudiante,
-            hostname: _filtroHostname,
+            emailEstudiante: string.IsNullOrWhiteSpace(_filtroEstudiante) ? null : _filtroEstudiante.Trim(),
+            hostname: string.IsNullOrWhiteSpace(_filtroHostname) ? null : _filtroHostname.Trim(),
             tipoCierre: _filtroTipoCierre
         );
     }
@@ -383,29 +625,58 @@
             fechaInicio: fechaInicio,
             fechaFin: fechaFin,
             aulaId: _filtroAulaId,
-            emailEstudiante: _filtroEstudiante,
-            hostname: _filtroHostname,
+            emailEstudiante: string.IsNullOrWhiteSpace(_filtroEstudiante) ? null : _filtroEstudiante.Trim(),
+            hostname: string.IsNullOrWhiteSpace(_filtroHostname) ? null : _filtroHostname.Trim(),
             tipoCierre: _filtroTipoCierre
         );
     }
 
-    private Color GetColorTipoCierre(TipoCierreSesion? tipo) => tipo switch
+    private string GetBadgeClassTipoCierre(TipoCierreSesion? tipo) => tipo switch
     {
-        TipoCierreSesion.Manual => Color.Success,
-        TipoCierreSesion.FinPeriodo => Color.Info,
-        TipoCierreSesion.Recreo => Color.Warning,
-        TipoCierreSesion.RelevoForzado => Color.Warning,
-        TipoCierreSesion.AdminRemoto => Color.Error,
-        _ => Color.Default
+        TipoCierreSesion.Manual => "badge-soft-success",
+        TipoCierreSesion.FinPeriodo => "badge-soft-info",
+        TipoCierreSesion.Recreo => "badge-soft-warning",
+        TipoCierreSesion.Inactividad => "badge-soft-warning",
+        TipoCierreSesion.RelevoForzado => "badge-soft-error",
+        TipoCierreSesion.AdminRemoto => "badge-soft-error",
+        TipoCierreSesion.ApagadoForzado => "badge-soft-error",
+        _ => "badge-soft-success"
     };
 
     private string GetTextoTipoCierre(TipoCierreSesion? tipo) => tipo switch
     {
         TipoCierreSesion.Manual => "Manual",
         TipoCierreSesion.FinPeriodo => "Fin de Período",
-        TipoCierreSesion.Recreo => "Recreo",
+        TipoCierreSesion.Recreo => "Recreo / Pausa",
+        TipoCierreSesion.Inactividad => "Inactividad Física",
         TipoCierreSesion.RelevoForzado => "Relevo Forzado",
         TipoCierreSesion.AdminRemoto => "Admin Remoto",
-        _ => "Activa"
+        TipoCierreSesion.ApagadoForzado => "Apagado Forzado",
+        _ => "Sesión Activa"
     };
+
+    private readonly HashSet<string> _copiedKeys = [];
+
+    private async Task CopiarConFeedbackAsync(string? texto, string key, string label = "")
+    {
+        if (string.IsNullOrEmpty(texto)) return;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("clipboardHelper.copyText", texto);
+            _copiedKeys.Add(key);
+            StateHasChanged();
+            Snackbar.Add($"📋 {(string.IsNullOrEmpty(label) ? "Copiado" : label)}: {texto}", Severity.Success);
+            _ = Task.Delay(2000).ContinueWith(_ =>
+            {
+                _copiedKeys.Remove(key);
+                InvokeAsync(StateHasChanged);
+            });
+        }
+        catch
+        {
+            Snackbar.Add("No se pudo copiar al portapapeles", Severity.Warning);
+        }
+    }
+
+    private bool EstaCopiado(string key) => _copiedKeys.Contains(key);
 }

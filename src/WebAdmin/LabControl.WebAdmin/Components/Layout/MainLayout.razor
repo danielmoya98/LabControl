@@ -1,16 +1,20 @@
 @inherits LayoutComponentBase
 @using LabControl.WebAdmin.Services
+@using LabControl.Application.Features.Aulas.Commands.CreateAula
 @inject UserSessionService SessionService
 @inject SignalRClientService SignalRService
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+@inject LabApiClient ApiClient
 @implements IDisposable
 
-<MudThemeProvider Theme="_customTheme" IsDarkMode="true" />
+<MudThemeProvider Theme="_customTheme" @bind-IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider Position="DialogPosition.Center" CloseButton="true" FullWidth="false" />
 <MudSnackbarProvider />
 
-@if (IsLoginPage)
+@if (IsBareLayoutPage)
 {
     <main>
         @Body
@@ -19,86 +23,842 @@
 else
 {
     <MudLayout>
-        <!-- AppBar Superior -->
-        <MudAppBar Elevation="1" Color="Color.Surface" Fixed="true">
-            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(() => _drawerOpen = !_drawerOpen)" />
-            
-            <MudText Typo="Typo.h6" Class="font-weight-bold ml-3 hidden-xs">
-                Sistema de Control de Laboratorios
-            </MudText>
+        <!-- Sidebar Drawer Elegante (Ocupa todo el alto vertical de la pantalla: 100vh) -->
+        <MudDrawer @bind-Open="_drawerOpen"
+                   Elevation="0"
+                   ClipMode="DrawerClipMode.Never"
+                   Width="260px"
+                   Style="border-right: 1px solid var(--mud-palette-lines-default); background: var(--mud-palette-drawer-background); z-index: calc(var(--mud-zindex-appbar) + 1);">
+            <NavMenu />
+        </MudDrawer>
+
+        <!-- AppBar Superior Limpia (Estilo Radzen / Soft SaaS, a la derecha del Sidebar) -->
+        <MudAppBar Elevation="0" Fixed="true" Class="saas-appbar">
+            <!-- Sección Izquierda: Toggle Drawer + Título + Buscador -->
+            <div class="d-flex align-center gap-2">
+                <MudIconButton Icon="@(_drawerOpen ? Icons.Material.Outlined.MenuOpen : Icons.Material.Outlined.Menu)"
+                               Color="Color.Default"
+                               Edge="Edge.Start"
+                               OnClick="@(() => _drawerOpen = !_drawerOpen)"
+                               Class="mr-1" />
+
+                <!-- Command Palette Trigger Button (Ctrl + K) -->
+                <button type="button"
+                        id="command-palette-trigger"
+                        class="command-palette-trigger-btn ml-3 d-none d-md-inline-flex"
+                        @onclick="OpenCommandPalette"
+                        title="Buscar o ejecutar comando (Ctrl+K)">
+                    <MudIcon Icon="@Icons.Material.Outlined.Search" Size="Size.Small" />
+                    <span>Buscar o comando...</span>
+                    <kbd class="command-kbd">Ctrl K</kbd>
+                </button>
+                <MudIconButton Icon="@Icons.Material.Outlined.Search"
+                               Color="Color.Default"
+                               Size="Size.Medium"
+                               OnClick="OpenCommandPalette"
+                               Class="d-inline-flex d-md-none ml-1"
+                               title="Buscar o comando (Ctrl+K)" />
+            </div>
 
             <MudSpacer />
 
             <div class="d-flex align-center gap-3">
-                <!-- Status SignalR Badge -->
-                <MudChip T="string" Color="@(SignalRService.IsConnected ? Color.Success : Color.Error)" Variant="Variant.Filled" Size="Size.Small" Icon="@(SignalRService.IsConnected ? Icons.Material.Filled.Wifi : Icons.Material.Filled.WifiOff)">
-                    @(SignalRService.IsConnected ? "● En vivo" : "○ Desconectado")
-                </MudChip>
-
-                <!-- User Badge & Menu -->
-                <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">
-                    @(SessionService.CurrentUser?.Rol ?? "Admin")
-                </MudChip>
-
-                <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                <!-- 1. Dropdown de Notificaciones -->
+                <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="false">
                     <ActivatorContent>
-                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium">
-                            @(SessionService.CurrentUser?.NombreCompleto?.FirstOrDefault() ?? 'A')
-                        </MudAvatar>
+                        <MudBadge Content="@(_unreadCount > 0 ? _unreadCount.ToString() : null)"
+                                  Color="Color.Error"
+                                  Overlap="true"
+                                  BadgeClass="topbar-notification-badge"
+                                  Visible="@(_unreadCount > 0)"
+                                  Class="mr-1">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Notifications"
+                                           Color="Color.Default"
+                                           Size="Size.Medium"
+                                           OnClick="@context.ToggleAsync" />
+                        </MudBadge>
                     </ActivatorContent>
                     <ChildContent>
-                        <div class="px-4 py-2">
-                            <MudText Typo="Typo.subtitle2">@(SessionService.CurrentUser?.NombreCompleto ?? "Administrador")</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(SessionService.CurrentUser?.Email ?? "admin@univalle.edu")</MudText>
+                        <div class="rounded-lg" style="width: 360px; max-width: 90vw; overflow: hidden; border: 1px solid var(--mud-palette-lines-default);">
+                            <!-- Encabezado Notificaciones -->
+                            <div class="d-flex align-center justify-space-between px-4 py-3" style="border-bottom: 1px solid var(--mud-palette-lines-default); background: rgba(148, 163, 184, 0.05);">
+                                <div class="d-flex align-center gap-2">
+                                    <MudText Typo="Typo.subtitle2" Class="font-weight-bold" Style="font-size: 0.88rem;">Notificaciones</MudText>
+                                    @if (_unreadCount > 0)
+                                    {
+                                        <span class="badge-soft-error font-weight-bold" style="font-size: 0.68rem; padding: 2px 6px;">
+                                            @_unreadCount nuevas
+                                        </span>
+                                    }
+                                </div>
+                                @if (_unreadCount > 0)
+                                {
+                                    <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary" OnClick="MarcarNotificacionesLeidas" Style="font-size: 0.75rem; text-transform: none;">
+                                        Marcar leídas
+                                    </MudButton>
+                                }
+                            </div>
+
+                            <!-- Lista de Notificaciones -->
+                            <div style="max-height: 320px; overflow-y: auto;">
+                                @if (_notificaciones.Count == 0)
+                                {
+                                    <div class="pa-6 text-center">
+                                        <MudIcon Icon="@Icons.Material.Outlined.NotificationsOff" Color="Color.Secondary" Size="Size.Large" Class="mb-2" />
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">No hay notificaciones pendientes</MudText>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @foreach (var notif in _notificaciones)
+                                    {
+                                        <div class="px-4 py-3 d-flex gap-3 align-start mud-hover"
+                                             style="border-bottom: 1px solid var(--mud-palette-lines-default); background: @(notif.Leida ? "transparent" : "rgba(158, 0, 68, 0.04)"); cursor: pointer;">
+                                            <div class="pa-2 rounded-circle mt-1" style="background: @notif.BgColor;">
+                                                <MudIcon Icon="@notif.Icono" Color="@notif.IconColor" Size="Size.Small" />
+                                            </div>
+                                            <div style="flex: 1;">
+                                                <div class="d-flex align-center justify-space-between">
+                                                    <MudText Typo="Typo.body2" Class="font-weight-bold" Style="font-size: 0.83rem;">
+                                                        @notif.Titulo
+                                                    </MudText>
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.72rem;">
+                                                        @notif.Tiempo
+                                                    </MudText>
+                                                </div>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mt-1" Style="line-height: 1.35;">
+                                                    @notif.Mensaje
+                                                </MudText>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+
+                            <!-- Pie Notificaciones -->
+                            <div class="pa-2 text-center" style="background: var(--mud-palette-background-gray); border-top: 1px solid var(--mud-palette-lines-default);">
+                                <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" FullWidth="true" OnClick="LimpiarNotificaciones" Style="text-transform: none; font-size: 0.8rem;">
+                                    Limpiar historial
+                                </MudButton>
+                            </div>
                         </div>
-                        <MudDivider />
-                        <MudMenuItem Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error" OnClick="HandleLogout">
-                            Cerrar Sesión
-                        </MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
+
+                <!-- 2. User Menu Dropdown (Reagrupado con todas las opciones) -->
+                <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <ActivatorContent>
+                        <MudButton Variant="Variant.Text"
+                                   OnClick="@context.ToggleAsync"
+                                   Class="user-menu-trigger ml-1">
+                            <div class="d-flex align-center gap-2">
+                                @if (!string.IsNullOrEmpty(SessionService.CurrentUser?.FotoUrl))
+                                {
+                                    <MudAvatar Size="Size.Small">
+                                        <MudImage Src="@SessionService.CurrentUser.FotoUrl" />
+                                    </MudAvatar>
+                                }
+                                else
+                                {
+                                    <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Style="font-weight: 700; font-size: 0.82rem; width: 28px; height: 28px;">
+                                        @(SessionService.CurrentUser?.NombreCompleto?.FirstOrDefault() ?? 'A')
+                                    </MudAvatar>
+                                }
+                                <MudText Typo="Typo.body2" Class="font-weight-bold hidden-xs" Style="font-size: 0.84rem;">
+                                    @(SessionService.CurrentUser?.NombreCompleto ?? "Administrador")
+                                </MudText>
+                                <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Color="Color.Default" Style="font-size: 1.1rem;" />
+                            </div>
+                        </MudButton>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <div class="rounded-lg" style="min-width: 260px; overflow: hidden; border: 1px solid var(--mud-palette-lines-default);">
+                            <!-- Tarjeta de Información de Usuario -->
+                            <div class="px-4 py-3 d-flex align-center gap-3" style="background: rgba(148, 163, 184, 0.05); border-bottom: 1px solid var(--mud-palette-lines-default);">
+                                @if (!string.IsNullOrEmpty(SessionService.CurrentUser?.FotoUrl))
+                                {
+                                    <MudAvatar Size="Size.Medium">
+                                        <MudImage Src="@SessionService.CurrentUser.FotoUrl" />
+                                    </MudAvatar>
+                                }
+                                else
+                                {
+                                    <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Style="font-weight: 700; font-size: 1.1rem;">
+                                        @(SessionService.CurrentUser?.NombreCompleto?.FirstOrDefault() ?? 'A')
+                                    </MudAvatar>
+                                }
+                                <div>
+                                    <MudText Typo="Typo.subtitle2" Class="font-weight-bold" Style="line-height: 1.2; font-size: 0.88rem;">
+                                        @(SessionService.CurrentUser?.NombreCompleto ?? "Administrador")
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block" Style="font-size: 0.75rem;">
+                                        @(SessionService.CurrentUser?.Email ?? "admin@univalle.edu")
+                                    </MudText>
+                                    <div class="mt-1">
+                                        <span class="badge-soft-info font-weight-bold" style="font-size: 0.65rem; padding: 1px 6px;">
+                                            @(SessionService.CurrentUser?.Rol ?? "Administrador")
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Opciones del Menú de Usuario -->
+                            <div class="py-1">
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Person" OnClick="OpenEditProfileDialog">
+                                    <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                                        <span style="font-size: 0.84rem; font-weight: 500;">Editar Perfil</span>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-4" Style="font-size: 0.7rem;">Foto, datos y clave</MudText>
+                                    </div>
+                                </MudMenuItem>
+
+                                <MudMenuItem Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
+                                             IconColor="@(_isDarkMode ? Color.Warning : Color.Default)"
+                                             OnClick="ToggleThemeAsync">
+                                    <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                                        <span style="font-size: 0.84rem; font-weight: 500;">Tema de la Interfaz</span>
+                                        <span class="@(_isDarkMode ? "badge-soft-warning" : "badge-soft-info") font-weight-bold ml-2"
+                                              style="font-size: 0.68rem; padding: 2px 6px;">
+                                            @(_isDarkMode ? "Oscuro" : "Claro")
+                                        </span>
+                                    </div>
+                                </MudMenuItem>
+
+                                <MudMenuItem Icon="@Icons.Material.Outlined.HelpOutline" OnClick="OpenHelpDialog">
+                                    <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                                        <span style="font-size: 0.84rem; font-weight: 500;">Ayuda y Soporte</span>
+                                        <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" Color="Color.Secondary" Style="font-size: 0.95rem;" />
+                                    </div>
+                                </MudMenuItem>
+                            </div>
+
+                            <MudDivider Style="opacity: 0.5;" />
+
+                            <div class="py-1">
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Logout" IconColor="Color.Error" OnClick="HandleLogout">
+                                    <MudText Color="Color.Error" Typo="Typo.body2" Class="font-weight-bold" Style="font-size: 0.84rem;">
+                                        Cerrar Sesión
+                                    </MudText>
+                                </MudMenuItem>
+                            </div>
+                        </div>
                     </ChildContent>
                 </MudMenu>
             </div>
         </MudAppBar>
 
-        <!-- Sidebar Drawer -->
-        <MudDrawer @bind-Open="_drawerOpen" Elevation="2" ClipMode="DrawerClipMode.Always" Color="Color.Surface">
-            <NavMenu />
-        </MudDrawer>
-
-        <!-- Main Content con Padding Superior pt-16 para evitar solapamiento -->
-        <MudMainContent Class="pt-16 px-6 pb-6">
-            @Body
+        <!-- Main Content con espaciado óptimo -->
+        <MudMainContent Class="px-6 pb-8" Style="background: var(--mud-palette-background); min-height: 100vh; padding-top: 92px !important;">
+            <div class="mt-2">
+                @Body
+            </div>
         </MudMainContent>
     </MudLayout>
+
+    <!-- Modal para Editar Perfil Básico (Nombre, Foto y Contraseña) -->
+    <MudDialog @bind-Visible="_showProfileDialog" Options="_dialogOptions">
+        <TitleContent>
+            <div class="d-flex align-center gap-2">
+                <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Color="Color.Primary" />
+                <MudText Typo="Typo.h6" Class="font-weight-bold">Editar Perfil de Administrador</MudText>
+            </div>
+        </TitleContent>
+        <DialogContent>
+            <div class="d-flex flex-column gap-4 py-2" style="min-width: 320px; max-width: 480px;">
+                <!-- Previsualización y Selección de Foto -->
+                <div class="d-flex align-center gap-4 pa-3 rounded-lg" style="background: var(--mud-palette-background-gray); border: 1px solid var(--mud-palette-lines-default);">
+                    @if (!string.IsNullOrEmpty(_editFotoUrl))
+                    {
+                        <MudAvatar Style="width: 64px; height: 64px;">
+                            <MudImage Src="@_editFotoUrl" />
+                        </MudAvatar>
+                    }
+                    else
+                    {
+                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Style="width: 64px; height: 64px; font-size: 1.5rem; font-weight: 700;">
+                            @(_editNombre?.FirstOrDefault() ?? 'A')
+                        </MudAvatar>
+                    }
+                    <div style="flex: 1;">
+                        <MudText Typo="Typo.body2" Class="font-weight-bold mb-1">Foto o Avatar de Perfil</MudText>
+                        <MudTextField @bind-Value="_editFotoUrl" Label="URL de imagen" Placeholder="https://ejemplo.com/foto.jpg"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Style="font-size: 0.8rem;" />
+                        <div class="d-flex gap-2 mt-2">
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => _editFotoUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150")" Style="font-size: 0.7rem; padding: 2px 6px;">Avatar 1</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => _editFotoUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150")" Style="font-size: 0.7rem; padding: 2px 6px;">Avatar 2</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary" OnClick="@(() => _editFotoUrl = "")" Style="font-size: 0.7rem; padding: 2px 6px;">Quitar Foto</MudButton>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nombre Completo -->
+                <MudTextField @bind-Value="_editNombre" Label="Nombre Completo" Variant="Variant.Outlined"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Person" Required="true" />
+
+                <!-- Correo Electrónico (Solo Lectura) -->
+                <MudTextField Value="@(SessionService.CurrentUser?.Email ?? "admin@univalle.edu")" Label="Correo Institucional"
+                              Variant="Variant.Outlined" ReadOnly="true" Disabled="true"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Email" />
+
+                <!-- Sección Seguridad: Cambiar Contraseña -->
+                <MudDivider Class="my-1" />
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-2">
+                        <MudIcon Icon="@Icons.Material.Outlined.Lock" Size="Size.Small" Class="mr-1" Style="vertical-align: text-bottom;" />
+                        Seguridad: Cambiar Contraseña (Opcional)
+                    </MudText>
+                    <div class="d-flex flex-column gap-3">
+                        <MudTextField @bind-Value="_currentPassword" Label="Contraseña Actual" Variant="Variant.Outlined"
+                                      InputType="@(_showCurrentPassword ? InputType.Text : InputType.Password)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showCurrentPassword ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                                      OnAdornmentClick="@(() => _showCurrentPassword = !_showCurrentPassword)" />
+
+                        <MudTextField @bind-Value="_newPassword" Label="Nueva Contraseña" Variant="Variant.Outlined"
+                                      InputType="@(_showNewPassword ? InputType.Text : InputType.Password)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showNewPassword ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                                      OnAdornmentClick="@(() => _showNewPassword = !_showNewPassword)" />
+
+                        <MudTextField @bind-Value="_confirmPassword" Label="Confirmar Nueva Contraseña" Variant="Variant.Outlined"
+                                      InputType="@(_showConfirmPassword ? InputType.Text : InputType.Password)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showConfirmPassword ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                                      OnAdornmentClick="@(() => _showConfirmPassword = !_showConfirmPassword)" />
+                    </div>
+                </div>
+            </div>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Variant="Variant.Text" OnClick="() => _showProfileDialog = false">Cancelar</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveProfileChanges" StartIcon="@Icons.Material.Filled.Save">
+                Guardar Cambios
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+    <!-- Modal para Ayuda y Soporte -->
+    <MudDialog @bind-Visible="_showHelpDialog" Options="_dialogOptions">
+        <TitleContent>
+            <div class="d-flex align-center gap-2">
+                <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Color="Color.Primary" />
+                <MudText Typo="Typo.h6" Class="font-weight-bold">Centro de Ayuda y Soporte</MudText>
+            </div>
+        </TitleContent>
+        <DialogContent>
+            <div class="d-flex flex-column gap-4 py-2" style="min-width: 320px; max-width: 500px;">
+                <!-- Guía Rápida -->
+                <div class="pa-4 rounded-lg" style="background: var(--mud-palette-background-gray); border: 1px solid var(--mud-palette-lines-default);">
+                    <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-2" Color="Color.Primary">
+                        💡 Guía Rápida de LabControl
+                    </MudText>
+                    <div class="d-flex flex-column gap-2" style="font-size: 0.85rem; color: var(--mud-palette-text-secondary);">
+                        <div>• <strong>Mosaico en Vivo:</strong> En el Tablero puedes alternar a la vista mosaico para ver capturas en tiempo real de las computadoras activas.</div>
+                        <div>• <strong>Políticas de Inactividad:</strong> En Gestión de Aulas puedes definir el tiempo límite de abandono físico y la acción (apagar PC o cerrar sesión).</div>
+                        <div>• <strong>Mensajería de Aula:</strong> Envía anuncios directos a los estudiantes de manera flotante sin interrumpir sus actividades.</div>
+                    </div>
+                </div>
+
+                <!-- Soporte Técnico TI -->
+                <div class="pa-4 rounded-lg" style="background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default);">
+                    <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-2">
+                        📞 Soporte Técnico TI - Univalle
+                    </MudText>
+                    <div class="d-flex flex-column gap-2" style="font-size: 0.85rem;">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Outlined.Email" Size="Size.Small" Color="Color.Secondary" />
+                            <span><strong>Correo:</strong> soporte.sistemas@univalle.edu</span>
+                        </div>
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Outlined.Phone" Size="Size.Small" Color="Color.Secondary" />
+                            <span><strong>Interno:</strong> Ext. 4022 / 4023</span>
+                        </div>
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" Color="Color.Secondary" />
+                            <span><strong>Horario:</strong> Lunes a Viernes 07:30 - 19:30</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Versión y Derechos -->
+                <div class="d-flex align-center justify-space-between px-2" style="font-size: 0.75rem; color: var(--mud-palette-text-disabled);">
+                    <span>LabControl Enterprise v2.4</span>
+                    <span>Universidad del Valle &copy; @DateTime.Now.Year</span>
+                </div>
+            </div>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => _showHelpDialog = false">
+                Entendido
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+    <!-- Diálogo: Command Global (Ctrl+K) -->
+    <MudDialog @bind-Visible="_showCommandPalette" Options="_commandDialogOptions" Class="rounded-lg shadow-xl" Style="border: 1px solid var(--mud-palette-lines-default); background: var(--mud-palette-surface); overflow: hidden;">
+        <DialogContent>
+            <!-- Barra de Búsqueda del Command Palette -->
+            <div class="d-flex align-center px-4 py-3 gap-3" style="border-bottom: 1px solid var(--mud-palette-lines-default); background: var(--mud-palette-background);">
+                <MudIcon Icon="@Icons.Material.Outlined.Search" Size="Size.Medium" Color="Color.Primary" />
+                <input type="text"
+                       class="command-search-input"
+                       style="background: transparent; border: none; outline: none; width: 100%; font-size: 1rem; color: var(--mud-palette-text-primary); font-family: inherit;"
+                       placeholder="Escribe un comando o busca una vista, aula o acción..."
+                       @bind="_commandQuery"
+                       @bind:event="oninput"
+                       autofocus />
+                @if (!string.IsNullOrWhiteSpace(_commandQuery))
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="() => _commandQuery = string.Empty" />
+                }
+                <kbd class="command-kbd">ESC</kbd>
+            </div>
+
+            <!-- Lista de Resultados Filtrados -->
+            <div class="pa-2" style="max-height: 380px; overflow-y: auto;">
+                @if (FilteredNavItems.Any())
+                {
+                    <div class="px-3 py-1 mt-1 text-uppercase font-weight-bold" style="font-size: 0.68rem; letter-spacing: 0.05em; color: var(--mud-palette-text-disabled);">
+                        Vistas y Navegación
+                    </div>
+                    @foreach (var item in FilteredNavItems)
+                    {
+                        <div class="command-item d-flex align-center justify-space-between px-3 py-2 rounded-lg cursor-pointer"
+                             @onclick="() => NavigateFromPalette(item.Route)">
+                            <div class="d-flex align-center gap-3">
+                                <div class="pa-1 rounded-lg" style="background: rgba(37, 99, 235, 0.08);">
+                                    <MudIcon Icon="@item.Icon" Size="Size.Small" Color="Color.Primary" />
+                                </div>
+                                <div>
+                                    <div class="font-weight-medium" style="font-size: 0.88rem; color: var(--mud-palette-text-primary);">@item.Title</div>
+                                    <div style="font-size: 0.72rem; color: var(--mud-palette-text-secondary);">@item.Description</div>
+                                </div>
+                            </div>
+                            <kbd class="command-kbd" style="font-size: 0.65rem;">@item.Badge</kbd>
+                        </div>
+                    }
+                }
+
+                @if (FilteredAulas.Any())
+                {
+                    <div class="px-3 py-1 mt-3 text-uppercase font-weight-bold" style="font-size: 0.68rem; letter-spacing: 0.05em; color: var(--mud-palette-text-disabled);">
+                        Aulas y Espacios Físicos
+                    </div>
+                    @foreach (var aula in FilteredAulas)
+                    {
+                        <div class="command-item d-flex align-center justify-space-between px-3 py-2 rounded-lg cursor-pointer"
+                             @onclick="() => NavigateToAula(aula.Id)">
+                            <div class="d-flex align-center gap-3">
+                                <div class="pa-1 rounded-lg" style="background: rgba(16, 185, 129, 0.08);">
+                                    <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Size="Size.Small" Color="Color.Success" />
+                                </div>
+                                <div>
+                                    <div class="font-weight-medium" style="font-size: 0.88rem; color: var(--mud-palette-text-primary);">@aula.Nombre</div>
+                                    <div style="font-size: 0.72rem; color: var(--mud-palette-text-secondary);">@aula.Pabellon &bull; Capacidad: @aula.Capacidad pcs</div>
+                                </div>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined" Style="font-size: 0.65rem; height: 20px;">
+                                Filtrar PCs
+                            </MudChip>
+                        </div>
+                    }
+                }
+
+                @if (FilteredActionItems.Any())
+                {
+                    <div class="px-3 py-1 mt-3 text-uppercase font-weight-bold" style="font-size: 0.68rem; letter-spacing: 0.05em; color: var(--mud-palette-text-disabled);">
+                        Acciones y Accesos Rápidos
+                    </div>
+                    @foreach (var act in FilteredActionItems)
+                    {
+                        <div class="command-item d-flex align-center justify-space-between px-3 py-2 rounded-lg cursor-pointer"
+                             @onclick="act.Action">
+                            <div class="d-flex align-center gap-3">
+                                <div class="pa-1 rounded-lg" style="background: rgba(245, 158, 11, 0.08);">
+                                    <MudIcon Icon="@act.Icon" Size="Size.Small" Color="Color.Warning" />
+                                </div>
+                                <div>
+                                    <div class="font-weight-medium" style="font-size: 0.88rem; color: var(--mud-palette-text-primary);">@act.Title</div>
+                                    <div style="font-size: 0.72rem; color: var(--mud-palette-text-secondary);">@act.Description</div>
+                                </div>
+                            </div>
+                            <kbd class="command-kbd" style="font-size: 0.65rem;">@act.Badge</kbd>
+                        </div>
+                    }
+                }
+
+                @if (!FilteredNavItems.Any() && !FilteredAulas.Any() && !FilteredActionItems.Any())
+                {
+                    <div class="text-center py-6 px-4">
+                        <MudIcon Icon="@Icons.Material.Outlined.SearchOff" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            No se encontraron comandos o resultados para "<strong>@_commandQuery</strong>"
+                        </MudText>
+                    </div>
+                }
+            </div>
+
+            <!-- Footer con Atajos -->
+            <div class="d-flex align-center justify-space-between px-4 py-2" style="border-top: 1px solid var(--mud-palette-lines-default); font-size: 0.72rem; color: var(--mud-palette-text-disabled); background: rgba(148, 163, 184, 0.03);">
+                <div class="d-flex align-center gap-3">
+                    <span><kbd class="command-kbd">↵</kbd> Seleccionar</span>
+                    <span><kbd class="command-kbd">ESC</kbd> Cerrar</span>
+                </div>
+                <span>LabControl Command System</span>
+            </div>
+        </DialogContent>
+    </MudDialog>
 }
 
 @code {
     private bool _drawerOpen = true;
-    private bool IsLoginPage => Navigation.Uri.Contains("/login");
+    private bool _isDarkMode = false;
+    private bool IsBareLayoutPage => Navigation.Uri.Contains("/login") || Navigation.Uri.Contains("/onboarding");
+
+    // Command Palette
+    private bool _showCommandPalette = false;
+    private string _commandQuery = "";
+    private readonly DialogOptions _commandDialogOptions = new()
+    {
+        NoHeader = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        Position = DialogPosition.TopCenter,
+        CloseOnEscapeKey = true
+    };
+
+    private List<AulaDto> _aulasCache = [];
+
+    private record CommandNavItem(string Title, string Description, string Route, string Icon, string Badge);
+    private record CommandActionItem(string Title, string Description, string Icon, string Badge, Func<Task> Action);
+
+    private List<CommandNavItem> _navItems =
+    [
+        new("Dashboard Principal", "Monitoreo en vivo, KPIs y mosaico en tiempo real", "/", Icons.Material.Outlined.Dashboard, "Ir"),
+        new("Computadoras y Terminales", "Gestión de estaciones, estados y comandos remotos", "/computadoras", Icons.Material.Outlined.Computer, "Ir"),
+        new("Aulas y Laboratorios", "Espacios físicos, capacidades y políticas de energía", "/aulas", Icons.Material.Outlined.MeetingRoom, "Ir"),
+        new("Horarios de Laboratorio", "Programación de clases, docentes y materias", "/horarios", Icons.Material.Outlined.CalendarMonth, "Ir"),
+        new("Auditoría y Sesiones", "Registro forense de actividad y conexiones de alumnos", "/auditoria", Icons.Material.Outlined.History, "Ir"),
+        new("Control de Energía", "Consumo en watts, apagado programado y reportes ecológicos", "/energia", Icons.Material.Outlined.Bolt, "Ir"),
+        new("Configuración del Sistema", "Reglas operativas, alertas e inactividad de Univalle", "/configuracion", Icons.Material.Outlined.Settings, "Ir")
+    ];
+
+    private IEnumerable<CommandNavItem> FilteredNavItems =>
+        string.IsNullOrWhiteSpace(_commandQuery)
+            ? _navItems
+            : _navItems.Where(n => n.Title.Contains(_commandQuery, StringComparison.OrdinalIgnoreCase) ||
+                                   n.Description.Contains(_commandQuery, StringComparison.OrdinalIgnoreCase) ||
+                                   n.Route.Contains(_commandQuery, StringComparison.OrdinalIgnoreCase));
+
+    private IEnumerable<AulaDto> FilteredAulas =>
+        string.IsNullOrWhiteSpace(_commandQuery)
+            ? _aulasCache.Take(4)
+            : _aulasCache.Where(a => a.Nombre.Contains(_commandQuery, StringComparison.OrdinalIgnoreCase) ||
+                                    (a.Pabellon?.Contains(_commandQuery, StringComparison.OrdinalIgnoreCase) ?? false)).Take(5);
+
+    private IEnumerable<CommandActionItem> FilteredActionItems
+    {
+        get
+        {
+            var actions = new List<CommandActionItem>
+            {
+                new("Alternar Tema Claro / Oscuro", "Cambiar entre modo día y noche en la interfaz", _isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode, "Tema", async () => { await ToggleThemeAsync(); CloseCommandPalette(); }),
+                new("Pantalla Completa (F11)", "Activar o desactivar modo pantalla completa del navegador", Icons.Material.Outlined.Fullscreen, "NOC", async () => { await JSRuntime.InvokeVoidAsync("fullscreenHelper.toggleFullscreen"); CloseCommandPalette(); }),
+                new("Mi Perfil de Usuario", "Editar nombre, credenciales y avatar administrativo", Icons.Material.Outlined.Person, "Ajustes", () => { _showProfileDialog = true; CloseCommandPalette(); return Task.CompletedTask; }),
+                new("Centro de Ayuda y Soporte", "Guía rápida de operaciones y contactos TI Univalle", Icons.Material.Outlined.HelpOutline, "Ayuda", () => { _showHelpDialog = true; CloseCommandPalette(); return Task.CompletedTask; }),
+                new("Cerrar Sesión Segura", "Finalizar la sesión del administrador", Icons.Material.Outlined.Logout, "Salir", () => { CloseCommandPalette(); HandleLogout(); return Task.CompletedTask; })
+            };
+
+            return string.IsNullOrWhiteSpace(_commandQuery)
+                ? actions
+                : actions.Where(a => a.Title.Contains(_commandQuery, StringComparison.OrdinalIgnoreCase) ||
+                                     a.Description.Contains(_commandQuery, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    private void OpenCommandPalette()
+    {
+        _commandQuery = "";
+        _showCommandPalette = true;
+        _ = LoadAulasCacheAsync();
+        StateHasChanged();
+    }
+
+    private void CloseCommandPalette()
+    {
+        _showCommandPalette = false;
+        _commandQuery = "";
+        StateHasChanged();
+    }
+
+    private void NavigateFromPalette(string route)
+    {
+        CloseCommandPalette();
+        Navigation.NavigateTo(route);
+    }
+
+    private void NavigateToAula(int aulaId)
+    {
+        CloseCommandPalette();
+        Navigation.NavigateTo($"/computadoras?aulaId={aulaId}");
+    }
+
+    private async Task LoadAulasCacheAsync()
+    {
+        if (_aulasCache.Count == 0)
+        {
+            try
+            {
+                _aulasCache = await ApiClient.GetAulasAsync();
+                StateHasChanged();
+            }
+            catch
+            {
+                // Silencioso
+            }
+        }
+    }
+
+    // Diálogos modales
+    private bool _showProfileDialog = false;
+    private bool _showHelpDialog = false;
+    private readonly DialogOptions _dialogOptions = new() { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    // Edición de Perfil
+    private string _editNombre = "";
+    private string? _editFotoUrl;
+    private string _currentPassword = "";
+    private string _newPassword = "";
+    private string _confirmPassword = "";
+    private bool _showCurrentPassword = false;
+    private bool _showNewPassword = false;
+    private bool _showConfirmPassword = false;
+
+    // Notificaciones
+    private class NotificationItem
+    {
+        public string Titulo { get; set; } = "";
+        public string Mensaje { get; set; } = "";
+        public string Tiempo { get; set; } = "";
+        public string Icono { get; set; } = Icons.Material.Filled.Notifications;
+        public Color IconColor { get; set; } = Color.Primary;
+        public string BgColor { get; set; } = "rgba(37, 99, 235, 0.1)";
+        public bool Leida { get; set; } = false;
+    }
+
+    private List<NotificationItem> _notificaciones =
+    [
+        new() {
+            Titulo = "Inactividad detectada",
+            Mensaje = "Terminal PC-04 en Aula 102 superó los 15 min sin uso.",
+            Tiempo = "Hace 4 min",
+            Icono = Icons.Material.Outlined.TimerOff,
+            IconColor = Color.Error,
+            BgColor = "rgba(220, 38, 38, 0.1)",
+            Leida = false
+        },
+        new() {
+            Titulo = "Inicio de sesión",
+            Mensaje = "Estudiante juan.perez@univalle.edu inició sesión en PC-08.",
+            Tiempo = "Hace 14 min",
+            Icono = Icons.Material.Outlined.Person,
+            IconColor = Color.Primary,
+            BgColor = "rgba(37, 99, 235, 0.1)",
+            Leida = false
+        },
+        new() {
+            Titulo = "Ahorro energético",
+            Mensaje = "3 terminales apagadas automáticamente por política del aula.",
+            Tiempo = "Hace 45 min",
+            Icono = Icons.Material.Outlined.Bolt,
+            IconColor = Color.Success,
+            BgColor = "rgba(22, 163, 74, 0.1)",
+            Leida = false
+        },
+        new() {
+            Titulo = "Sincronización Kiosk",
+            Mensaje = "Todas las terminales del Laboratorio 2 están sincronizadas.",
+            Tiempo = "Hace 1 hora",
+            Icono = Icons.Material.Outlined.Sync,
+            IconColor = Color.Info,
+            BgColor = "rgba(2, 132, 199, 0.1)",
+            Leida = true
+        }
+    ];
+
+    private int _unreadCount => _notificaciones.Count(n => !n.Leida);
+
+    private void MarcarNotificacionesLeidas()
+    {
+        foreach (var n in _notificaciones)
+        {
+            n.Leida = true;
+        }
+        Snackbar.Add("Todas las notificaciones marcadas como leídas.", Severity.Info);
+    }
+
+    private void LimpiarNotificaciones()
+    {
+        _notificaciones.Clear();
+        Snackbar.Add("Bandeja de notificaciones vaciada.", Severity.Normal);
+    }
+
+    private void OpenEditProfileDialog()
+    {
+        _editNombre = SessionService.CurrentUser?.NombreCompleto ?? "";
+        _editFotoUrl = SessionService.CurrentUser?.FotoUrl ?? "";
+        _currentPassword = "";
+        _newPassword = "";
+        _confirmPassword = "";
+        _showProfileDialog = true;
+    }
+
+    private void SaveProfileChanges()
+    {
+        if (string.IsNullOrWhiteSpace(_editNombre))
+        {
+            Snackbar.Add("El nombre completo es obligatorio.", Severity.Warning);
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(_newPassword))
+        {
+            if (_newPassword.Length < 6)
+            {
+                Snackbar.Add("La nueva contraseña debe tener al menos 6 caracteres.", Severity.Warning);
+                return;
+            }
+            if (_newPassword != _confirmPassword)
+            {
+                Snackbar.Add("Las nuevas contraseñas no coinciden.", Severity.Warning);
+                return;
+            }
+        }
+
+        SessionService.UpdateProfile(_editNombre.Trim(), _editFotoUrl?.Trim());
+        Snackbar.Add("Perfil actualizado exitosamente.", Severity.Success);
+        _showProfileDialog = false;
+    }
+
+    private void OpenHelpDialog()
+    {
+        _showHelpDialog = true;
+    }
 
     private readonly MudTheme _customTheme = new()
     {
+        LayoutProperties = new LayoutProperties
+        {
+            DefaultBorderRadius = "8px",
+            AppbarHeight = "70px",
+            DrawerWidthLeft = "260px"
+        },
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#9e0044",            // Guindo Institucional Univalle
+            PrimaryContrastText = "#ffffff",
+            Secondary = "#64748b",          // Gris Pizarra Slate 500
+            SecondaryContrastText = "#ffffff",
+            Background = "#f8fafc",         // Slate 50 (Fondo limpio institucional)
+            BackgroundGray = "#f1f5f9",     // Slate 100
+            Surface = "#ffffff",            // Blanco puro para tarjetas
+            AppbarBackground = "#ffffff",   // Header blanco
+            AppbarText = "#0f172a",         // Slate 900
+            DrawerBackground = "#ffffff",   // Sidebar blanco
+            DrawerText = "#0f172a",
+            TextPrimary = "#0f172a",        // Slate 900
+            TextSecondary = "#64748b",      // Slate 500
+            TextDisabled = "#94a3b8",
+            LinesDefault = "#e2e8f0",       // Bordes sutiles Slate 200
+            TableLines = "#f1f5f9",
+            Divider = "#e2e8f0",
+            ActionDefault = "#475569",
+            Success = "#16a34a",
+            Warning = "#d97706",
+            Error = "#dc2626",
+            Info = "#9e0044"
+        },
         PaletteDark = new PaletteDark
         {
-            Primary = "#38bdf8",
-            Secondary = "#a855f7",
-            Background = "#090d16",
-            Surface = "#0f172a",
-            AppbarBackground = "#0f172a",
-            DrawerBackground = "#0f172a",
-            TextPrimary = "#f8fafc",
-            TextSecondary = "#94a3b8",
-            ActionDefault = "#6366f1"
+            Primary = "#f43f5e",            // Rose carmesí en modo oscuro
+            PrimaryContrastText = "#090d16",
+            Secondary = "#94a3b8",          // Slate 400
+            SecondaryContrastText = "#090d16",
+            Background = "#090d16",         // Slate 950 noche elegante
+            BackgroundGray = "#0f172a",     // Slate 900
+            Surface = "#111827",            // Gray 900 para tarjetas
+            AppbarBackground = "#111827",
+            AppbarText = "#f8fafc",
+            DrawerBackground = "#111827",
+            DrawerText = "#f8fafc",
+            TextPrimary = "#f8fafc",        // Off-white nítido
+            TextSecondary = "#94a3b8",      // Slate 400
+            TextDisabled = "#64748b",
+            LinesDefault = "#1f293d",       // Slate 800
+            TableLines = "#1f293d",
+            Divider = "#1f293d",
+            ActionDefault = "#94a3b8",
+            Success = "#22c55e",
+            Warning = "#f59e0b",
+            Error = "#ef4444",
+            Info = "#f43f5e"
         }
     };
 
-    protected override void OnInitialized()
+    public MainLayout()
+    {
+        _customTheme.Typography.Default.FontFamily = new[] { "Plus Jakarta Sans", "Outfit", "Segoe UI", "sans-serif" };
+    }
+
+    protected override async Task OnInitializedAsync()
     {
         SessionService.OnChange += StateHasChanged;
 
-        if (!SessionService.IsAuthenticated && !IsLoginPage)
+        if (!Navigation.Uri.Contains("/onboarding"))
         {
-            Navigation.NavigateTo("/login");
+            var status = await ApiClient.GetOnboardingStatusAsync();
+            if (status != null && !status.OnboardingCompletado)
+            {
+                Navigation.NavigateTo("/onboarding");
+                return;
+            }
+
+            if (!SessionService.IsAuthenticated && !Navigation.Uri.Contains("/login"))
+            {
+                Navigation.NavigateTo("/login");
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var pref = await JSRuntime.InvokeAsync<string>("themeManager.getThemePreference");
+                if (pref == "dark")
+                {
+                    _isDarkMode = true;
+                    StateHasChanged();
+                }
+            }
+            catch
+            {
+                // Silencioso si JSInterop no está listo
+            }
+        }
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        _isDarkMode = !_isDarkMode;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("themeManager.setThemePreference", _isDarkMode ? "dark" : "light");
+        }
+        catch
+        {
+            // Silencioso
         }
     }
 

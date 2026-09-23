@@ -30,8 +30,16 @@ namespace LabControl.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AccionInactividad")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<bool>("Activo")
                         .HasColumnType("boolean");
+
+                    b.Property<int?>("BloqueId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("Capacidad")
                         .HasColumnType("integer");
@@ -42,18 +50,83 @@ namespace LabControl.Infrastructure.Migrations
                     b.Property<DateTime?>("FechaModificacionUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("MinutosInactividadMaximo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(15);
+
                     b.Property<string>("Nombre")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
 
                     b.Property<string>("Pabellon")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("Piso")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("BloqueId");
+
                     b.ToTable("Aulas", (string)null);
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.Bloque", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime>("FechaCreacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaModificacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("SedeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("TienePisos")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<int?>("TotalPisos")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique();
+
+                    b.HasIndex("SedeId");
+
+                    b.ToTable("Bloques", (string)null);
                 });
 
             modelBuilder.Entity("LabControl.Domain.Entities.BloqueHorario", b =>
@@ -68,14 +141,32 @@ namespace LabControl.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("Descripcion")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<int>("DiaSemana")
                         .HasColumnType("integer");
 
+                    b.Property<string>("DocenteEmailManual")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<int?>("DocenteId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DocenteNombreManual")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<bool>("EsRecreo")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("EsUsoLibre")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTime>("FechaCreacionUtc")
                         .HasColumnType("timestamp with time zone");
@@ -83,15 +174,35 @@ namespace LabControl.Infrastructure.Migrations
                     b.Property<DateTime?>("FechaModificacionUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("GrupoParalelo")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<TimeSpan>("HoraFin")
                         .HasColumnType("interval");
 
                     b.Property<TimeSpan>("HoraInicio")
                         .HasColumnType("interval");
 
+                    b.Property<int?>("MateriaId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MateriaNombreManual")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("PeriodoAcademicoId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AulaId");
+
+                    b.HasIndex("DocenteId");
+
+                    b.HasIndex("MateriaId");
+
+                    b.HasIndex("PeriodoAcademicoId");
 
                     b.ToTable("BloquesHorarios", (string)null);
                 });
@@ -146,6 +257,11 @@ namespace LabControl.Infrastructure.Migrations
                         .HasMaxLength(17)
                         .HasColumnType("character varying(17)");
 
+                    b.Property<int>("NumeroPuesto")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<int?>("RamTotalGb")
                         .HasColumnType("integer");
 
@@ -181,6 +297,141 @@ namespace LabControl.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Computadoras", (string)null);
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.Docente", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Apellidos")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("EmailInstitucional")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("FechaCreacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaModificacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Nombres")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("TelefonoContacto")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmailInstitucional")
+                        .IsUnique();
+
+                    b.ToTable("Docentes", (string)null);
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.Materia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Carrera")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTime>("FechaCreacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaModificacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Sigla")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Sigla")
+                        .IsUnique();
+
+                    b.ToTable("Materias", (string)null);
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.PeriodoAcademico", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("EsActual")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime>("FechaCreacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaFin")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("FechaInicio")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("FechaModificacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaRegistroUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EsActual");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("PeriodosAcademicos", (string)null);
                 });
 
             modelBuilder.Entity("LabControl.Domain.Entities.RegistroConsumoEnergia", b =>
@@ -242,6 +493,59 @@ namespace LabControl.Infrastructure.Migrations
                     b.HasIndex("UltimoEstudianteEmail");
 
                     b.ToTable("RegistrosConsumoEnergia", (string)null);
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.Sede", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ciudad")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
+                    b.Property<string>("Direccion")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime>("FechaCreacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaModificacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaRegistroUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("OnboardingCompletado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("SegmentoRed")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique();
+
+                    b.ToTable("Sedes", (string)null);
                 });
 
             modelBuilder.Entity("LabControl.Domain.Entities.SesionUso", b =>
@@ -508,6 +812,27 @@ namespace LabControl.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("LabControl.Domain.Entities.Aula", b =>
+                {
+                    b.HasOne("LabControl.Domain.Entities.Bloque", "Bloque")
+                        .WithMany("Aulas")
+                        .HasForeignKey("BloqueId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Bloque");
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.Bloque", b =>
+                {
+                    b.HasOne("LabControl.Domain.Entities.Sede", "Sede")
+                        .WithMany("Bloques")
+                        .HasForeignKey("SedeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Sede");
+                });
+
             modelBuilder.Entity("LabControl.Domain.Entities.BloqueHorario", b =>
                 {
                     b.HasOne("LabControl.Domain.Entities.Aula", "Aula")
@@ -516,7 +841,28 @@ namespace LabControl.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("LabControl.Domain.Entities.Docente", "Docente")
+                        .WithMany("BloquesHorarios")
+                        .HasForeignKey("DocenteId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("LabControl.Domain.Entities.Materia", "Materia")
+                        .WithMany("BloquesHorarios")
+                        .HasForeignKey("MateriaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("LabControl.Domain.Entities.PeriodoAcademico", "PeriodoAcademico")
+                        .WithMany("BloquesHorarios")
+                        .HasForeignKey("PeriodoAcademicoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Aula");
+
+                    b.Navigation("Docente");
+
+                    b.Navigation("Materia");
+
+                    b.Navigation("PeriodoAcademico");
                 });
 
             modelBuilder.Entity("LabControl.Domain.Entities.Computadora", b =>
@@ -524,7 +870,7 @@ namespace LabControl.Infrastructure.Migrations
                     b.HasOne("LabControl.Domain.Entities.Aula", "Aula")
                         .WithMany("Computadoras")
                         .HasForeignKey("AulaId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Aula");
@@ -625,9 +971,34 @@ namespace LabControl.Infrastructure.Migrations
                     b.Navigation("Computadoras");
                 });
 
+            modelBuilder.Entity("LabControl.Domain.Entities.Bloque", b =>
+                {
+                    b.Navigation("Aulas");
+                });
+
             modelBuilder.Entity("LabControl.Domain.Entities.Computadora", b =>
                 {
                     b.Navigation("SesionesUso");
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.Docente", b =>
+                {
+                    b.Navigation("BloquesHorarios");
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.Materia", b =>
+                {
+                    b.Navigation("BloquesHorarios");
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.PeriodoAcademico", b =>
+                {
+                    b.Navigation("BloquesHorarios");
+                });
+
+            modelBuilder.Entity("LabControl.Domain.Entities.Sede", b =>
+                {
+                    b.Navigation("Bloques");
                 });
 #pragma warning restore 612, 618
         }
