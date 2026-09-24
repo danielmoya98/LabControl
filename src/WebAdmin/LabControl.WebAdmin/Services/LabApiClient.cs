@@ -381,17 +381,28 @@ public class LabApiClient
         }
     }
 
-    public async Task<bool> CreatePeriodoAcademicoAsync(string nombre, DateTime fechaInicio, DateTime fechaFin, bool esActual = false)
+    public async Task<(bool Success, string? ErrorMessage)> CreatePeriodoAcademicoAsync(string nombre, DateTime fechaInicio, DateTime fechaFin, bool esActual = false)
     {
         try
         {
-            var payload = new { Nombre = nombre, FechaInicio = fechaInicio, FechaFin = fechaFin, EsActual = esActual };
+            var payload = new { 
+                Nombre = nombre, 
+                FechaInicio = DateTime.SpecifyKind(fechaInicio.Date, DateTimeKind.Unspecified), 
+                FechaFin = DateTime.SpecifyKind(fechaFin.Date, DateTimeKind.Unspecified), 
+                EsActual = esActual 
+            };
             var response = await _httpClient.PostAsJsonAsync("api/periodos-academicos", payload);
-            return response.IsSuccessStatusCode;
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, null);
+            }
+
+            var err = await response.Content.ReadAsStringAsync();
+            return (false, string.IsNullOrWhiteSpace(err) ? "Error al registrar el semestre." : err);
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            return (false, ex.Message);
         }
     }
 

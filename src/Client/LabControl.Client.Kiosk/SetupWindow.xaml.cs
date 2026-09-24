@@ -15,9 +15,16 @@ public partial class SetupWindow : Window
         InitializeComponent();
 
         var existingConfig = LocalStorageService.LoadConfig();
-        if (existingConfig != null && !string.IsNullOrWhiteSpace(existingConfig.ApiBaseUrl))
+        if (existingConfig != null)
         {
-            TxtApiUrl.Text = existingConfig.ApiBaseUrl;
+            if (!string.IsNullOrWhiteSpace(existingConfig.ApiBaseUrl))
+            {
+                TxtApiUrl.Text = existingConfig.ApiBaseUrl;
+            }
+            if (!string.IsNullOrWhiteSpace(existingConfig.ClaveTecnico))
+            {
+                TxtClaveTecnico.Password = existingConfig.ClaveTecnico;
+            }
         }
 
         CargarEspecificacionesHardware();
@@ -103,8 +110,11 @@ public partial class SetupWindow : Window
         if (respuesta != null)
         {
             var existingConfig = LocalStorageService.LoadConfig();
+            var claveFinal = !string.IsNullOrWhiteSpace(TxtClaveTecnico.Password)
+                ? TxtClaveTecnico.Password.Trim()
+                : (existingConfig?.ClaveTecnico ?? "AdminLab@2026");
 
-            // Guardar configuración localmente
+            // Guardar configuración localmente (LocalStorageService cifra automáticamente ClaveTecnico en el JSON)
             LocalStorageService.SaveConfig(new ConfigModel
             {
                 ApiBaseUrl = TxtApiUrl.Text.Trim(),
@@ -113,7 +123,7 @@ public partial class SetupWindow : Window
                 ComputadoraId = respuesta.ComputadoraId,
                 Hostname = respuesta.Hostname,
                 MacAddress = respuesta.MacAddress,
-                ClaveTecnico = existingConfig?.ClaveTecnico ?? "AdminLab@2026",
+                ClaveTecnico = claveFinal,
                 MinutosInactividadMaximo = respuesta.MinutosInactividadMaximo,
                 AccionInactividad = respuesta.AccionInactividad
             });

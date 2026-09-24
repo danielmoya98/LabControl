@@ -30,7 +30,8 @@ public record ComputadoraTarjetaDto(
     int? DiscoTotalGb = null,
     int? DiscoLibreGb = null,
     string? SistemaOperativo = null,
-    double? UptimeHoras = null
+    double? UptimeHoras = null,
+    string? DiscosDetalleJson = null
 )
 {
     public string? MiniaturaBase64 { get; set; }
@@ -81,7 +82,8 @@ public class GetEstadoAulasMapaQueryHandler : IRequestHandler<GetEstadoAulasMapa
                     pc.DiscoTotalGb,
                     pc.DiscoLibreGb,
                     pc.SistemaOperativo,
-                    pc.UptimeHoras
+                    pc.UptimeHoras,
+                    pc.DiscosDetalleJson
                 );
             }).ToList()
         )).ToList();

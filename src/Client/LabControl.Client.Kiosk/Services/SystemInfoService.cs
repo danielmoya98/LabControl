@@ -6,13 +6,16 @@ using Microsoft.Win32;
 
 namespace LabControl.Client.Kiosk.Services;
 
+public record DiscoUnidadInfo(string Nombre, string Etiqueta, string Tipo, int TotalGb, int LibreGb);
+
 public record HardwareInfoDto(
     string CpuModelo,
     int RamTotalGb,
     int DiscoTotalGb,
     int DiscoLibreGb,
     string SistemaOperativo,
-    double UptimeHoras
+    double UptimeHoras,
+    string? DiscosDetalleJson = null
 );
 
 public static class SystemInfoService
@@ -264,6 +267,29 @@ public static class SystemInfoService
         return _lastCpuPercentage;
     }
 
+    public static List<DiscoUnidadInfo> GetAllDrives()
+    {
+        var result = new List<DiscoUnidadInfo>();
+        try
+        {
+            foreach (var d in DriveInfo.GetDrives())
+            {
+                if (d.IsReady && (d.DriveType == DriveType.Fixed || d.DriveType == DriveType.Removable))
+                {
+                    var totalGb = (int)(d.TotalSize / (1024L * 1024L * 1024L));
+                    var libreGb = (int)(d.AvailableFreeSpace / (1024L * 1024L * 1024L));
+                    var etiqueta = string.IsNullOrWhiteSpace(d.VolumeLabel) ? d.DriveType.ToString() : d.VolumeLabel;
+                    result.Add(new DiscoUnidadInfo(d.Name.TrimEnd('\\'), etiqueta, d.DriveType.ToString(), totalGb, libreGb));
+                }
+            }
+        }
+        catch
+        {
+            // Fallback
+        }
+        return result;
+    }
+
     public static HardwareInfoDto GetHardwareInfo()
     {
         var cpu = GetCpuModel();
@@ -271,7 +297,14 @@ public static class SystemInfoService
         var (discoTotal, discoLibre) = GetDiskMetrics();
         var os = GetOperatingSystem();
         var uptime = GetUptimeHours();
+        var drives = GetAllDrives();
+        string? discosJson = null;
+        try
+        {
+            discosJson = System.Text.Json.JsonSerializer.Serialize(drives);
+        }
+        catch { }
 
-        return new HardwareInfoDto(cpu, ramTotal, discoTotal, discoLibre, os, uptime);
+        return new HardwareInfoDto(cpu, ramTotal, discoTotal, discoLibre, os, uptime, discosJson);
     }
 }

@@ -22,6 +22,7 @@ public class Computadora : AggregateRoot
     public int? DiscoLibreGb { get; private set; }
     public string? SistemaOperativo { get; private set; }
     public double? UptimeHoras { get; private set; }
+    public string? DiscosDetalleJson { get; private set; }
     public DateTime? UltimaActualizacionHardwareUtc { get; private set; }
 
     // Auditoría de Responsabilidad Energética
@@ -98,7 +99,8 @@ public class Computadora : AggregateRoot
         int? discoTotalGb,
         int? discoLibreGb,
         string? sistemaOperativo,
-        double? uptimeHoras)
+        double? uptimeHoras,
+        string? discosDetalleJson = null)
     {
         if (!string.IsNullOrWhiteSpace(cpuModelo)) CpuModelo = cpuModelo.Trim();
         if (ramTotalGb.HasValue && ramTotalGb.Value > 0) RamTotalGb = ramTotalGb.Value;
@@ -106,6 +108,7 @@ public class Computadora : AggregateRoot
         if (discoLibreGb.HasValue && discoLibreGb.Value >= 0) DiscoLibreGb = discoLibreGb.Value;
         if (!string.IsNullOrWhiteSpace(sistemaOperativo)) SistemaOperativo = sistemaOperativo.Trim();
         if (uptimeHoras.HasValue && uptimeHoras.Value >= 0) UptimeHoras = Math.Round(uptimeHoras.Value, 1);
+        if (!string.IsNullOrWhiteSpace(discosDetalleJson)) DiscosDetalleJson = discosDetalleJson.Trim();
         UltimaActualizacionHardwareUtc = DateTime.UtcNow;
         FechaModificacionUtc = DateTime.UtcNow;
     }

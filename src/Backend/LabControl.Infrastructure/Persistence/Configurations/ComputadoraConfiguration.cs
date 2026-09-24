@@ -47,6 +47,7 @@ public class ComputadoraConfiguration : IEntityTypeConfiguration<Computadora>
         builder.Property(c => c.DiscoTotalGb);
         builder.Property(c => c.DiscoLibreGb);
         builder.Property(c => c.UptimeHoras);
+        builder.Property(c => c.DiscosDetalleJson);
         builder.Property(c => c.UltimaActualizacionHardwareUtc);
 
         builder.Property(c => c.UltimoEstudianteEmail)

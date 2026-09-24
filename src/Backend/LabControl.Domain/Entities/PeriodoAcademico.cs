@@ -37,8 +37,8 @@ public class PeriodoAcademico : AggregateRoot
         var periodo = new PeriodoAcademico
         {
             Nombre = nombre.Trim().ToUpperInvariant(),
-            FechaInicio = fechaInicio.Date,
-            FechaFin = fechaFin.Date,
+            FechaInicio = DateTime.SpecifyKind(fechaInicio.Date, DateTimeKind.Unspecified),
+            FechaFin = DateTime.SpecifyKind(fechaFin.Date, DateTimeKind.Unspecified),
             EsActual = esActual,
             Activo = true,
             FechaRegistroUtc = DateTime.UtcNow

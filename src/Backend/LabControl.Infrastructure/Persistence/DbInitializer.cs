@@ -17,6 +17,12 @@ public static class DbInitializer
             await context.Database.MigrateAsync();
         }
 
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Computadoras\" ADD COLUMN IF NOT EXISTS \"DiscosDetalleJson\" text;");
+        }
+        catch { }
+
         // 2. Sembrar únicamente el Rol único base: Encargado
         const string encargadoRoleName = "Encargado";
         if (!await roleManager.RoleExistsAsync(encargadoRoleName))

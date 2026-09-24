@@ -66,8 +66,8 @@ public class CreatePeriodoAcademicoCommandHandler : IRequestHandler<CreatePeriod
 
         var periodoResult = PeriodoAcademico.Create(
             nombreLimpio,
-            request.FechaInicio,
-            request.FechaFin,
+            DateTime.SpecifyKind(request.FechaInicio.Date, DateTimeKind.Unspecified),
+            DateTime.SpecifyKind(request.FechaFin.Date, DateTimeKind.Unspecified),
             request.EsActual
         );
 

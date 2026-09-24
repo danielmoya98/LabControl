@@ -43,36 +43,53 @@
                 </MudPaper>
             </MudItem>
 
-            <!-- Almacenamiento C: -->
+            <!-- Unidades de Almacenamiento (Todos los Discos) -->
             <MudItem xs="12">
                 <MudPaper Elevation="0" Class="pa-3 rounded-xl saas-card">
-                    <div class="d-flex justify-space-between align-center mb-1">
+                    <div class="d-flex justify-space-between align-center mb-2">
                         <div class="d-flex align-center">
                             <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Info" Class="mr-2" />
-                            <MudText Typo="Typo.body2" Class="font-weight-bold">Unidad de Sistema (C:)</MudText>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">Unidades de Almacenamiento Detectadas</MudText>
                         </div>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">
-                            @if (Pc.DiscoTotalGb.HasValue && Pc.DiscoLibreGb.HasValue && Pc.DiscoTotalGb.Value > 0)
-                            {
-                                <span>@(Pc.DiscoTotalGb.Value - Pc.DiscoLibreGb.Value) GB ocupados de @(Pc.DiscoTotalGb.Value) GB (@(Pc.DiscoLibreGb.Value) GB disponibles)</span>
-                            }
-                            else
-                            {
-                                <span>Sin datos de almacenamiento</span>
-                            }
+                            @ObtenerDiscos().Count unidad(es) de disco
                         </MudText>
                     </div>
-                    @if (Pc.DiscoTotalGb.HasValue && Pc.DiscoLibreGb.HasValue && Pc.DiscoTotalGb.Value > 0)
+
+                    @if (ObtenerDiscos() is var listaDiscos && listaDiscos.Any())
                     {
-                        var usoPorc = (int)Math.Clamp(Math.Round(((double)(Pc.DiscoTotalGb.Value - Pc.DiscoLibreGb.Value) / Pc.DiscoTotalGb.Value) * 100), 0, 100);
-                        var barColor = usoPorc > 90 ? Color.Error : (usoPorc > 75 ? Color.Warning : Color.Success);
-                        <MudProgressLinear Color="@barColor" Value="@usoPorc" Class="my-2" Size="Size.Medium" Rounded="true">
-                            <MudText Typo="Typo.caption" Class="font-weight-bold" Style="color: white;">@($"{usoPorc}%")</MudText>
-                        </MudProgressLinear>
+                        <div class="d-flex flex-column gap-3">
+                            @foreach (var disco in listaDiscos)
+                            {
+                                var ocupadoGb = Math.Max(0, disco.TotalGb - disco.LibreGb);
+                                var usoPorc = disco.TotalGb > 0 ? (int)Math.Clamp(Math.Round(((double)ocupadoGb / disco.TotalGb) * 100), 0, 100) : 0;
+                                var barColor = usoPorc > 90 ? Color.Error : (usoPorc > 75 ? Color.Warning : Color.Success);
+
+                                <div class="pa-2 rounded-lg" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);">
+                                    <div class="d-flex justify-space-between align-center mb-1">
+                                        <div class="d-flex align-center gap-2">
+                                            <span class="badge-soft-primary px-2 py-0 font-weight-bold" style="font-size: 0.75rem;">
+                                                💾 @disco.Nombre
+                                            </span>
+                                            <MudText Typo="Typo.body2" Class="font-weight-bold">
+                                                @(string.IsNullOrWhiteSpace(disco.Etiqueta) ? disco.Tipo : disco.Etiqueta)
+                                            </MudText>
+                                        </div>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            <span>@ocupadoGb GB ocupados de @(disco.TotalGb) GB (@(disco.LibreGb) GB libres)</span>
+                                        </MudText>
+                                    </div>
+                                    <MudProgressLinear Color="@barColor" Value="@usoPorc" Class="my-1" Size="Size.Medium" Rounded="true">
+                                        <MudText Typo="Typo.caption" Class="font-weight-bold" Style="color: white; font-size: 0.7rem;">@($"{usoPorc}%")</MudText>
+                                    </MudProgressLinear>
+                                </div>
+                            }
+                        </div>
                     }
                     else
                     {
                         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="text-center d-block">Sin datos de almacenamiento reportados</MudText>
                     }
                 </MudPaper>
             </MudItem>
@@ -115,19 +132,19 @@
 
             <!-- Red & Estado -->
             <MudItem xs="12">
-                <MudPaper Elevation="1" Class="pa-3 rounded-lg" Style="background: #0f172a;">
+                <MudPaper Elevation="0" Class="pa-3 rounded-xl saas-card">
                     <MudGrid>
-                        <MudItem xs="4">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">DIRECCIÓN IP</MudText>
-                            <MudText Typo="Typo.body2" Class="font-weight-bold">@Pc.IpActual</MudText>
+                        <MudItem xs="12" sm="4">
+                            <span class="kpi-title">DIRECCIÓN IP</span>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold mt-1">@Pc.IpActual</MudText>
                         </MudItem>
-                        <MudItem xs="4">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">DIRECCIÓN MAC</MudText>
-                            <MudText Typo="Typo.body2" Class="font-weight-bold">@Pc.MacAddress</MudText>
+                        <MudItem xs="12" sm="4">
+                            <span class="kpi-title">DIRECCIÓN MAC</span>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold mt-1">@Pc.MacAddress</MudText>
                         </MudItem>
-                        <MudItem xs="4">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">ESTADO EN TIEMPO REAL</MudText>
-                            <div>
+                        <MudItem xs="12" sm="4">
+                            <span class="kpi-title">ESTADO EN TIEMPO REAL</span>
+                            <div class="mt-1">
                                 <MudChip T="string" Color="@GetChipColor(Pc.EstadoActual)" Size="Size.Small" Class="font-weight-bold">
                                     @Pc.EstadoActual.ToString()
                                 </MudChip>
@@ -155,6 +172,50 @@
 
     [Parameter]
     public ComputadoraTarjetaDto Pc { get; set; } = default!;
+
+    public class DiscoInfoDto
+    {
+        public string Nombre { get; set; } = "";
+        public string Etiqueta { get; set; } = "";
+        public string Tipo { get; set; } = "";
+        public int TotalGb { get; set; }
+        public int LibreGb { get; set; }
+    }
+
+    private List<DiscoInfoDto> ObtenerDiscos()
+    {
+        if (!string.IsNullOrWhiteSpace(Pc.DiscosDetalleJson))
+        {
+            try
+            {
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var discos = System.Text.Json.JsonSerializer.Deserialize<List<DiscoInfoDto>>(Pc.DiscosDetalleJson, options);
+                if (discos != null && discos.Count > 0)
+                {
+                    return discos;
+                }
+            }
+            catch { }
+        }
+
+        // Fallback al disco principal C:
+        if (Pc.DiscoTotalGb.HasValue && Pc.DiscoTotalGb.Value > 0)
+        {
+            return new List<DiscoInfoDto>
+            {
+                new DiscoInfoDto
+                {
+                    Nombre = "C:",
+                    Etiqueta = "Sistema",
+                    Tipo = "Fixed",
+                    TotalGb = Pc.DiscoTotalGb.Value,
+                    LibreGb = Pc.DiscoLibreGb.GetValueOrDefault(0)
+                }
+            };
+        }
+
+        return new List<DiscoInfoDto>();
+    }
 
     private void Submit() => MudDialog.Close(DialogResult.Ok(true));
 

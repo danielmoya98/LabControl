@@ -55,14 +55,15 @@ public partial class TecnicoUnlockDialog : Window
 
     private void OnDesbloquearMinimizarClick(object sender, RoutedEventArgs e)
     {
-        // Desactivar hooks y habilitar task manager
+        // Desactivar centinela anti-sabotaje, hooks y habilitar task manager para mantenimiento técnico
+        TaskManagerHelper.StopAntiSabotageWatchdog();
         WindowsHookManager.UninstallHook();
         TaskManagerHelper.EnableTaskManager();
 
         _mainWindow.WindowState = WindowState.Minimized;
         _mainWindow.Topmost = false;
 
-        MessageBox.Show("Terminal desbloqueada en modo mantenimiento.\nPara reactivar el Kiosk, restaure la ventana de la barra de tareas.",
+        MessageBox.Show("Terminal desbloqueada en modo mantenimiento.\nPara reactivar el Kiosk, restaure la ventana desde la barra de tareas.",
             "Modo Mantenimiento Activo", MessageBoxButton.OK, MessageBoxImage.Information);
 
         Close();
@@ -71,6 +72,7 @@ public partial class TecnicoUnlockDialog : Window
     private void OnAbrirConfiguracionClick(object sender, RoutedEventArgs e)
     {
         KioskGuardianService.SignalGracefulShutdown();
+        TaskManagerHelper.StopAntiSabotageWatchdog();
         WindowsHookManager.UninstallHook();
         TaskManagerHelper.EnableTaskManager();
 
@@ -78,6 +80,40 @@ public partial class TecnicoUnlockDialog : Window
         setupWindow.Show();
         _mainWindow.Close();
         Close();
+    }
+
+    private void OnDesinstalarAppClick(object sender, RoutedEventArgs e)
+    {
+        var res = MessageBox.Show(
+            "¿Está seguro de que desea DESINSTALAR por completo el cliente LabControl Kiosk de este equipo?\n\nEsta acción eliminará el software y desprotegerá la terminal de forma permanente.",
+            "Confirmar Desinstalación", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+        if (res == MessageBoxResult.Yes)
+        {
+            var appDir = AppDomain.CurrentDomain.BaseDirectory;
+            var uninstaller = System.IO.Path.Combine(appDir, "unins000.exe");
+
+            if (System.IO.File.Exists(uninstaller))
+            {
+                KioskGuardianService.SignalGracefulShutdown();
+                TaskManagerHelper.StopAntiSabotageWatchdog();
+                WindowsHookManager.UninstallHook();
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = uninstaller,
+                    Arguments = "/AUTHORIZED",
+                    UseShellExecute = true
+                });
+
+                Application.Current.Shutdown();
+            }
+            else
+            {
+                MessageBox.Show("No se encontró el desinstalador 'unins000.exe' en la carpeta de la aplicación.",
+                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 
     private void OnCerrarAppClick(object sender, RoutedEventArgs e)
@@ -88,6 +124,7 @@ public partial class TecnicoUnlockDialog : Window
         if (res == MessageBoxResult.Yes)
         {
             KioskGuardianService.SignalGracefulShutdown();
+            TaskManagerHelper.StopAntiSabotageWatchdog();
             WindowsHookManager.UninstallHook();
             TaskManagerHelper.EnableTaskManager();
             Application.Current.Shutdown();

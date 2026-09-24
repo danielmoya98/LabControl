@@ -17,11 +17,51 @@ public class LaboratorioHub : Hub<ILaboratorioClient>
 
     public async Task RegistrarTerminal(string hostname, string macAddress, int? aulaId = null)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"Terminal_{hostname.ToUpperInvariant()}");
-        await Groups.AddToGroupAsync(Context.ConnectionId, "TodasLasTerminales");
-        if (aulaId.HasValue && aulaId.Value > 0)
+        var hostNorm = (hostname ?? "").Trim().ToUpperInvariant();
+        var macNorm = (macAddress ?? "").Trim().ToUpperInvariant();
+
+        if (!string.IsNullOrEmpty(hostNorm))
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"Aula_{aulaId.Value}");
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"Terminal_{hostNorm}");
+        }
+        await Groups.AddToGroupAsync(Context.ConnectionId, "TodasLasTerminales");
+
+        int? aulaEfectivaId = null;
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+
+            var pc = await context.Computadoras
+                .FirstOrDefaultAsync(c => c.Hostname == hostNorm || (!string.IsNullOrEmpty(macNorm) && c.MacAddress == macNorm));
+
+            if (pc != null && pc.AulaId > 0)
+            {
+                aulaEfectivaId = pc.AulaId;
+            }
+            else if (aulaId.HasValue && aulaId.Value > 0)
+            {
+                aulaEfectivaId = aulaId.Value;
+            }
+
+            if (aulaEfectivaId.HasValue && aulaEfectivaId.Value > 0)
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"Aula_{aulaEfectivaId.Value}");
+                var aula = await context.Aulas.FindAsync([aulaEfectivaId.Value]);
+                if (aula != null)
+                {
+                    await Clients.Caller.RecibirActualizacionPoliticaAula(aula.Id, aula.Nombre, aula.MinutosInactividadMaximo, (int)aula.AccionInactividad);
+                }
+            }
+
+            if (aulaId.HasValue && aulaId.Value > 0 && aulaId.Value != aulaEfectivaId)
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"Aula_{aulaId.Value}");
+            }
+        }
+        catch
+        {
+            // Tolerancia a fallos en consulta inicial
         }
     }
 

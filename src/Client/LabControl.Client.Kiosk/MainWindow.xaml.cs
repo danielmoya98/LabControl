@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using Microsoft.AspNetCore.SignalR.Client;
+using System.ComponentModel;
 using LabControl.Client.Kiosk.Services;
 using LabControl.Domain.Enums;
 
@@ -18,6 +19,7 @@ public partial class MainWindow : Window
     private HubConnection? _hubConnection;
     private KioskApiService? _apiService;
     private DispatcherTimer? _sessionDurationTimer;
+    private SessionWidgetWindow? _sessionWidget;
     private int? _sesionActualId;
     private int? _sesionOfflineId;
     private DateTime? _fechaInicioSesion;
@@ -34,13 +36,36 @@ public partial class MainWindow : Window
         InicializarKiosk();
     }
 
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        // Blindaje contra cierre forzado por WM_CLOSE desde Administrador de Tareas
+        if (!KioskGuardianService.IsGracefulShutdown())
+        {
+            e.Cancel = true;
+            return;
+        }
+        base.OnClosing(e);
+    }
+
+    protected override void OnStateChanged(EventArgs e)
+    {
+        base.OnStateChanged(e);
+        if (WindowState != WindowState.Minimized && this.IsVisible)
+        {
+            Topmost = true;
+            WindowsHookManager.InstallHook();
+            TaskManagerHelper.StartAntiSabotageWatchdog();
+            BloquearPantallasSecundarias();
+        }
+    }
+
     private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
         try
         {
             // Instalar bloqueo a bajo nivel (Alt+Tab, WinKey, Ctrl+Esc, Alt+F4)
             WindowsHookManager.InstallHook();
-            TaskManagerHelper.DisableTaskManager();
+            TaskManagerHelper.StartAntiSabotageWatchdog();
 
             // Bloquear todas las pantallas secundarias conectadas al equipo
             BloquearPantallasSecundarias();
@@ -59,9 +84,11 @@ public partial class MainWindow : Window
 
         // Garantizar liberación de recursos del sistema al cerrar
         WindowsHookManager.UninstallHook();
-        TaskManagerHelper.EnableTaskManager();
+        TaskManagerHelper.StopAntiSabotageWatchdog();
         _screenCaptureTimer?.Stop();
         _sessionDurationTimer?.Stop();
+        _sessionWidget?.CloseAuthorized();
+        _sessionWidget = null;
         _inactivityService.Stop();
         _offlineSyncWorker?.Dispose();
     }
@@ -110,6 +137,13 @@ public partial class MainWindow : Window
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // Bloquear Alt+F4 para evitar que se cierre la ventana de bloqueo
+        if (e.Key == Key.System && e.SystemKey == Key.F4)
+        {
+            e.Handled = true;
+            return;
+        }
+
         // Atajo para soporte técnico: Ctrl + Shift + F12
         if (e.Key == Key.F12 &&
             (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift))
@@ -345,13 +379,24 @@ public partial class MainWindow : Window
                 });
             });
 
-            // Escuchar alertas y mensajes transmitidos desde el WebAdmin (Banner flotante no intrusivo)
+            // Escuchar alertas y mensajes transmitidos desde el WebAdmin
             _hubConnection.On<string>("RecibirAlertaTerminal", (mensaje) =>
             {
                 Dispatcher.Invoke(() =>
                 {
-                    var toast = new NotificationToastWindow(mensaje);
-                    toast.Show();
+                    try
+                    {
+                        System.Media.SystemSounds.Exclamation.Play();
+                    }
+                    catch { }
+
+                    var dialog = new AlertaMensajeDialog(mensaje)
+                    {
+                        Topmost = true
+                    };
+                    dialog.Show();
+                    dialog.Activate();
+                    dialog.Focus();
                 });
             });
 
@@ -361,6 +406,15 @@ public partial class MainWindow : Window
                 Dispatcher.Invoke(() =>
                 {
                     EjecutarComandoEnergia(tipoComando, motivo);
+                });
+            });
+
+            // Escuchar cambios de política de aula en tiempo real transmitidos desde WebAdmin
+            _hubConnection.On<int, string, int, int>("RecibirActualizacionPoliticaAula", (aulaId, aulaNombre, minutosInactividad, accionInactividad) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    ActualizarPoliticaAulaEnTiempoReal(aulaId, aulaNombre, minutosInactividad, accionInactividad);
                 });
             });
 
@@ -510,13 +564,24 @@ public partial class MainWindow : Window
                 LocalStorageService.SaveConfig(_config);
             }
 
-            // Liberar hooks del teclado para permitir uso de la PC, pero mantener Task Manager deshabilitado contra sabotajes
+            // Liberar hooks del teclado para permitir uso de la PC, pero mantener Task Manager y herramientas de sabotaje bloqueadas
             WindowsHookManager.UninstallHook();
-            TaskManagerHelper.DisableTaskManager();
+            TaskManagerHelper.StartAntiSabotageWatchdog();
             CerrarPantallasSecundarias();
             this.Hide();
 
-            // Iniciar timer de duración de sesión en segundo plano (sin widget visual invasivo)
+            // Abrir widget flotante superior (logo, usuario, aula y máquina; sin contador numérico)
+            _sessionWidget?.CloseAuthorized();
+            _sessionWidget = new SessionWidgetWindow(
+                email,
+                _config?.AulaNombre ?? "Laboratorio",
+                _config?.Hostname ?? Environment.MachineName,
+                onCerrarCallback: (motivo) => OnSesionTerminada(motivo),
+                onApagarCallback: () => OnWidgetApagarClick()
+            );
+            _sessionWidget.Show();
+
+            // Iniciar timer de duración de sesión en segundo plano
             IniciarTimerDuracionSesion(datos.MinutosLimite);
 
             // Iniciar monitoreo de inactividad física
@@ -558,13 +623,24 @@ public partial class MainWindow : Window
                     _sesionOfflineId = offlineId;
                     _sesionActualId = null;
 
-                    // Liberar hooks del teclado para permitir uso de la PC, pero mantener Task Manager deshabilitado contra sabotajes
+                    // Liberar hooks del teclado para permitir uso de la PC, pero mantener Task Manager y herramientas de sabotaje bloqueadas
                     WindowsHookManager.UninstallHook();
-                    TaskManagerHelper.DisableTaskManager();
+                    TaskManagerHelper.StartAntiSabotageWatchdog();
                     CerrarPantallasSecundarias();
                     this.Hide();
 
-                    // Iniciar timer con límite por defecto de 90 minutos en segundo plano (sin widget visual)
+                    // Abrir widget flotante superior (logo, usuario, aula y máquina; sin contador numérico)
+                    _sessionWidget?.CloseAuthorized();
+                    _sessionWidget = new SessionWidgetWindow(
+                        $"{email} (Modo Local)",
+                        _config?.AulaNombre ?? "Laboratorio",
+                        _config?.Hostname ?? Environment.MachineName,
+                        onCerrarCallback: (motivo) => OnSesionTerminada(motivo),
+                        onApagarCallback: () => OnWidgetApagarClick()
+                    );
+                    _sessionWidget.Show();
+
+                    // Iniciar timer con límite por defecto de 90 minutos en segundo plano
                     IniciarTimerDuracionSesion(90);
 
                     _inactivityService.Start(
@@ -744,13 +820,16 @@ public partial class MainWindow : Window
     {
         Dispatcher.Invoke(() =>
         {
+            _sessionWidget?.CloseAuthorized();
+            _sessionWidget = null;
+
             this.Show();
             this.WindowState = WindowState.Maximized;
             this.Topmost = true;
             this.Activate();
 
             WindowsHookManager.InstallHook();
-            TaskManagerHelper.DisableTaskManager();
+            TaskManagerHelper.StartAntiSabotageWatchdog();
             BloquearPantallasSecundarias();
 
             TxtEmail.Text = "";
@@ -765,6 +844,51 @@ public partial class MainWindow : Window
                 AlertBorder.Visibility = Visibility.Collapsed;
             }
         });
+    }
+
+    private async void OnWidgetApagarClick()
+    {
+        _inactivityService.Stop();
+        _sessionDurationTimer?.Stop();
+        _sessionWidget?.CloseAuthorized();
+        _sessionWidget = null;
+
+        await FinalizarSesionInternoAsync((int)TipoCierreSesion.Manual);
+        EjecutarComandoEnergia("SHUTDOWN", "Apagado voluntario por estudiante desde widget flotante");
+    }
+
+    private void ActualizarPoliticaAulaEnTiempoReal(int aulaId, string aulaNombre, int minutosInactividad, int accionInactividad)
+    {
+        if (_config == null || _config.AulaId != aulaId) return;
+
+        _config.AulaNombre = aulaNombre;
+        _config.MinutosInactividadMaximo = minutosInactividad;
+        _config.AccionInactividad = accionInactividad;
+        LocalStorageService.SaveConfig(_config);
+
+        TxtAulaInfo.Text = $"Aula: {_config.AulaNombre} | PC: {_config.Hostname}";
+        _sessionWidget?.ActualizarDetalle(_config.AulaNombre, _config.Hostname);
+
+        // Si hay una sesión activa, actualizar el monitor de inactividad física en caliente sin interrumpir al usuario
+        if (_sesionActualId.HasValue || _sesionOfflineId.HasValue)
+        {
+            bool esApagar = accionInactividad == (int)TipoAccionInactividad.ApagarEquipo;
+            _inactivityService.Start(
+                minutosInactividad > 0 ? minutosInactividad : 15,
+                esApagar,
+                (apagar) =>
+                {
+                    Dispatcher.Invoke(async () =>
+                    {
+                        await ProcesarInactividadAsync(apagar);
+                    });
+                }
+            );
+
+            var accionTexto = esApagar ? "apagado automático del equipo" : "cierre automático de sesión";
+            var toast = new NotificationToastWindow($"ℹ️ Política actualizada: Tras {minutosInactividad}m de inactividad se ejecutará {accionTexto}.");
+            toast.Show();
+        }
     }
 
     private void OnReconfigurarTerminalClick(object sender, RoutedEventArgs e)

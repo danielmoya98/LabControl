@@ -19,7 +19,8 @@ public record AutoRegistrarComputadoraCommand(
     int? DiscoTotalGb = null,
     int? DiscoLibreGb = null,
     string? SistemaOperativo = null,
-    double? UptimeHoras = null
+    double? UptimeHoras = null,
+    string? DiscosDetalleJson = null
 ) : IRequest<Result<AutoRegistroResultadoDto>>;
 
 public record AutoRegistroResultadoDto(
@@ -96,7 +97,8 @@ public class AutoRegistrarComputadoraCommandHandler : IRequestHandler<AutoRegist
             request.DiscoTotalGb,
             request.DiscoLibreGb,
             request.SistemaOperativo,
-            request.UptimeHoras
+            request.UptimeHoras,
+            request.DiscosDetalleJson
         );
 
         await _context.SaveChangesAsync(cancellationToken);

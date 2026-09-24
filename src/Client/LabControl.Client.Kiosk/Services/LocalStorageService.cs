@@ -93,6 +93,19 @@ public static class LocalStorageService
             if (model != null)
             {
                 model.ApiBaseUrl = KioskApiService.NormalizeApiUrl(model.ApiBaseUrl);
+
+                // Verificar si la clave de soporte en el archivo JSON está en texto plano
+                bool estabaEnTextoPlano = !PasswordEncryptionHelper.IsEncrypted(model.ClaveTecnico);
+                if (PasswordEncryptionHelper.IsEncrypted(model.ClaveTecnico))
+                {
+                    model.ClaveTecnico = PasswordEncryptionHelper.Decrypt(model.ClaveTecnico);
+                }
+
+                // Migración transparente inmediata: si el archivo contenía la clave en texto plano, re-guardar cifrado
+                if (estabaEnTextoPlano && !string.IsNullOrWhiteSpace(model.ClaveTecnico))
+                {
+                    SaveConfig(model);
+                }
             }
             return model;
         }
@@ -107,7 +120,24 @@ public static class LocalStorageService
         try
         {
             config.ApiBaseUrl = KioskApiService.NormalizeApiUrl(config.ApiBaseUrl);
-            var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+
+            // Clonar para persistir en disco asegurando que ClaveTecnico SIEMPRE se guarde cifrada
+            var persistModel = new ConfigModel
+            {
+                ApiBaseUrl = config.ApiBaseUrl,
+                AulaId = config.AulaId,
+                AulaNombre = config.AulaNombre,
+                ComputadoraId = config.ComputadoraId,
+                Hostname = config.Hostname,
+                MacAddress = config.MacAddress,
+                ClaveTecnico = PasswordEncryptionHelper.Encrypt(config.ClaveTecnico),
+                MinutosInactividadMaximo = config.MinutosInactividadMaximo,
+                AccionInactividad = config.AccionInactividad,
+                UltimoApagadoReportadoUtc = config.UltimoApagadoReportadoUtc,
+                UltimoEstudianteSesion = config.UltimoEstudianteSesion
+            };
+
+            var json = JsonSerializer.Serialize(persistModel, new JsonSerializerOptions { WriteIndented = true });
 
             // 1. Guardar en DataConfigPath (C:\ProgramData\LabControl - accesible con permisos de usuario estándar)
             try

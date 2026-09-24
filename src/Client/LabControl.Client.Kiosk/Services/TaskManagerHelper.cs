@@ -1,56 +1,159 @@
+using System;
+using System.Diagnostics;
+using System.Threading;
 using Microsoft.Win32;
 
 namespace LabControl.Client.Kiosk.Services;
 
 /// <summary>
-/// Helper para habilitar y deshabilitar preventivamente el Administrador de Tareas (TaskMgr)
-/// en terminales Windows de laboratorios universitarios mediante políticas del Registro.
+/// Helper para habilitar, deshabilitar y vigilar activamente el Administrador de Tareas (TaskMgr)
+/// y herramientas de terminación de procesos (Process Hacker, ProcExp) en terminales de laboratorio.
 /// </summary>
 public static class TaskManagerHelper
 {
     private const string SubKeyPolicies = @"Software\Microsoft\Windows\CurrentVersion\Policies\System";
     private const string ValueDisableTaskMgr = "DisableTaskMgr";
 
+    private static readonly string[] ProhibitedProcessNames =
+    {
+        "taskmgr",
+        "procexp",
+        "procmon",
+        "processhacker",
+        "systeminformer"
+    };
+
+    private static Timer? _watchdogTimer;
+    private static bool _watchdogActive;
+    private static readonly object _lock = new();
+
     /// <summary>
-    /// Deshabilita el Administrador de Tareas para la sesión de usuario actual.
-    /// Si la terminal no tiene permisos suficientes, falla de forma silenciosa sin interrumpir el flujo.
+    /// Deshabilita el Administrador de Tareas mediante políticas de Registro (HKCU y HKLM).
     /// </summary>
     public static bool DisableTaskManager()
     {
+        bool exito = false;
         try
         {
-            using var key = Registry.CurrentUser.CreateSubKey(SubKeyPolicies, writable: true);
-            if (key != null)
+            using var keyCu = Registry.CurrentUser.CreateSubKey(SubKeyPolicies, writable: true);
+            if (keyCu != null)
             {
-                key.SetValue(ValueDisableTaskMgr, 1, RegistryValueKind.DWord);
-                return true;
+                keyCu.SetValue(ValueDisableTaskMgr, 1, RegistryValueKind.DWord);
+                exito = true;
             }
         }
-        catch
+        catch { }
+
+        try
         {
-            // Ignorar excepciones por permisos restringidos de usuario
+            using var keyLm = Registry.LocalMachine.CreateSubKey(SubKeyPolicies, writable: true);
+            if (keyLm != null)
+            {
+                keyLm.SetValue(ValueDisableTaskMgr, 1, RegistryValueKind.DWord);
+                exito = true;
+            }
         }
-        return false;
+        catch { }
+
+        return exito;
     }
 
     /// <summary>
-    /// Rehabilita el Administrador de Tareas para permitir soporte técnico o mantenimiento.
+    /// Rehabilita el Administrador de Tareas para soporte técnico o mantenimiento.
     /// </summary>
     public static bool EnableTaskManager()
     {
+        bool exito = false;
         try
         {
-            using var key = Registry.CurrentUser.OpenSubKey(SubKeyPolicies, writable: true);
-            if (key != null)
+            using var keyCu = Registry.CurrentUser.OpenSubKey(SubKeyPolicies, writable: true);
+            if (keyCu != null)
             {
-                key.DeleteValue(ValueDisableTaskMgr, throwOnMissingValue: false);
-                return true;
+                keyCu.DeleteValue(ValueDisableTaskMgr, throwOnMissingValue: false);
+                exito = true;
             }
         }
-        catch
+        catch { }
+
+        try
         {
-            // Ignorar excepciones por permisos restringidos de usuario
+            using var keyLm = Registry.LocalMachine.OpenSubKey(SubKeyPolicies, writable: true);
+            if (keyLm != null)
+            {
+                keyLm.DeleteValue(ValueDisableTaskMgr, throwOnMissingValue: false);
+                exito = true;
+            }
         }
-        return false;
+        catch { }
+
+        return exito;
+    }
+
+    /// <summary>
+    /// Termina de inmediato cualquier proceso prohibido que un estudiante intente abrir
+    /// (Administrador de Tareas, Process Hacker, Process Explorer, etc.).
+    /// </summary>
+    public static void KillProhibitedProcesses()
+    {
+        foreach (var name in ProhibitedProcessNames)
+        {
+            try
+            {
+                var processes = Process.GetProcessesByName(name);
+                foreach (var p in processes)
+                {
+                    try
+                    {
+                        if (!p.HasExited)
+                        {
+                            p.Kill();
+                        }
+                    }
+                    catch { }
+                    finally
+                    {
+                        p.Dispose();
+                    }
+                }
+            }
+            catch { }
+        }
+    }
+
+    /// <summary>
+    /// Inicia el centinela en segundo plano que vigila y elimina procesos de sabotaje cada 300 ms.
+    /// </summary>
+    public static void StartAntiSabotageWatchdog()
+    {
+        lock (_lock)
+        {
+            if (_watchdogActive) return;
+            _watchdogActive = true;
+
+            DisableTaskManager();
+            KillProhibitedProcesses();
+
+            _watchdogTimer = new Timer(_ =>
+            {
+                if (!_watchdogActive) return;
+
+                KillProhibitedProcesses();
+            }, null, 0, 300);
+        }
+    }
+
+    /// <summary>
+    /// Detiene la vigilancia de procesos y rehabilita el Administrador de Tareas.
+    /// </summary>
+    public static void StopAntiSabotageWatchdog()
+    {
+        lock (_lock)
+        {
+            _watchdogActive = false;
+            _watchdogTimer?.Dispose();
+            _watchdogTimer = null;
+
+            EnableTaskManager();
+        }
     }
 }

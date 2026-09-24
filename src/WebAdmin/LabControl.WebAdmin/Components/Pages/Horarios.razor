@@ -517,6 +517,15 @@ else
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
+                    <MudSelect T="int" @bind-Value="NuevoBloquePeriodoId" Label="Semestre / Gestión" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" FullWidth="true">
+                        @foreach (var p in ListaPeriodos)
+                        {
+                            <MudSelectItem T="int" Value="@p.Id">@p.Nombre @(p.EsActual ? " ⭐ (Actual)" : "")</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
                     <MudSelect T="DiaSemana" @bind-Value="NuevoDiaSemana" Label="Día de la Semana" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" FullWidth="true">
                         <MudSelectItem T="DiaSemana" Value="@DiaSemana.Lunes">Lunes</MudSelectItem>
                         <MudSelectItem T="DiaSemana" Value="@DiaSemana.Martes">Martes</MudSelectItem>
@@ -899,6 +908,7 @@ else
 
     // Formulario de Bloque
     private int NuevoAulaId = 0;
+    private int NuevoBloquePeriodoId = 0;
     private DiaSemana NuevoDiaSemana = DiaSemana.Lunes;
     private TimeSpan? HoraInicioTs = new TimeSpan(7, 30, 0);
     private TimeSpan? HoraFinTs = new TimeSpan(9, 0, 0);
@@ -1055,7 +1065,7 @@ else
 
         var periodoOrigenActual = ListaPeriodos.FirstOrDefault(p => p.EsActual);
 
-        bool exito = await ApiClient.CreatePeriodoAcademicoAsync(
+        var (exito, errorMsg) = await ApiClient.CreatePeriodoAcademicoAsync(
             NuevoPeriodoNombre.Trim().ToUpperInvariant(),
             NuevoPeriodoFechaInicio.Value,
             NuevoPeriodoFechaFin.Value,
@@ -1078,10 +1088,8 @@ else
                     }
                 }
 
-                if (NuevoPeriodoEsActual)
-                {
-                    PeriodoSeleccionadoId = nuevo.Id;
-                }
+                // Cambiar la vista de la grilla directamente al nuevo semestre creado
+                PeriodoSeleccionadoId = nuevo.Id;
             }
 
             Snackbar.Add($"Semestre '{NuevoPeriodoNombre}' creado exitosamente.", Severity.Success);
@@ -1090,7 +1098,7 @@ else
         }
         else
         {
-            ErrorGestionPeriodos = "No se pudo crear el semestre. Verifique que el nombre sea único.";
+            ErrorGestionPeriodos = errorMsg ?? "No se pudo crear el semestre. Verifique que el nombre sea único.";
         }
 
         GuardandoPeriodo = false;
@@ -1144,6 +1152,7 @@ else
         IsEditMode = false;
         BloqueIdSeleccionado = 0;
         NuevoAulaId = AulaSeleccionadaId;
+        NuevoBloquePeriodoId = PeriodoSeleccionadoId > 0 ? PeriodoSeleccionadoId : (ListaPeriodos.FirstOrDefault(p => p.EsActual)?.Id ?? ListaPeriodos.FirstOrDefault()?.Id ?? 0);
         NuevoDiaSemana = DiaSemana.Lunes;
         HoraInicioTs = new TimeSpan(7, 30, 0);
         HoraFinTs = new TimeSpan(9, 0, 0);
@@ -1170,6 +1179,7 @@ else
         IsEditMode = true;
         BloqueIdSeleccionado = bloque.Id;
         NuevoAulaId = bloque.AulaId;
+        NuevoBloquePeriodoId = bloque.PeriodoAcademicoId ?? (PeriodoSeleccionadoId > 0 ? PeriodoSeleccionadoId : (ListaPeriodos.FirstOrDefault(p => p.EsActual)?.Id ?? 0));
         NuevoDiaSemana = bloque.DiaSemana;
         HoraInicioTs = bloque.HoraInicio;
         HoraFinTs = bloque.HoraFin;
@@ -1212,6 +1222,8 @@ else
         IsSaving = true;
         MensajeError = null;
 
+        int? periodoFinalId = NuevoBloquePeriodoId > 0 ? NuevoBloquePeriodoId : (PeriodoSeleccionadoId > 0 ? PeriodoSeleccionadoId : null);
+
         bool exito;
         if (IsEditMode)
         {
@@ -1227,7 +1239,7 @@ else
                 NuevoDocenteId,
                 NuevoGrupoParalelo,
                 esUsoLibre: false,
-                periodoAcademicoId: PeriodoSeleccionadoId > 0 ? PeriodoSeleccionadoId : null,
+                periodoAcademicoId: periodoFinalId,
                 docenteNombreManual: NuevoDocenteNombreManual,
                 docenteEmailManual: NuevoDocenteEmailManual,
                 materiaNombreManual: NuevoMateriaNombreManual
@@ -1246,7 +1258,7 @@ else
                 NuevoDocenteId,
                 NuevoGrupoParalelo,
                 esUsoLibre: false,
-                periodoAcademicoId: PeriodoSeleccionadoId > 0 ? PeriodoSeleccionadoId : null,
+                periodoAcademicoId: periodoFinalId,
                 docenteNombreManual: NuevoDocenteNombreManual,
                 docenteEmailManual: NuevoDocenteEmailManual,
                 materiaNombreManual: NuevoMateriaNombreManual
@@ -1257,6 +1269,10 @@ else
         {
             Snackbar.Add(IsEditMode ? "¡Bloque horario actualizado exitosamente!" : "¡Bloque horario guardado exitosamente!", Severity.Success);
             MostrarModal = false;
+            if (periodoFinalId.HasValue && periodoFinalId.Value > 0 && PeriodoSeleccionadoId != periodoFinalId.Value)
+            {
+                PeriodoSeleccionadoId = periodoFinalId.Value;
+            }
             await CargarHorariosAsync();
         }
         else

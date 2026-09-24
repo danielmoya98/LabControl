@@ -23,6 +23,7 @@ public class AutoRegistroRequest
     public int? DiscoLibreGb { get; set; }
     public string? SistemaOperativo { get; set; }
     public double? UptimeHoras { get; set; }
+    public string? DiscosDetalleJson { get; set; }
 }
 
 public class AutoRegistroResponse
@@ -153,7 +154,8 @@ public class KioskApiService
                 DiscoTotalGb = hw.DiscoTotalGb,
                 DiscoLibreGb = hw.DiscoLibreGb,
                 SistemaOperativo = hw.SistemaOperativo,
-                UptimeHoras = hw.UptimeHoras
+                UptimeHoras = hw.UptimeHoras,
+                DiscosDetalleJson = hw.DiscosDetalleJson
             };
 
             var response = await _httpClient.PostAsJsonAsync("api/computadoras/auto-registro", req);

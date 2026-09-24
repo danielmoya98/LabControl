@@ -97,14 +97,14 @@ public partial class App : Application
         }
 
         WindowsHookManager.UninstallHook();
-        TaskManagerHelper.EnableTaskManager();
+        TaskManagerHelper.StopAntiSabotageWatchdog();
         base.OnSessionEnding(e);
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
         WindowsHookManager.UninstallHook();
-        TaskManagerHelper.EnableTaskManager();
+        TaskManagerHelper.StopAntiSabotageWatchdog();
         base.OnExit(e);
     }
 }

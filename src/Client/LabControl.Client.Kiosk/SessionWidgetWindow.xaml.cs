@@ -1,30 +1,32 @@
 using System;
-using System.Diagnostics;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Threading;
 using LabControl.Client.Kiosk.Services;
+using LabControl.Domain.Enums;
 
 namespace LabControl.Client.Kiosk;
 
 public partial class SessionWidgetWindow : Window
 {
-    private readonly Action<int> _onCerrarCallback; // int: 1 = Manual, 2 = FinPeriodo, 3 = AdminRemoto, 4 = Inactividad
-    private DispatcherTimer? _countdownTimer;
-    private TimeSpan _tiempoRestante;
+    private readonly Action<int> _onCerrarCallback;
+    private readonly Action _onApagarCallback;
+    private bool _isAuthorizedClose;
 
-    public SessionWidgetWindow(string emailEstudiante, string aulaNombre, int minutosLimite, Action<int> onCerrarCallback)
+    public SessionWidgetWindow(
+        string emailEstudiante,
+        string aulaNombre,
+        string hostname,
+        Action<int> onCerrarCallback,
+        Action onApagarCallback)
     {
         InitializeComponent();
 
         _onCerrarCallback = onCerrarCallback;
+        _onApagarCallback = onApagarCallback;
 
         TxtEmailEstudiante.Text = emailEstudiante;
-        TxtDetalleAula.Text = $"{aulaNombre} | Terminal Activa";
-
-        _tiempoRestante = TimeSpan.FromMinutes(minutosLimite > 0 ? minutosLimite : 90);
-        ActualizarTextoTiempo();
-        IniciarTimer();
+        TxtDetalleAula.Text = $"{aulaNombre} • {hostname}";
 
         // Posicionar en la esquina superior derecha de la pantalla principal
         Left = SystemParameters.WorkArea.Right - Width - 25;
@@ -37,33 +39,30 @@ public partial class SessionWidgetWindow : Window
         WindowBlurHelper.EnableBlur(this, alpha: 170, r: 16, g: 22, b: 32);
     }
 
-    private void IniciarTimer()
+    private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        _countdownTimer = new DispatcherTimer
+        // Bloquear atajo Alt+F4 para evitar el cierre intencional del widget
+        if (e.Key == Key.System && e.SystemKey == Key.F4)
         {
-            Interval = TimeSpan.FromSeconds(1)
-        };
-        _countdownTimer.Tick += (s, e) =>
-        {
-            if (_tiempoRestante.TotalSeconds > 0)
-            {
-                _tiempoRestante = _tiempoRestante.Subtract(TimeSpan.FromSeconds(1));
-                ActualizarTextoTiempo();
-            }
-            else
-            {
-                _countdownTimer.Stop();
-                CerrarYNotificar(2); // 2 = FinPeriodo
-            }
-        };
-        _countdownTimer.Start();
+            e.Handled = true;
+        }
     }
 
-    private void ActualizarTextoTiempo()
+    protected override void OnClosing(CancelEventArgs e)
     {
-        TxtTiempoRestante.Text = _tiempoRestante.Hours > 0
-            ? _tiempoRestante.ToString(@"hh\:mm\:ss")
-            : _tiempoRestante.ToString(@"mm\:ss");
+        // Blindaje contra cierre no autorizado (WM_CLOSE desde Administrador de Tareas o atajos de teclado)
+        if (!_isAuthorizedClose && !KioskGuardianService.IsGracefulShutdown())
+        {
+            e.Cancel = true;
+            return;
+        }
+        base.OnClosing(e);
+    }
+
+    public void CloseAuthorized()
+    {
+        _isAuthorizedClose = true;
+        Close();
     }
 
     private void OnBorderMouseDown(object sender, MouseButtonEventArgs e)
@@ -82,7 +81,8 @@ public partial class SessionWidgetWindow : Window
 
         if (result == MessageBoxResult.Yes)
         {
-            CerrarYNotificar(1); // 1 = Manual
+            CloseAuthorized();
+            _onCerrarCallback?.Invoke((int)TipoCierreSesion.Manual);
         }
     }
 
@@ -90,67 +90,17 @@ public partial class SessionWidgetWindow : Window
     {
         var result = MessageBox.Show(
             "¿Desea finalizar su uso y apagar el equipo físico ahora?\n\nAl confirmar, su sesión se cerrará y la computadora se apagará para optimizar el consumo de energía del campus.",
-            "Finalizar Clase y Apagar", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            "Finalizar y Apagar", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
         if (result == MessageBoxResult.Yes)
         {
-            CerrarYNotificar(1); // 1 = Manual
-
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "shutdown.exe",
-                    Arguments = "/s /t 2 /f",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                });
-            }
-            catch
-            {
-                // Silencioso
-            }
+            CloseAuthorized();
+            _onApagarCallback?.Invoke();
         }
     }
 
-    public void CerrarPorComandoRemoto()
+    public void ActualizarDetalle(string aulaNombre, string hostname)
     {
-        Dispatcher.Invoke(() =>
-        {
-            CerrarYNotificar(3); // 3 = AdminRemoto
-        });
-    }
-
-    public void CerrarPorInactividad(bool apagar)
-    {
-        Dispatcher.Invoke(() =>
-        {
-            CerrarYNotificar(4); // 4 = Inactividad
-
-            if (apagar)
-            {
-                try
-                {
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "shutdown.exe",
-                        Arguments = "/s /t 2 /f",
-                        CreateNoWindow = true,
-                        UseShellExecute = false
-                    });
-                }
-                catch
-                {
-                    // Silencioso
-                }
-            }
-        });
-    }
-
-    private void CerrarYNotificar(int motivoCierre)
-    {
-        _countdownTimer?.Stop();
-        this.Close();
-        _onCerrarCallback?.Invoke(motivoCierre);
+        TxtDetalleAula.Text = $"{aulaNombre} • {hostname}";
     }
 }

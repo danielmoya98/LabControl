@@ -4,6 +4,7 @@
 ; Compatible con Inno Setup 6.x
 ; ==============================================================================
 
+#define MyAppId "8B84976A-4DC2-4FD8-BD48-F517227491C3"
 #define MyAppName "LabControl Kiosk"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Universidad del Valle"
@@ -15,7 +16,7 @@
 
 [Setup]
 ; Identificador único de aplicación para evitar instalaciones duplicadas
-AppId={{8B84976A-4DC2-4FD8-BD48-F517227491C3}
+AppId={{{#MyAppId}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -72,6 +73,11 @@ Source: "..\..\dist\LabControl-Kiosk-Client\*"; DestDir: "{app}"; Flags: ignorev
 [Registry]
 ; 1. Arranque automático estándar en Registro de Windows (Run)
 Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "LabControlKiosk"; ValueData: """{app}\{#MyAppExeName}"""; Flags: uninsdeletevalue
+
+; 2. Ocultar la aplicación de "Configuración -> Aplicaciones instaladas" y "Panel de Control -> Desinstalar programas"
+; Al registrar SystemComponent=1 y NoRemove=1, Windows oculta completamente la aplicación de la interfaz de usuario.
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{{{#MyAppId}}_is1"; ValueType: dword; ValueName: "SystemComponent"; ValueData: 1; Flags: uninsdeletekeyifempty
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{{{#MyAppId}}_is1"; ValueType: dword; ValueName: "NoRemove"; ValueData: 1; Flags: uninsdeletekeyifempty
 
 [Run]
 ; 2. Crear Tarea Programada en Task Scheduler (Arranque con máximos privilegios garantizados al encender/iniciar sesión)
@@ -192,9 +198,22 @@ var
   Lbl: TLabel;
   Edit: TPasswordEdit;
   BtnOk, BtnCancel: TNewButton;
-  W: Integer;
+  W, I: Integer;
 begin
-  Form := CreateCustomForm(ScaleX(360), ScaleY(150), False, True);
+  // 1. Si se invoca con el parámetro /AUTHORIZED desde el menú técnico del Kiosk,
+  // permitir la desinstalación directa sin solicitar la contraseña dos veces.
+  for I := 1 to ParamCount do
+  begin
+    if (CompareText(ParamStr(I), '/AUTHORIZED') = 0) or
+       (CompareText(ParamStr(I), '-AUTHORIZED') = 0) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+
+  // 2. Si un usuario ejecuta directamente unins000.exe, exigir la clave maestra de soporte técnico
+  Form := CreateCustomForm(ScaleX(380), ScaleY(160), False, True);
   try
     Form.Caption := 'Desinstalación Protegida de Laboratorio';
 
@@ -202,32 +221,32 @@ begin
     Lbl.Parent := Form;
     Lbl.Left := ScaleX(16);
     Lbl.Top := ScaleY(14);
-    Lbl.Width := ScaleX(328);
-    Lbl.Caption := 'Esta acción dejará el equipo desprotegido.' + #13#10 +
+    Lbl.Width := ScaleX(348);
+    Lbl.Caption := 'ATENCIÓN: Esta acción desprotegerá la terminal de laboratorio.' + #13#10 +
                    'Ingrese la Clave Maestra de Técnico Autorizado:';
 
     Edit := TPasswordEdit.Create(Form);
     Edit.Parent := Form;
     Edit.Left := ScaleX(16);
-    Edit.Top := ScaleY(56);
-    Edit.Width := ScaleX(328);
-    Edit.Height := ScaleY(23);
+    Edit.Top := ScaleY(65);
+    Edit.Width := ScaleX(348);
+    Edit.Height := ScaleY(24);
 
     BtnOk := TNewButton.Create(Form);
     BtnOk.Parent := Form;
     BtnOk.Caption := 'Aceptar';
-    BtnOk.Left := ScaleX(170);
-    BtnOk.Top := ScaleY(96);
-    BtnOk.Height := ScaleY(24);
+    BtnOk.Left := ScaleX(180);
+    BtnOk.Top := ScaleY(105);
+    BtnOk.Height := ScaleY(26);
     BtnOk.ModalResult := mrOk;
     BtnOk.Default := True;
 
     BtnCancel := TNewButton.Create(Form);
     BtnCancel.Parent := Form;
     BtnCancel.Caption := 'Cancelar';
-    BtnCancel.Left := ScaleX(260);
-    BtnCancel.Top := ScaleY(96);
-    BtnCancel.Height := ScaleY(24);
+    BtnCancel.Left := ScaleX(275);
+    BtnCancel.Top := ScaleY(105);
+    BtnCancel.Height := ScaleY(26);
     BtnCancel.ModalResult := mrCancel;
     BtnCancel.Cancel := True;
 

@@ -38,44 +38,6 @@
     </div>
 </div>
 
-<!-- Modal Centrado para Transmitir Mensaje / Alerta -->
-<MudDialog @bind-Visible="MostrarModalMensaje" Options="_dialogOptions">
-    <TitleContent>
-        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Warning">
-            <MudIcon Icon="@Icons.Material.Filled.Campaign" Class="mr-2" /> Transmitir Mensaje a Terminales
-        </MudText>
-    </TitleContent>
-    <DialogContent>
-        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-            El mensaje aparecerá como una ventana emergente en pantalla completa sobre las terminales seleccionadas.
-        </MudText>
-
-        <MudGrid>
-            <MudItem xs="12">
-                <MudSelect T="int" @bind-Value="DestinoAulaId" Label="Destinatario" Variant="Variant.Outlined" FullWidth="true">
-                    <MudSelectItem T="int" Value="0">📢 Todas las Aulas (Transmisión Global)</MudSelectItem>
-                    @foreach (var aula in Aulas)
-                    {
-                        <MudSelectItem T="int" Value="@aula.AulaId">🏢 @aula.Nombre (@aula.Computadoras.Count PCs)</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-
-            <MudItem xs="12">
-                <MudTextField @bind-Value="MensajeTexto" Label="Contenido del Mensaje" Variant="Variant.Outlined" 
-                              Lines="3" Placeholder="Ej: Estimados estudiantes, el laboratorio cerrará en 10 minutos. Por favor guarden sus trabajos." Required="true" FullWidth="true" />
-            </MudItem>
-        </MudGrid>
-    </DialogContent>
-    <DialogActions>
-        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalMensaje = false">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Warning" Disabled="@(string.IsNullOrWhiteSpace(MensajeTexto) || IsSendingMessage)" 
-                   StartIcon="@Icons.Material.Filled.Send" OnClick="EnviarMensajeAsync">
-            @(IsSendingMessage ? "Transmitiendo..." : "Enviar Mensaje")
-        </MudButton>
-    </DialogActions>
-</MudDialog>
-
 <!-- Tarjetas de Estadísticas Globales (KPIs estilo Soft SaaS Premium) -->
 <MudGrid Class="mb-6">
     @if (IsLoading && !Aulas.Any())
@@ -239,16 +201,6 @@
                        OnClick="() => ModoMosaico = true">Mosaico en Vivo</MudButton>
         </MudButtonGroup>
 
-        <MudButton Variant="Variant.Filled" 
-                   Color="Color.Dark" 
-                   StartIcon="@Icons.Material.Filled.FitScreen" 
-                   Size="Size.Small" 
-                   Class="rounded-lg" 
-                   OnClick="ActivarModoNocAsync"
-                   title="Monitoreo ininterrumpido a pantalla completa (Sala de Control / NOC)">
-            Sala de Control
-        </MudButton>
-
         <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Campaign" 
                    Size="Size.Small" Class="rounded-lg" OnClick="OpenMensajeDialog">
             Transmitir Alerta
@@ -267,33 +219,7 @@
 <!-- Pestañas de Aulas & Grilla de Computadoras -->
 @if (Aulas.Any())
 {
-    <div class="@(_isNocFullscreen ? "noc-fullscreen-overlay" : "")">
-        @if (_isNocFullscreen)
-        {
-            <div class="d-flex align-center justify-space-between mb-4">
-                <div class="d-flex align-center gap-3">
-                    <div class="pa-2 rounded-lg" style="background: rgba(16, 185, 129, 0.15);">
-                        <MudIcon Icon="@Icons.Material.Filled.Sensors" Color="Color.Success" Size="Size.Medium" />
-                    </div>
-                    <div>
-                        <MudText Typo="Typo.h6" Class="font-weight-bold" Style="color: #fff; letter-spacing: -0.02em;">
-                            SALA DE CONTROL &bull; MONITOREO DE TERMINALES EN VIVO
-                        </MudText>
-                        <MudText Typo="Typo.caption" Style="color: #94a3b8;">
-                            Universidad del Valle &bull; Mosaico en tiempo real vía WebSockets
-                        </MudText>
-                    </div>
-                </div>
-                <button type="button" class="btn noc-exit-btn d-flex align-center gap-2 pa-2 px-3 rounded-lg"
-                        style="background: #ef4444; color: #fff; border: 1px solid rgba(255,255,255,0.2); font-weight: 600; font-size: 0.85rem; cursor: pointer;"
-                        @onclick="SalirModoNocAsync">
-                    <MudIcon Icon="@Icons.Material.Filled.FullscreenExit" Size="Size.Small" />
-                    <span>Salir de Sala de Control (ESC)</span>
-                </button>
-            </div>
-        }
-
-        <MudTabs @bind-ActivePanelIndex="ActiveTabIndex" Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Class="saas-card rounded-lg overflow-hidden mb-6">
+    <MudTabs @bind-ActivePanelIndex="ActiveTabIndex" Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Class="saas-card rounded-lg overflow-hidden mb-6">
             @foreach (var aula in Aulas)
             {
                 <MudTabPanel Text="@($"{aula.Nombre} ({aula.Computadoras.Count} PCs)")" Icon="@Icons.Material.Filled.MeetingRoom" Class="pa-6">
@@ -302,7 +228,7 @@
                         <MudGrid>
                             @foreach (var pc in aula.Computadoras)
                             {
-                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                <MudItem xs="12" sm="6" md="6" lg="4" xl="3">
                                     <MudCard Elevation="0" Class="saas-card rounded-lg" Style="@($"{GetEstiloBordeCard(pc.EstadoActual)}; overflow: hidden; height: 100%;")">
                                         <div class="d-flex justify-space-between align-center px-3 py-2" style="background: rgba(0,0,0,0.35);">
                                             <div class="d-flex align-center gap-1 text-truncate" style="max-width: 60%;">
@@ -353,7 +279,7 @@
                                             </div>
                                         </MudCardContent>
 
-                                        <MudCardActions Class="justify-space-between px-3 py-1">
+                                        <MudCardActions Class="justify-space-between px-3 py-1 flex-wrap gap-1">
                                             <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Chat" OnClick="() => AbrirMensajeDirecto(pc.Hostname)">
                                                 Mensaje
                                             </MudButton>
@@ -374,7 +300,7 @@
                         <MudGrid>
                             @foreach (var pc in aula.Computadoras)
                             {
-                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                <MudItem xs="12" sm="6" md="6" lg="4" xl="3">
                                     <div @oncontextmenu="@(() => AbrirMenuContextual(pc))" @oncontextmenu:preventDefault="true" style="cursor: context-menu; height: 100%;">
                                         <MudCard Elevation="0" Class="saas-card rounded-lg mud-hover" Style="@($"{GetEstiloBordeCard(pc.EstadoActual)}; height: 100%;")">
                                             <MudCardHeader Class="pb-2">
@@ -421,17 +347,17 @@
                                             </MudCardHeader>
 
                                         <MudCardContent Class="py-2">
-                                            <div class="d-flex align-center justify-space-between mb-1">
-                                                <div class="d-flex align-center gap-1">
-                                                    <MudText Typo="Typo.body2" Color="Color.Secondary"><strong>IP:</strong> @pc.IpActual</MudText>
+                                            <div class="d-flex align-center justify-space-between mb-1 flex-wrap gap-1">
+                                                <div class="d-flex align-center gap-1 text-truncate">
+                                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Style="white-space: nowrap;"><strong>IP:</strong> @pc.IpActual</MudText>
                                                     <button type="button" class="btn-copy-micro @(EstaCopiado($"ip_{pc.ComputadoraId}") ? "copied" : "")"
                                                             @onclick="@(() => CopiarConFeedbackAsync(pc.IpActual, $"ip_{pc.ComputadoraId}", "IP"))"
                                                             title="Copiar IP">
                                                         <MudIcon Icon="@(EstaCopiado($"ip_{pc.ComputadoraId}") ? Icons.Material.Filled.Check : Icons.Material.Outlined.ContentCopy)" Size="Size.Small" />
                                                     </button>
                                                 </div>
-                                                <div class="d-flex align-center gap-1">
-                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@pc.MacAddress</MudText>
+                                                <div class="d-flex align-center gap-1 text-truncate">
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="white-space: nowrap;">@pc.MacAddress</MudText>
                                                     <button type="button" class="btn-copy-micro @(EstaCopiado($"mac_{pc.ComputadoraId}") ? "copied" : "")"
                                                             @onclick="@(() => CopiarConFeedbackAsync(pc.MacAddress, $"mac_{pc.ComputadoraId}", "MAC"))"
                                                             title="Copiar MAC">
@@ -499,7 +425,7 @@
                                             }
                                         </MudCardContent>
 
-                                        <MudCardActions Class="justify-space-between pt-1">
+                                        <MudCardActions Class="justify-space-between pt-1 flex-wrap gap-1">
                                             <div class="d-flex align-center gap-1">
                                                 <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Chat" OnClick="() => AbrirMensajeDirecto(pc.Hostname)">
                                                     Mensaje
@@ -525,7 +451,6 @@
                 </MudTabPanel>
             }
         </MudTabs>
-    </div>
 }
 else if (IsLoading)
 {
@@ -540,7 +465,7 @@ else if (IsLoading)
         <MudGrid>
             @for (int s = 0; s < 8; s++)
             {
-                <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudItem xs="12" sm="6" md="6" lg="4" xl="3">
                     <MudCard Elevation="0" Class="saas-card rounded-lg pa-4">
                         <div class="d-flex justify-space-between align-center mb-3">
                             <MudSkeleton SkeletonType="SkeletonType.Text" Width="50%" Height="22px" />
@@ -645,6 +570,36 @@ else
     </DialogActions>
 </MudDialog>
 
+<!-- Modal Transmitir Alerta Masiva (Aula o Global) -->
+<MudDialog @bind-Visible="MostrarModalMensaje" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Class="font-weight-bold" Color="Color.Warning">
+            <MudIcon Icon="@Icons.Material.Filled.Campaign" Class="mr-2" /> Transmitir Alerta a Terminales
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            El mensaje aparecerá inmediatamente en pantalla completa sobre las terminales seleccionadas.
+        </MudText>
+        <MudSelect T="int" @bind-Value="DestinoAulaId" Label="Destino de la Alerta" Variant="Variant.Outlined" Class="mb-3" Margin="Margin.Dense">
+            <MudSelectItem T="int" Value="0">📢 Todas las Aulas (Transmisión Global)</MudSelectItem>
+            @foreach (var aula in Aulas)
+            {
+                <MudSelectItem T="int" Value="@aula.AulaId">🏫 Aula: @aula.Nombre (@aula.Computadoras.Count PCs)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField @bind-Value="MensajeTexto" Label="Mensaje de Alerta" Variant="Variant.Outlined" 
+                      Lines="3" Placeholder="Ej: El laboratorio cerrará en 10 minutos. Por favor guarden su trabajo." Required="true" FullWidth="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalMensaje = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Warning" Disabled="@(string.IsNullOrWhiteSpace(MensajeTexto) || IsSendingMessage)" 
+                   StartIcon="@Icons.Material.Filled.Send" OnClick="EnviarMensajeAsync">
+            @(IsSendingMessage ? "Transmitiendo..." : "Transmitir Alerta")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 <!-- Modal Enviar Mensaje Directo a PC Específica -->
 <MudDialog @bind-Visible="MostrarModalMensajeDirecto" Options="_dialogOptions">
     <TitleContent>
@@ -724,33 +679,7 @@ else
     private bool IsSignalRConnected => SignalRService.IsConnected;
     private int ActiveTabIndex = 0;
     private bool ModoMosaico = false;
-    private bool _isNocFullscreen = false;
     private readonly HashSet<string> _copiedKeys = [];
-
-    private async Task ActivarModoNocAsync()
-    {
-        ModoMosaico = true;
-        _isNocFullscreen = true;
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("fullscreenHelper.toggleFullscreen");
-        }
-        catch { }
-    }
-
-    private async Task SalirModoNocAsync()
-    {
-        _isNocFullscreen = false;
-        try
-        {
-            var isFs = await JSRuntime.InvokeAsync<bool>("fullscreenHelper.isFullscreen");
-            if (isFs)
-            {
-                await JSRuntime.InvokeVoidAsync("fullscreenHelper.toggleFullscreen");
-            }
-        }
-        catch { }
-    }
 
     private async Task CopiarConFeedbackAsync(string? texto, string key, string label = "")
     {
@@ -978,7 +907,8 @@ else
                     pc.DiscoTotalGb,
                     pc.DiscoLibreGb,
                     pc.SistemaOperativo,
-                    pc.UptimeHoras
+                    pc.UptimeHoras,
+                    pc.DiscosDetalleJson
                 );
                 nuevaPc.MiniaturaBase64 = pc.MiniaturaBase64;
                 aula.Computadoras[index] = nuevaPc;

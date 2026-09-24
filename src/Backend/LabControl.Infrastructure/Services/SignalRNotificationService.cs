@@ -50,4 +50,9 @@ public class SignalRNotificationService : ISignalRNotificationService
     {
         return Task.CompletedTask;
     }
+
+    public Task SendActualizacionPoliticaAulaAsync(int aulaId, string aulaNombre, int minutosInactividad, int accionInactividad, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
 }

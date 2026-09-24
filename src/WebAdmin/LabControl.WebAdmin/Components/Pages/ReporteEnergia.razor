@@ -167,36 +167,40 @@
                 Top @Reporte.TopInfractores.Count reincidentes
             </MudChip>
         </div>
-        <MudGrid Spacing="2">
+        <div class="d-flex flex-wrap gap-3">
             @foreach (var infractor in Reporte.TopInfractores)
             {
-                <MudItem xs="12" sm="6" md="4" lg="3">
-                    <div class="pa-3 rounded-lg d-flex align-center gap-3"
-                         style="background: rgba(148, 163, 184, 0.05); border: 1px solid var(--mud-palette-lines-default);">
-                        <MudAvatar Color="Color.Warning" Variant="Variant.Outlined" Size="Size.Medium" Style="font-size: 0.8rem; font-weight: 700;">
-                            @(string.IsNullOrWhiteSpace(infractor.EstudianteNombre)
-                                ? (infractor.EstudianteEmail.Length > 0 ? infractor.EstudianteEmail[0].ToString().ToUpper() : "E")
-                                : infractor.EstudianteNombre[0].ToString().ToUpper())
-                        </MudAvatar>
-                        <div style="min-width: 0; flex: 1;">
-                            <MudTooltip Text="@infractor.EstudianteEmail">
-                                <MudText Typo="Typo.body2" Class="font-weight-bold text-truncate" Style="font-size: 0.84rem;">
-                                    @(infractor.EstudianteNombre ?? infractor.EstudianteEmail)
-                                </MudText>
-                            </MudTooltip>
-                            <div class="d-flex align-center gap-2 mt-1">
-                                <span class="badge-soft-error" style="font-size: 0.68rem; padding: 2px 6px;">
-                                    @infractor.CantidadIncidentes @(infractor.CantidadIncidentes == 1 ? "falta" : "faltas")
-                                </span>
-                                <span class="badge-soft-warning" style="font-size: 0.68rem; padding: 2px 6px;">
-                                    @infractor.TotalHorasDesperdiciadas.ToString("N1") hrs
-                                </span>
+                <div class="pa-3 rounded-lg d-flex align-center gap-3 saas-card"
+                     style="flex: 1 1 260px; max-width: 380px; background: rgba(148, 163, 184, 0.05); border: 1px solid var(--mud-palette-lines-default);">
+                    <MudAvatar Color="Color.Warning" Variant="Variant.Filled" Size="Size.Medium" Style="font-size: 0.82rem; font-weight: 700; width: 36px; height: 36px;">
+                        @(string.IsNullOrWhiteSpace(infractor.EstudianteNombre)
+                            ? (infractor.EstudianteEmail.Length > 0 ? infractor.EstudianteEmail[0].ToString().ToUpper() : "E")
+                            : infractor.EstudianteNombre[0].ToString().ToUpper())
+                    </MudAvatar>
+                    <div style="min-width: 0; flex: 1;">
+                        <MudTooltip Text="@infractor.EstudianteEmail">
+                            <MudText Typo="Typo.body2" Class="font-weight-bold text-truncate" Style="font-size: 0.82rem; color: var(--mud-palette-text-primary);">
+                                @(infractor.EstudianteNombre ?? infractor.EstudianteEmail)
+                            </MudText>
+                        </MudTooltip>
+                        @if (!string.IsNullOrWhiteSpace(infractor.EstudianteNombre))
+                        {
+                            <div class="text-truncate" style="font-size: 0.72rem; color: var(--mud-palette-text-secondary);">
+                                @infractor.EstudianteEmail
                             </div>
+                        }
+                        <div class="d-flex align-center gap-2 mt-1">
+                            <span class="badge-soft-error font-weight-bold" style="font-size: 0.68rem; padding: 2px 7px; border-radius: 4px;">
+                                @infractor.CantidadIncidentes @(infractor.CantidadIncidentes == 1 ? "falta" : "faltas")
+                            </span>
+                            <span class="badge-soft-warning font-weight-bold" style="font-size: 0.68rem; padding: 2px 7px; border-radius: 4px;">
+                                ⚡ @infractor.TotalHorasDesperdiciadas.ToString("N1") hrs
+                            </span>
                         </div>
                     </div>
-                </MudItem>
+                </div>
             }
-        </MudGrid>
+        </div>
     </MudPaper>
 }
 
@@ -281,7 +285,7 @@
 <!-- TABLA DE INCIDENTES ENERGÉTICOS SAAS REFINADA -->
 <MudTable Items="@(Reporte?.Incidentes ?? [])"
           Filter="new Func<RegistroEnergiaDetalleModel, bool>(FilterFunc)"
-          Dense="false"
+          Dense="true"
           Hover="true"
           Bordered="false"
           Striped="false"
@@ -290,27 +294,27 @@
           Elevation="0"
           Class="saas-card rounded-lg overflow-hidden">
     <HeaderContent>
-        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">TERMINAL &amp; ID</MudTh>
-        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">AULA / ESPACIO</MudTh>
-        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">ÚLTIMO ESTUDIANTE</MudTh>
-        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">FECHA DETECCIÓN</MudTh>
-        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">HORAS DESPERDICIADAS</MudTh>
-        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">MOTIVO DE INFRACCIÓN</MudTh>
-        <MudTh Style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px; text-align: right;">ACCIÓN</MudTh>
+        <MudTh Style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.5px; width: 170px;">TERMINAL &amp; ID</MudTh>
+        <MudTh Style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.5px; width: 130px;">AULA / ESPACIO</MudTh>
+        <MudTh Style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.5px; width: 220px;">ÚLTIMO ESTUDIANTE</MudTh>
+        <MudTh Style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.5px; width: 130px;">FECHA DETECCIÓN</MudTh>
+        <MudTh Style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.5px; width: 120px;">DESPERDICIO</MudTh>
+        <MudTh Style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.5px;">MOTIVO DE INFRACCIÓN</MudTh>
+        <MudTh Style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.5px; width: 75px; text-align: right;">ACCIÓN</MudTh>
     </HeaderContent>
     <RowTemplate>
         <!-- 1. Terminal & ID -->
         <MudTd DataLabel="Terminal">
-            <div class="d-flex align-center gap-3">
-                <div class="pa-2 rounded-md d-flex align-center justify-center"
-                     style="width: 36px; height: 36px; background: rgba(37, 99, 235, 0.08); flex-shrink: 0;">
-                    <MudIcon Icon="@Icons.Material.Filled.DesktopWindows" Color="Color.Primary" Size="Size.Small" />
+            <div class="d-flex align-center gap-2">
+                <div class="pa-1 rounded-md d-flex align-center justify-center"
+                     style="width: 28px; height: 28px; background: rgba(37, 99, 235, 0.08); flex-shrink: 0;">
+                    <MudIcon Icon="@Icons.Material.Filled.DesktopWindows" Color="Color.Primary" Size="Size.Small" Style="font-size: 1rem;" />
                 </div>
                 <div>
-                    <MudText Typo="Typo.body2" Class="font-weight-bold" Color="Color.Primary" Style="font-size: 0.88rem;">
+                    <MudText Typo="Typo.body2" Class="font-weight-bold" Color="Color.Primary" Style="font-size: 0.80rem; line-height: 1.2;">
                         @context.Hostname
                     </MudText>
-                    <span style="font-family: monospace; font-size: 0.7rem; color: var(--mud-palette-text-secondary);">
+                    <span style="font-family: monospace; font-size: 0.68rem; color: var(--mud-palette-text-secondary);">
                         #@context.Id
                     </span>
                 </div>
@@ -319,9 +323,9 @@
 
         <!-- 2. Aula / Espacio -->
         <MudTd DataLabel="Aula">
-            <div class="d-flex align-center gap-2">
-                <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Size="Size.Small" Color="Color.Secondary" Style="font-size: 1.1rem;" />
-                <span style="font-weight: 600; font-size: 0.84rem;">@context.AulaNombre</span>
+            <div class="d-flex align-center gap-1">
+                <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Size="Size.Small" Color="Color.Secondary" Style="font-size: 0.95rem;" />
+                <span style="font-weight: 600; font-size: 0.78rem;">@context.AulaNombre</span>
             </div>
         </MudTd>
 
@@ -329,26 +333,26 @@
         <MudTd DataLabel="Último Estudiante">
             <div class="d-flex align-center gap-2">
                 <MudAvatar Size="Size.Small" Color="Color.Default"
-                           Style="width: 26px; height: 26px; font-size: 0.72rem; font-weight: 700; background: rgba(148, 163, 184, 0.15);">
+                           Style="width: 24px; height: 24px; font-size: 0.68rem; font-weight: 700; background: rgba(148, 163, 184, 0.15); flex-shrink: 0;">
                     @(string.IsNullOrWhiteSpace(context.UltimoEstudianteNombre)
                         ? (context.UltimoEstudianteEmail.Length > 0 ? context.UltimoEstudianteEmail[0].ToString().ToUpper() : "E")
                         : context.UltimoEstudianteNombre[0].ToString().ToUpper())
                 </MudAvatar>
-                <div>
+                <div style="min-width: 0;">
                     @if (!string.IsNullOrWhiteSpace(context.UltimoEstudianteNombre))
                     {
-                        <MudText Typo="Typo.body2" Class="font-weight-bold" Style="font-size: 0.82rem;">
+                        <MudText Typo="Typo.body2" Class="font-weight-bold text-truncate" Style="font-size: 0.78rem; line-height: 1.2;">
                             @context.UltimoEstudianteNombre
                         </MudText>
                     }
                     <div class="d-flex align-center gap-1">
-                        <span style="font-size: 0.74rem; color: var(--mud-palette-text-secondary);">
+                        <span class="text-truncate" style="font-size: 0.72rem; color: var(--mud-palette-text-secondary); max-width: 170px;">
                             @context.UltimoEstudianteEmail
                         </span>
                         <button type="button" class="btn-copy-micro @(EstaCopiado($"nrg_email_{context.Id}") ? "copied" : "")"
                                 @onclick="@(() => CopiarConFeedbackAsync(context.UltimoEstudianteEmail, $"nrg_email_{context.Id}", "Email"))"
                                 title="Copiar correo">
-                            <MudIcon Icon="@(EstaCopiado($"nrg_email_{context.Id}") ? Icons.Material.Filled.Check : Icons.Material.Outlined.ContentCopy)" Size="Size.Small" />
+                            <MudIcon Icon="@(EstaCopiado($"nrg_email_{context.Id}") ? Icons.Material.Filled.Check : Icons.Material.Outlined.ContentCopy)" Size="Size.Small" Style="font-size: 0.75rem;" />
                         </button>
                     </div>
                 </div>
@@ -357,8 +361,8 @@
 
         <!-- 4. Fecha Detección -->
         <MudTd DataLabel="Fecha Detección">
-            <div class="d-flex align-center gap-1" style="font-size: 0.8rem;">
-                <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Color="Color.Secondary" Style="font-size: 0.95rem;" />
+            <div class="d-flex align-center gap-1" style="font-size: 0.76rem; color: var(--mud-palette-text-secondary);">
+                <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Color="Color.Secondary" Style="font-size: 0.85rem;" />
                 <span>@context.FechaDeteccionUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
             </div>
         </MudTd>
@@ -367,13 +371,13 @@
         <MudTd DataLabel="Horas Desperdiciadas">
             @if (context.HorasInactivaEncendida > 4)
             {
-                <span class="badge-soft-error font-weight-bold" style="font-size: 0.75rem;">
+                <span class="badge-soft-error font-weight-bold" style="font-size: 0.70rem; padding: 2px 6px; border-radius: 4px;">
                     ⚡ @context.HorasInactivaEncendida.ToString("N1") hrs
                 </span>
             }
             else
             {
-                <span class="badge-soft-warning font-weight-bold" style="font-size: 0.75rem;">
+                <span class="badge-soft-warning font-weight-bold" style="font-size: 0.70rem; padding: 2px 6px; border-radius: 4px;">
                     ⚡ @context.HorasInactivaEncendida.ToString("N1") hrs
                 </span>
             }
@@ -381,16 +385,16 @@
 
         <!-- 6. Motivo de Infracción -->
         <MudTd DataLabel="Motivo">
-            <span style="font-size: 0.8rem; color: var(--mud-palette-text-primary);">
+            <div style="font-size: 0.76rem; line-height: 1.35; color: var(--mud-palette-text-primary); max-width: 440px;" title="@context.MotivoInfraccion">
                 @context.MotivoInfraccion
-            </span>
+            </div>
         </MudTd>
 
         <!-- 7. Acción Remota -->
         <MudTd DataLabel="Acción" Style="text-align: right;">
             @if (context.Resuelto)
             {
-                <span class="badge-soft-success" style="font-size: 0.72rem;">
+                <span class="badge-soft-success" style="font-size: 0.68rem; padding: 2px 6px;">
                     <span class="pulse-dot-green mr-1"></span>Resuelto
                 </span>
             }
@@ -401,7 +405,7 @@
                                    Color="Color.Error"
                                    Size="Size.Small"
                                    OnClick="() => ApagarPcDesdeReporteAsync(context)"
-                                   Style="background: rgba(239, 68, 68, 0.08);" />
+                                   Style="background: rgba(239, 68, 68, 0.08); padding: 4px;" />
                 </MudTooltip>
             }
         </MudTd>

@@ -33,10 +33,12 @@ public class UpdateAulaCommandValidator : AbstractValidator<UpdateAulaCommand>
 public class UpdateAulaCommandHandler : IRequestHandler<UpdateAulaCommand, Result<AulaDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ISignalRNotificationService _signalR;
 
-    public UpdateAulaCommandHandler(IApplicationDbContext context)
+    public UpdateAulaCommandHandler(IApplicationDbContext context, ISignalRNotificationService signalR)
     {
         _context = context;
+        _signalR = signalR;
     }
 
     public async Task<Result<AulaDto>> Handle(UpdateAulaCommand request, CancellationToken cancellationToken)
@@ -80,6 +82,14 @@ public class UpdateAulaCommandHandler : IRequestHandler<UpdateAulaCommand, Resul
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Notificar en tiempo real a todas las terminales físicas del aula vía SignalR
+        await _signalR.SendActualizacionPoliticaAulaAsync(
+            aula.Id,
+            aula.Nombre,
+            aula.MinutosInactividadMaximo,
+            (int)aula.AccionInactividad,
+            cancellationToken);
 
         string? bloqueNombre = aula.Bloque?.Nombre;
         if (string.IsNullOrEmpty(bloqueNombre) && aula.BloqueId.HasValue)

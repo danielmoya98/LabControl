@@ -3,9 +3,10 @@ using LabControl.Application.Features.PeriodosAcademicos.Commands.ClonarHorarios
 using LabControl.Application.Features.PeriodosAcademicos.Commands.CreatePeriodoAcademico;
 using LabControl.Application.Features.PeriodosAcademicos.Commands.SetPeriodoAcademicoActual;
 using LabControl.Application.Features.PeriodosAcademicos.Queries.GetPeriodosAcademicos;
+using LabControl.Api.Controllers;
 
-namespace LabControl.Api.Controllers;
-
+[Route("api/periodos-academicos")]
+[Route("api/[controller]")]
 public class PeriodosAcademicosController : ApiControllerBase
 {
     [HttpGet]
