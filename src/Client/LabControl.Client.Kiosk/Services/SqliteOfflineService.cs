@@ -85,7 +85,7 @@ public static class SqliteOfflineService
         command.Parameters.AddWithValue("@ComputadoraId", (object?)computadoraId ?? DBNull.Value);
         command.Parameters.AddWithValue("@Hostname", hostname);
         command.Parameters.AddWithValue("@EmailEstudiante", emailEstudiante);
-        command.Parameters.AddWithValue("@FechaHoraInicio", inicio.ToString("o"));
+        command.Parameters.AddWithValue("@FechaHoraInicio", (inicio.Kind == DateTimeKind.Utc ? inicio : inicio.ToUniversalTime()).ToString("o"));
         command.Parameters.AddWithValue("@FechaCreacion", DateTime.UtcNow.ToString("o"));
 
         var result = await command.ExecuteScalarAsync();
@@ -127,7 +127,7 @@ public static class SqliteOfflineService
 
         using var command = new SqliteCommand(updateQuery, connection);
         command.Parameters.AddWithValue("@Id", sesionLocalId);
-        command.Parameters.AddWithValue("@FechaHoraFin", fin.ToString("o"));
+        command.Parameters.AddWithValue("@FechaHoraFin", (fin.Kind == DateTimeKind.Utc ? fin : fin.ToUniversalTime()).ToString("o"));
         command.Parameters.AddWithValue("@DuracionMinutos", (object?)duracionMinutos ?? DBNull.Value);
         command.Parameters.AddWithValue("@TipoCierre", tipoCierre);
 
@@ -151,8 +151,8 @@ public static class SqliteOfflineService
         command.Parameters.AddWithValue("@ComputadoraId", (object?)computadoraId ?? DBNull.Value);
         command.Parameters.AddWithValue("@Hostname", hostname);
         command.Parameters.AddWithValue("@EmailEstudiante", emailEstudiante);
-        command.Parameters.AddWithValue("@FechaHoraInicio", inicio.ToString("o"));
-        command.Parameters.AddWithValue("@FechaHoraFin", fin.ToString("o"));
+        command.Parameters.AddWithValue("@FechaHoraInicio", (inicio.Kind == DateTimeKind.Utc ? inicio : inicio.ToUniversalTime()).ToString("o"));
+        command.Parameters.AddWithValue("@FechaHoraFin", (fin.Kind == DateTimeKind.Utc ? fin : fin.ToUniversalTime()).ToString("o"));
         command.Parameters.AddWithValue("@DuracionMinutos", duracion);
         command.Parameters.AddWithValue("@TipoCierre", tipoCierre);
         command.Parameters.AddWithValue("@FechaCreacion", DateTime.UtcNow.ToString("o"));
@@ -188,8 +188,8 @@ public static class SqliteOfflineService
                 ComputadoraId = reader.IsDBNull(1) ? null : reader.GetInt32(1),
                 Hostname = reader.GetString(2),
                 EmailEstudiante = reader.GetString(3),
-                FechaHoraInicio = DateTime.Parse(reader.GetString(4)),
-                FechaHoraFin = reader.IsDBNull(5) ? null : DateTime.Parse(reader.GetString(5)),
+                FechaHoraInicio = DateTime.SpecifyKind(DateTime.Parse(reader.GetString(4)), DateTimeKind.Utc),
+                FechaHoraFin = reader.IsDBNull(5) ? null : DateTime.SpecifyKind(DateTime.Parse(reader.GetString(5)), DateTimeKind.Utc),
                 DuracionMinutos = reader.IsDBNull(6) ? null : reader.GetInt32(6),
                 TipoCierre = reader.GetInt32(7),
                 EstadoSync = reader.GetString(8),

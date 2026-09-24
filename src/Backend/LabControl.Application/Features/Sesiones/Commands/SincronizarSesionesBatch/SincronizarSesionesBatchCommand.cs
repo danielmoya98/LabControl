@@ -78,11 +78,31 @@ public class SincronizarSesionesBatchCommandHandler : IRequestHandler<Sincroniza
             var emailResult = EmailInstitucional.Create(dto.EmailEstudiante);
             if (emailResult.IsFailure) continue;
 
+            // Npgsql exige estrictamente DateTime con Kind=Utc para columnas 'timestamp with time zone'.
+            // Normalizar explícitamente para evitar ArgumentException por Kind=Local o Unspecified
+            var inicioUtc = dto.FechaHoraInicio.Kind switch
+            {
+                DateTimeKind.Utc => dto.FechaHoraInicio,
+                DateTimeKind.Local => dto.FechaHoraInicio.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(dto.FechaHoraInicio, DateTimeKind.Utc)
+            };
+
+            DateTime? finUtc = null;
+            if (dto.FechaHoraFin.HasValue)
+            {
+                finUtc = dto.FechaHoraFin.Value.Kind switch
+                {
+                    DateTimeKind.Utc => dto.FechaHoraFin.Value,
+                    DateTimeKind.Local => dto.FechaHoraFin.Value.ToUniversalTime(),
+                    _ => DateTime.SpecifyKind(dto.FechaHoraFin.Value, DateTimeKind.Utc)
+                };
+            }
+
             // Evitar duplicar sesiones si ya se habían insertado previamente
             var yaExiste = await _context.SesionesUso
                 .AnyAsync(s => s.ComputadoraId == computadora.Id 
                             && s.EmailEstudiante == emailResult.Value.Value 
-                            && s.FechaHoraInicio == dto.FechaHoraInicio, cancellationToken);
+                            && s.FechaHoraInicio == inicioUtc, cancellationToken);
 
             if (yaExiste)
             {
@@ -93,15 +113,15 @@ public class SincronizarSesionesBatchCommandHandler : IRequestHandler<Sincroniza
             var sesionResult = SesionUso.Iniciar(
                 computadora.Id,
                 emailResult.Value,
-                dto.FechaHoraInicio,
+                inicioUtc,
                 SyncStatus.OfflineSync);
 
             if (sesionResult.IsSuccess)
             {
                 var sesion = sesionResult.Value;
-                if (dto.FechaHoraFin.HasValue)
+                if (finUtc.HasValue)
                 {
-                    sesion.Finalizar(dto.TipoCierre, dto.FechaHoraFin.Value);
+                    sesion.Finalizar(dto.TipoCierre, finUtc.Value);
                 }
 
                 _context.SesionesUso.Add(sesion);
