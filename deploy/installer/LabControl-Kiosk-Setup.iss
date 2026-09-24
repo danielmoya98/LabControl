@@ -10,7 +10,7 @@
 #define MyAppPublisher "Universidad del Valle"
 #define MyAppURL "https://www.univalle.edu"
 #define MyAppExeName "LabControl.Client.Kiosk.exe"
-#define DefaultApiUrl "http://192.168.50.10:5256"
+#define DefaultApiUrl "http://192.168.50.132:5256"
 #define DefaultAulaId "1"
 #define MasterTechnicianKey "AdminLab@2026"
 

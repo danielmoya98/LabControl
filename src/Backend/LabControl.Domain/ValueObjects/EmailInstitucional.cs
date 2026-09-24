@@ -32,7 +32,7 @@ public partial record EmailInstitucional
         if (!EmailRegex().IsMatch(emailLimpio))
         {
             return Result<EmailInstitucional>.Failure(
-                Error.Validation("Email.InvalidDomain", "Acceso restringido: Ingrese un correo institucional válido (@est.univalle.edu o @univalle.edu)."));
+                Error.Validation("Email.InvalidDomain", "Acceso restringido: Ingrese su correo de la universidad completo y sin faltas de ortografía."));
         }
 
         return Result<EmailInstitucional>.Success(new EmailInstitucional(emailLimpio));

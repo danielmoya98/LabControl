@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using LabControl.Application.Features.Aulas.Commands.CreateAula;
 using LabControl.Application.Features.Aulas.Commands.UpdateAula;
 using LabControl.Application.Features.Aulas.Commands.DeleteAula;
@@ -53,7 +54,21 @@ public class AulasController : ApiControllerBase
         if (aula == null) return NotFound(new { error = "Aula no encontrada." });
 
         var motivo = string.IsNullOrWhiteSpace(request?.Motivo) ? $"Apagado masivo solicitado para el aula {aula.Nombre}" : request.Motivo;
+        
+        // 1. Enviar orden al grupo del aula completa
         await notificationService.SendComandoEnergiaAulaAsync(id, "SHUTDOWN", motivo, cancellationToken);
-        return Ok(new { message = $"Orden de apagado general transmitida al aula '{aula.Nombre}'." });
+
+        // 2. Redundancia directa a cada terminal registrada en dicha aula
+        var pcs = await context.Computadoras
+            .Where(c => c.AulaId == id)
+            .Select(c => c.Hostname)
+            .ToListAsync(cancellationToken);
+
+        foreach (var hostname in pcs)
+        {
+            await notificationService.SendComandoEnergiaTerminalAsync(hostname, "SHUTDOWN", motivo, cancellationToken);
+        }
+
+        return Ok(new { message = $"Orden de apagado general transmitida al aula '{aula.Nombre}' ({pcs.Count} terminales)." });
     }
 }

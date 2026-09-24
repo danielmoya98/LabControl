@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private readonly List<SecondaryMonitorBlockerWindow> _secondaryBlockers = new();
     private readonly InactivityMonitorService _inactivityService = new();
     private DispatcherTimer? _screenCaptureTimer;
+    private bool _cerrandoPorEnergia = false;
 
     public MainWindow()
     {
@@ -38,13 +39,15 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        // Blindaje contra cierre forzado por WM_CLOSE desde Administrador de Tareas
-        if (!KioskGuardianService.IsGracefulShutdown())
+        // Si el cierre fue ordenado por comando de energía o técnico autorizado, permitir salir inmediatamente
+        if (_cerrandoPorEnergia || KioskGuardianService.IsGracefulShutdown())
         {
-            e.Cancel = true;
+            base.OnClosing(e);
             return;
         }
-        base.OnClosing(e);
+
+        // Blindaje contra cierre forzado por WM_CLOSE desde Administrador de Tareas
+        e.Cancel = true;
     }
 
     protected override void OnStateChanged(EventArgs e)
@@ -513,12 +516,12 @@ public partial class MainWindow : Window
     {
         var email = TxtEmail.Text.Trim();
 
-        // Validar expresión regular de correo institucional (@est.univalle.edu o @univalle.edu)
+        // Validar formato de correo institucional
         var regex = new Regex(@"^[a-zA-Z0-9._%+-]+@(est\.univalle\.edu|univalle\.edu)$", RegexOptions.IgnoreCase);
 
         if (!regex.IsMatch(email))
         {
-            TxtAlert.Text = "⚠️ Formato inválido. Ingrese su correo institucional (@est.univalle.edu o @univalle.edu).";
+            TxtAlert.Text = "⚠️ Ingrese su correo de la universidad completo y sin faltas de ortografía.";
             AlertBorder.Visibility = Visibility.Visible;
             return;
         }
@@ -916,6 +919,24 @@ public partial class MainWindow : Window
     {
         try
         {
+            _cerrandoPorEnergia = true;
+
+            // 1. Autorizar formalmente el cierre ante el Guardian para que no bloquee ni relance el Kiosk
+            KioskGuardianService.SignalGracefulShutdown();
+
+            // 2. Detener vigilantes y desinstalar hooks a bajo nivel para no interferir con Windows
+            TaskManagerHelper.StopAntiSabotageWatchdog();
+            WindowsHookManager.UninstallHook();
+
+            // 3. Detener temporizadores de telemetría y UI
+            _screenCaptureTimer?.Stop();
+            _heartbeatTimer?.Stop();
+            _sessionDurationTimer?.Stop();
+            _inactivityService.Stop();
+            _sessionWidget?.CloseAuthorized();
+            _sessionWidget = null;
+
+            // 4. Si había una sesión activa (online u offline), finalizarla registrando el apagado forzado
             if (_sesionActualId.HasValue || _sesionOfflineId.HasValue)
             {
                 try
@@ -925,9 +946,14 @@ public partial class MainWindow : Window
                 catch { }
             }
 
-            var cmd = tipoComando?.Trim().ToUpperInvariant() == "RESTART"
-                ? "/r /t 2 /f"
-                : "/s /t 2 /f";
+            // 5. Ocultar inmediatamente la ventana de bloqueo de pantalla
+            this.Hide();
+
+            // 6. Ejecutar shutdown o restart forzado e inmediato en Windows (/t 0)
+            var esReinicio = tipoComando?.Trim().ToUpperInvariant() == "RESTART";
+            var cmd = esReinicio
+                ? "/r /t 0 /f"
+                : "/s /t 0 /f";
 
             var psi = new ProcessStartInfo("shutdown.exe", cmd)
             {
@@ -935,10 +961,22 @@ public partial class MainWindow : Window
                 UseShellExecute = false
             };
             Process.Start(psi);
+
+            // 7. Finalizar el proceso Kiosk limpiamente para no estorbar el cierre de sesión de Windows
+            Application.Current.Dispatcher.InvokeAsync(async () =>
+            {
+                await Task.Delay(200);
+                Environment.Exit(0);
+            });
         }
-        catch
+        catch (Exception ex)
         {
-            // Fallback
+            try
+            {
+                var logPath = System.IO.Path.Combine(LocalStorageService.GetDataDirectory(), "kiosk-crash.log");
+                System.IO.File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [EjecutarComandoEnergia] {ex.Message}\n{ex.StackTrace}\n\n");
+            }
+            catch { }
         }
     }
 }

@@ -87,6 +87,8 @@ public partial class App : Application
 
     protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
     {
+        KioskGuardianService.SignalGracefulShutdown();
+
         try
         {
             _mainWindow?.FinalizarSesionPorApagadoSistema();
@@ -103,6 +105,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        KioskGuardianService.SignalGracefulShutdown();
         WindowsHookManager.UninstallHook();
         TaskManagerHelper.StopAntiSabotageWatchdog();
         base.OnExit(e);
