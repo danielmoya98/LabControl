@@ -210,6 +210,16 @@ public partial class MainWindow : Window
                 necesitaGuardar = true;
             }
 
+            if (_config.AulaId <= 0)
+            {
+                var hUpper = _config.Hostname.ToUpperInvariant();
+                if (hUpper.Contains("308")) { _config.AulaId = 3; _config.AulaNombre = "Laboratorio 308"; }
+                else if (hUpper.Contains("303")) { _config.AulaId = 2; _config.AulaNombre = "Laboratorio 303"; }
+                else if (hUpper.Contains("302")) { _config.AulaId = 1; _config.AulaNombre = "Laboratorio 302"; }
+                else { _config.AulaId = 1; _config.AulaNombre = "Laboratorio 302"; }
+                necesitaGuardar = true;
+            }
+
             if (necesitaGuardar)
             {
                 LocalStorageService.SaveConfig(_config);
@@ -317,7 +327,7 @@ public partial class MainWindow : Window
 
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl(hubUrl)
-                .WithAutomaticReconnect()
+                .WithAutomaticReconnect(new ResilientSignalRRetryPolicy())
                 .Build();
 
             _hubConnection.Reconnecting += (error) =>
@@ -330,51 +340,76 @@ public partial class MainWindow : Window
                 return Task.CompletedTask;
             };
 
-            _hubConnection.Reconnected += (connectionId) =>
-            {
-                Dispatcher.Invoke(async () =>
-                {
-                    TxtSignalRStatus.Text = "● SignalR Conectado";
-                    TxtSignalRStatus.Foreground = System.Windows.Media.Brushes.LightGreen;
-                    
-                    var currentIp = SystemInfoService.GetLocalIpAddress();
-                    await AsegurarRegistroComputadoraAsync(currentIp);
-                    await RegistrarseEnHubAsync();
-
-                    // Si hay una sesión activa que inició en modo offline, promoverla de inmediato a sesión central
-                    if (_sesionOfflineId.HasValue && !string.IsNullOrWhiteSpace(_emailSesionActual))
-                    {
-                        try
-                        {
-                            var res = await _apiService.IniciarSesionAsync(_config?.ComputadoraId, _config?.Hostname, _emailSesionActual, 90);
-                            if (res != null && res.Exito && res.Datos != null)
-                            {
-                                _sesionActualId = res.Datos.SesionId;
-                                await SqliteOfflineService.MarcarSesionSincronizadaAsync(_sesionOfflineId.Value);
-                                _sesionOfflineId = null;
-                                _sessionWidget?.ActualizarUsuario(_emailSesionActual);
-                            }
-                        }
-                        catch { }
-                    }
-
-                    // Enviar telemetría y estado actual de inmediato
-                    await EnviarHeartbeatAsync();
-
-                    // Disparar sincronización offline en segundo plano de cualquier sesión concluida previa
-                    _ = _offlineSyncWorker?.SincronizarPendientesAsync();
-                });
-                return Task.CompletedTask;
-            };
-
-            _hubConnection.Closed += (error) =>
+            _hubConnection.Reconnected += async (connectionId) =>
             {
                 Dispatcher.Invoke(() =>
                 {
-                    TxtSignalRStatus.Text = "○ Socket Desconectado (Modo Resiliente)";
-                    TxtSignalRStatus.Foreground = System.Windows.Media.Brushes.IndianRed;
+                    TxtSignalRStatus.Text = "● SignalR Conectado";
+                    TxtSignalRStatus.Foreground = System.Windows.Media.Brushes.LightGreen;
                 });
-                return Task.CompletedTask;
+
+                var currentIp = SystemInfoService.GetLocalIpAddress();
+                await AsegurarRegistroComputadoraAsync(currentIp);
+                await RegistrarseEnHubAsync();
+
+                // Si hay una sesión activa que inició en modo offline, promoverla de inmediato a sesión central
+                if (_sesionOfflineId.HasValue && !string.IsNullOrWhiteSpace(_emailSesionActual))
+                {
+                    try
+                    {
+                        var res = await _apiService!.IniciarSesionAsync(_config?.ComputadoraId, _config?.Hostname, _emailSesionActual, 90);
+                        if (res != null && res.Exito && res.Datos != null)
+                        {
+                            _sesionActualId = res.Datos.SesionId;
+                            await SqliteOfflineService.MarcarSesionSincronizadaAsync(_sesionOfflineId.Value);
+                            _sesionOfflineId = null;
+                            _sessionWidget?.ActualizarUsuario(_emailSesionActual);
+                        }
+                    }
+                    catch { }
+                }
+
+                // Enviar telemetría y estado actual de inmediato
+                await EnviarHeartbeatAsync();
+
+                // Disparar sincronización offline en segundo plano de cualquier sesión concluida previa
+                _ = _offlineSyncWorker?.SincronizarPendientesAsync();
+            };
+
+            _hubConnection.Closed += async (error) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    TxtSignalRStatus.Text = "○ Socket Desconectado (Reconectando...)";
+                    TxtSignalRStatus.Foreground = System.Windows.Media.Brushes.OrangeRed;
+                });
+
+                // Bucle de reconexión perpetua: intenta hasta que el servidor API vuelva a responder
+                while (_hubConnection != null && _hubConnection.State == HubConnectionState.Disconnected)
+                {
+                    try
+                    {
+                        await Task.Delay(3000);
+                        await _hubConnection.StartAsync();
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            TxtSignalRStatus.Text = "● SignalR Conectado";
+                            TxtSignalRStatus.Foreground = System.Windows.Media.Brushes.LightGreen;
+                        });
+
+                        var currentIp = SystemInfoService.GetLocalIpAddress();
+                        await AsegurarRegistroComputadoraAsync(currentIp);
+                        await RegistrarseEnHubAsync();
+                        await EnviarHeartbeatAsync();
+                        _ = _offlineSyncWorker?.SincronizarPendientesAsync();
+                        break;
+                    }
+                    catch
+                    {
+                        // Esperar y volver a intentar en el siguiente ciclo
+                    }
+                }
             };
 
             // Escuchar sondeo manual / solicitud de telemetría y heartbeat desde WebAdmin
@@ -524,12 +559,26 @@ public partial class MainWindow : Window
             }
         }
 
+        // Si SignalR está desconectado, intentar despertar la conexión proactivamente
+        if (_hubConnection != null && _hubConnection.State == HubConnectionState.Disconnected)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _hubConnection.StartAsync();
+                    await RegistrarseEnHubAsync();
+                }
+                catch { }
+            });
+        }
+
         // 2. Fallback: enviar heartbeat vía HTTP REST
         if (_apiService != null)
         {
             try
             {
-                using var client = new HttpClient { BaseAddress = new Uri(_config.ApiBaseUrl) };
+                using var client = new HttpClient { BaseAddress = new Uri(_config.ApiBaseUrl), Timeout = TimeSpan.FromSeconds(5) };
                 var payload = new
                 {
                     Hostname = _config.Hostname,
@@ -537,7 +586,12 @@ public partial class MainWindow : Window
                     IpActual = currentIp,
                     AulaId = _config.AulaId
                 };
-                await client.PostAsJsonAsync("api/control/heartbeat", payload);
+                var response = await client.PostAsJsonAsync("api/control/heartbeat", payload);
+                if (response.IsSuccessStatusCode)
+                {
+                    // Si el REST responde, disparar sincronización de sesiones pendientes
+                    _ = _offlineSyncWorker?.SincronizarPendientesAsync();
+                }
             }
             catch
             {
@@ -1012,5 +1066,22 @@ public partial class MainWindow : Window
             }
             catch { }
         }
+    }
+}
+
+/// <summary>
+/// Política de reconexión infinita y resiliente para SignalR.
+/// Garantiza que el cliente Kiosk reintente eternamente la conexión sin rendirse jamás.
+/// </summary>
+public class ResilientSignalRRetryPolicy : IRetryPolicy
+{
+    public TimeSpan? NextRetryDelay(RetryContext retryContext)
+    {
+        // Reintentos perpetuos para que la terminal NUNCA quede desconectada si el servidor se apaga o reinicia
+        if (retryContext.PreviousRetryCount < 3)
+        {
+            return TimeSpan.FromSeconds(2);
+        }
+        return TimeSpan.FromSeconds(5);
     }
 }

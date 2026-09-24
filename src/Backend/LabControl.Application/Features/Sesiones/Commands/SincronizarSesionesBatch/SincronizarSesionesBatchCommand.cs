@@ -51,8 +51,11 @@ public class SincronizarSesionesBatchCommandHandler : IRequestHandler<Sincroniza
 
         if (computadora == null)
         {
-            var primerAula = await _context.Aulas.OrderBy(a => a.Id).FirstOrDefaultAsync(cancellationToken);
-            int aulaId = primerAula?.Id ?? 1;
+            var todasAulas = await _context.Aulas.ToListAsync(cancellationToken);
+            var coincidente = todasAulas.FirstOrDefault(a => 
+                !string.IsNullOrWhiteSpace(a.Nombre) && hostnameNorm.Contains(System.Text.RegularExpressions.Regex.Match(a.Nombre, @"\d+").Value));
+            int aulaId = coincidente?.Id ?? todasAulas.FirstOrDefault()?.Id ?? 1;
+
             var ipResult = IpAddress.Create("127.0.0.1");
             var macResult = MacAddress.Create("00:00:00:00:00:00");
             var pcCreateResult = Computadora.Create(aulaId, hostnameNorm, ipResult.Value, macResult.Value);

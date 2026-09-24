@@ -94,6 +94,19 @@ public static class LocalStorageService
             {
                 model.ApiBaseUrl = KioskApiService.NormalizeApiUrl(model.ApiBaseUrl);
 
+                // Auto-completar MAC y Hostname reales de hardware si vinieron vacíos del instalador
+                bool necesitaGuardar = false;
+                if (string.IsNullOrWhiteSpace(model.MacAddress) || model.MacAddress == "00:00:00:00:00:00")
+                {
+                    model.MacAddress = SystemInfoService.GetMacAddress();
+                    necesitaGuardar = true;
+                }
+                if (string.IsNullOrWhiteSpace(model.Hostname))
+                {
+                    model.Hostname = SystemInfoService.GetHostname();
+                    necesitaGuardar = true;
+                }
+
                 // Verificar si la clave de soporte en el archivo JSON está en texto plano
                 bool estabaEnTextoPlano = !PasswordEncryptionHelper.IsEncrypted(model.ClaveTecnico);
                 if (PasswordEncryptionHelper.IsEncrypted(model.ClaveTecnico))
@@ -101,11 +114,21 @@ public static class LocalStorageService
                     model.ClaveTecnico = PasswordEncryptionHelper.Decrypt(model.ClaveTecnico);
                 }
 
-                // Migración transparente inmediata: si el archivo contenía la clave en texto plano, re-guardar cifrado
-                if (estabaEnTextoPlano && !string.IsNullOrWhiteSpace(model.ClaveTecnico))
+                // Migración transparente inmediata: si el archivo contenía la clave en texto plano o faltaba MAC, re-guardar cifrado
+                if (estabaEnTextoPlano || necesitaGuardar)
                 {
                     SaveConfig(model);
                 }
+
+                // Limpiar cualquier archivo residual no cifrado que haya dejado el instalador en Program Files
+                try
+                {
+                    if (File.Exists(AppConfigPath) && !string.Equals(AppConfigPath, DataConfigPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Delete(AppConfigPath);
+                    }
+                }
+                catch { }
             }
             return model;
         }
@@ -151,14 +174,17 @@ public static class LocalStorageService
                 // Silencioso
             }
 
-            // 2. Intentar guardar también en la carpeta de la aplicación si hay permisos suficientes
+            // 2. Si existía un archivo en la carpeta de la aplicación (Program Files), eliminarlo para evitar discrepancias
             try
             {
-                File.WriteAllText(AppConfigPath, json);
+                if (File.Exists(AppConfigPath) && !string.Equals(AppConfigPath, DataConfigPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Delete(AppConfigPath);
+                }
             }
             catch
             {
-                // Silencioso si Program Files es de solo lectura para el usuario actual
+                // Silencioso
             }
         }
         catch

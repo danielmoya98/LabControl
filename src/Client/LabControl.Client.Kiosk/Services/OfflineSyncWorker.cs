@@ -13,7 +13,7 @@ public class OfflineSyncWorker : IDisposable
     private readonly DispatcherTimer _timer;
     private bool _estaSincronizando = false;
 
-    public OfflineSyncWorker(KioskApiService apiService, ConfigModel config, int intervaloSegundos = 45)
+    public OfflineSyncWorker(KioskApiService apiService, ConfigModel config, int intervaloSegundos = 15)
     {
         _apiService = apiService;
         _config = config;

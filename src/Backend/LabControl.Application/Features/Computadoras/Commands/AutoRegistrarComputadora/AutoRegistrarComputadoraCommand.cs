@@ -38,7 +38,7 @@ public class AutoRegistrarComputadoraCommandValidator : AbstractValidator<AutoRe
 {
     public AutoRegistrarComputadoraCommandValidator()
     {
-        RuleFor(x => x.AulaId).GreaterThan(0).WithMessage("Seleccione un aula válida.");
+        RuleFor(x => x.AulaId).GreaterThanOrEqualTo(0).WithMessage("El identificador de aula no puede ser negativo.");
         RuleFor(x => x.Hostname).NotEmpty().WithMessage("El Hostname es requerido.");
         RuleFor(x => x.IpActual).NotEmpty().WithMessage("La dirección IP es requerida.");
         RuleFor(x => x.MacAddress).NotEmpty().WithMessage("La dirección MAC es requerida.");
@@ -66,24 +66,36 @@ public class AutoRegistrarComputadoraCommandHandler : IRequestHandler<AutoRegist
         var macResult = MacAddress.Create(request.MacAddress);
         if (macResult.IsFailure) return Result<AutoRegistroResultadoDto>.Failure(macResult.Error);
 
+        int aulaIdEfectiva = request.AulaId;
+        if (aulaIdEfectiva <= 0)
+        {
+            var todasAulas = await _context.Aulas.ToListAsync(cancellationToken);
+            var hostUpper = (request.Hostname ?? "").ToUpperInvariant();
+            var coincidente = todasAulas.FirstOrDefault(a => 
+                !string.IsNullOrWhiteSpace(a.Nombre) && hostUpper.Contains(System.Text.RegularExpressions.Regex.Match(a.Nombre, @"\d+").Value));
+            aulaIdEfectiva = coincidente?.Id ?? todasAulas.FirstOrDefault()?.Id ?? 1;
+        }
+
+        var hostNorm = (request.Hostname ?? "").Trim().ToUpperInvariant();
+        var macNorm = macResult.Value.Value;
+
         // Buscar si ya existe por MACAddress o Hostname
         var computadora = await _context.Computadoras
-            .FirstOrDefaultAsync(c => c.MacAddress == request.MacAddress || c.Hostname == request.Hostname, cancellationToken);
+            .FirstOrDefaultAsync(c => c.MacAddress == macNorm || c.Hostname == hostNorm, cancellationToken);
 
         if (computadora != null)
         {
             // Actualizar datos de la PC existente
             computadora.ActualizarUbicacionRed(ipResult.Value, macResult.Value);
-            if (computadora.AulaId != request.AulaId)
+            if (computadora.AulaId != aulaIdEfectiva)
             {
-                // Reasignar aula si cambió
-                computadora.AsignarAula(request.AulaId);
+                computadora.AsignarAula(aulaIdEfectiva);
             }
         }
         else
         {
             // Crear nueva PC
-            var pcResult = Computadora.Create(request.AulaId, request.Hostname, ipResult.Value, macResult.Value);
+            var pcResult = Computadora.Create(aulaIdEfectiva, hostNorm, ipResult.Value, macResult.Value);
             if (pcResult.IsFailure) return Result<AutoRegistroResultadoDto>.Failure(pcResult.Error);
 
             computadora = pcResult.Value;

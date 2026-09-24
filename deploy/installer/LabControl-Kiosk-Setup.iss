@@ -86,8 +86,8 @@ Filename: "schtasks.exe"; Parameters: "/Create /TN ""LabControlKioskStartup"" /T
 ; 3. Endurecimiento de permisos NTFS (Anti-borrado y Anti-manipulación por estudiantes)
 ; Otorga solo lectura y ejecución al grupo Usuarios y deniega escritura/eliminación
 Filename: "icacls.exe"; Parameters: """{app}"" /grant *S-1-5-32-545:(OI)(CI)RX /grant *S-1-5-32-544:(OI)(CI)F /grant *S-1-5-18:(OI)(CI)F /inheritance:r"; Flags: runhidden
-; Permitir a los usuarios modificar el archivo de configuración cuando la PC se auto-registre
-Filename: "icacls.exe"; Parameters: """{app}\kiosk-config.json"" /grant *S-1-5-32-545:M"; Flags: runhidden
+; Permitir a los usuarios modificar el directorio de configuración cuando la PC se auto-registre
+Filename: "icacls.exe"; Parameters: """{commonappdata}\LabControl"" /grant *S-1-5-32-545:(OI)(CI)M"; Flags: runhidden
 
 ; 4. Lanzar la aplicación inmediatamente al finalizar la instalación
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
@@ -178,13 +178,14 @@ begin
       '  "ClaveTecnico": "' + ClaveTec + '"' + #13#10 +
       '}';
 
-    // 1. Guardar en {app}\kiosk-config.json
-    ConfigFilePath := ExpandConstant('{app}\kiosk-config.json');
-    SaveStringToFile(ConfigFilePath, ConfigJson, False);
-
-    // 2. Guardar también en {commonappdata}\LabControl\kiosk-config.json
+    // Guardar exclusivamente en {commonappdata}\LabControl\kiosk-config.json (directorio de datos dinámicos)
     ForceDirectories(ExpandConstant('{commonappdata}\LabControl'));
     SaveStringToFile(ExpandConstant('{commonappdata}\LabControl\kiosk-config.json'), ConfigJson, False);
+
+    // Asegurar que no quede un archivo de configuración residual con clave en texto plano en la carpeta de binarios {app}
+    ConfigFilePath := ExpandConstant('{app}\kiosk-config.json');
+    if FileExists(ConfigFilePath) then
+      DeleteFile(ConfigFilePath);
   end;
 end;
 

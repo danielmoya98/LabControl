@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using LabControl.Application.Common.Interfaces;
+using LabControl.Domain.Entities;
 using LabControl.Domain.Enums;
 using LabControl.Domain.ValueObjects;
 
@@ -31,6 +32,7 @@ public class LaboratorioHub : Hub<ILaboratorioClient>
         {
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+            var signalR = scope.ServiceProvider.GetRequiredService<ISignalRNotificationService>();
 
             var pc = await context.Computadoras
                 .FirstOrDefaultAsync(c => c.Hostname == hostNorm || (!string.IsNullOrEmpty(macNorm) && c.MacAddress == macNorm));
@@ -39,9 +41,36 @@ public class LaboratorioHub : Hub<ILaboratorioClient>
             {
                 aulaEfectivaId = pc.AulaId;
             }
-            else if (aulaId.HasValue && aulaId.Value > 0)
+            else
             {
-                aulaEfectivaId = aulaId.Value;
+                if (aulaId.HasValue && aulaId.Value > 0)
+                {
+                    aulaEfectivaId = aulaId.Value;
+                }
+                else
+                {
+                    var todasAulas = await context.Aulas.ToListAsync();
+                    var coincidente = todasAulas.FirstOrDefault(a => 
+                        !string.IsNullOrWhiteSpace(a.Nombre) && hostNorm.Contains(System.Text.RegularExpressions.Regex.Match(a.Nombre, @"\d+").Value));
+                    aulaEfectivaId = coincidente?.Id ?? todasAulas.FirstOrDefault()?.Id ?? 1;
+                }
+
+                if (pc == null && !string.IsNullOrEmpty(hostNorm))
+                {
+                    var ipRes = IpAddress.Create("127.0.0.1");
+                    var macRes = MacAddress.Create(!string.IsNullOrEmpty(macNorm) ? macNorm : "00:00:00:00:00:00");
+                    if (ipRes.IsSuccess && macRes.IsSuccess)
+                    {
+                        var pcRes = Computadora.Create(aulaEfectivaId.Value, hostNorm, ipRes.Value, macRes.Value);
+                        if (pcRes.IsSuccess)
+                        {
+                            pc = pcRes.Value;
+                            context.Computadoras.Add(pc);
+                            await context.SaveChangesAsync();
+                            await signalR.NotifyEstadoComputadoraCambiadoAsync(pc.Id, pc.Hostname, pc.EstadoActual, null);
+                        }
+                    }
+                }
             }
 
             if (aulaEfectivaId.HasValue && aulaEfectivaId.Value > 0)
@@ -78,8 +107,30 @@ public class LaboratorioHub : Hub<ILaboratorioClient>
         var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         var signalR = scope.ServiceProvider.GetRequiredService<ISignalRNotificationService>();
 
+        var hostNorm = hostname.Trim().ToUpperInvariant();
         var pc = await context.Computadoras
-            .FirstOrDefaultAsync(c => c.Hostname == hostname.Trim().ToUpperInvariant());
+            .FirstOrDefaultAsync(c => c.Hostname == hostNorm);
+
+        if (pc == null)
+        {
+            var todasAulas = await context.Aulas.ToListAsync();
+            var coincidente = todasAulas.FirstOrDefault(a => 
+                !string.IsNullOrWhiteSpace(a.Nombre) && hostNorm.Contains(System.Text.RegularExpressions.Regex.Match(a.Nombre, @"\d+").Value));
+            int aulaIdEfectiva = coincidente?.Id ?? todasAulas.FirstOrDefault()?.Id ?? 1;
+
+            var ipRes = IpAddress.Create(ip);
+            var macRes = MacAddress.Create(!string.IsNullOrWhiteSpace(macAddress) ? macAddress : "00:00:00:00:00:00");
+            if (ipRes.IsSuccess && macRes.IsSuccess)
+            {
+                var pcRes = Computadora.Create(aulaIdEfectiva, hostNorm, ipRes.Value, macRes.Value);
+                if (pcRes.IsSuccess)
+                {
+                    pc = pcRes.Value;
+                    context.Computadoras.Add(pc);
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
 
         if (pc != null)
         {

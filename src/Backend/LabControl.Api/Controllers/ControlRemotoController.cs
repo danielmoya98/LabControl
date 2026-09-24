@@ -167,7 +167,29 @@ public class ControlRemotoController : ControllerBase
 
         if (pc == null)
         {
-            return NotFound(new { error = "Terminal no encontrada en el sistema." });
+            var todasAulas = await _context.Aulas.ToListAsync(cancellationToken);
+            var coincidente = todasAulas.FirstOrDefault(a => 
+                !string.IsNullOrWhiteSpace(a.Nombre) && hostNorm.Contains(System.Text.RegularExpressions.Regex.Match(a.Nombre, @"\d+").Value));
+            int aulaId = coincidente?.Id ?? todasAulas.FirstOrDefault()?.Id ?? 1;
+
+            var ipRes = IpAddress.Create(request.Ip);
+            var macRes = MacAddress.Create(!string.IsNullOrWhiteSpace(request.MacAddress) ? request.MacAddress : "00:00:00:00:00:00");
+            if (ipRes.IsSuccess && macRes.IsSuccess)
+            {
+                var pcRes = Computadora.Create(aulaId, hostNorm, ipRes.Value, macRes.Value);
+                if (pcRes.IsSuccess)
+                {
+                    pc = pcRes.Value;
+                    _context.Computadoras.Add(pc);
+                    await _context.SaveChangesAsync(cancellationToken);
+                    await _signalR.NotifyEstadoComputadoraCambiadoAsync(pc.Id, pc.Hostname, pc.EstadoActual, null, cancellationToken);
+                }
+            }
+
+            if (pc == null)
+            {
+                return NotFound(new { error = "Terminal no encontrada en el sistema." });
+            }
         }
 
         var estabaOffline = pc.EstadoActual == EstadoComputadora.Offline;
