@@ -55,4 +55,19 @@ public class SignalRNotificationService : ISignalRNotificationService
     {
         return Task.CompletedTask;
     }
+
+    public Task SendSolicitudHeartbeatGlobalAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task SendSolicitudHeartbeatAulaAsync(int aulaId, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task SendSolicitudHeartbeatTerminalAsync(string targetHostname, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
 }

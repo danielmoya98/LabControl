@@ -14,4 +14,7 @@ public interface ISignalRNotificationService
     Task SendComandoEnergiaTerminalAsync(string targetHostname, string tipoComando, string motivo, CancellationToken cancellationToken = default);
     Task SendComandoEnergiaAulaAsync(int aulaId, string tipoComando, string motivo, CancellationToken cancellationToken = default);
     Task SendActualizacionPoliticaAulaAsync(int aulaId, string aulaNombre, int minutosInactividad, int accionInactividad, CancellationToken cancellationToken = default);
+    Task SendSolicitudHeartbeatGlobalAsync(CancellationToken cancellationToken = default);
+    Task SendSolicitudHeartbeatAulaAsync(int aulaId, CancellationToken cancellationToken = default);
+    Task SendSolicitudHeartbeatTerminalAsync(string targetHostname, CancellationToken cancellationToken = default);
 }

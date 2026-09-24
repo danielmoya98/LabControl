@@ -672,6 +672,24 @@ public class LabApiClient
         }
     }
 
+    public async Task<bool> SondearTerminalesAsync(int? aulaId = null, string? hostname = null)
+    {
+        try
+        {
+            var query = new List<string>();
+            if (aulaId.HasValue && aulaId.Value > 0) query.Add($"aulaId={aulaId.Value}");
+            if (!string.IsNullOrWhiteSpace(hostname)) query.Add($"hostname={Uri.EscapeDataString(hostname.Trim())}");
+
+            var queryString = query.Count > 0 ? "?" + string.Join("&", query) : "";
+            var response = await _httpClient.PostAsync($"api/control/sondear{queryString}", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     // ==================== AUDITORÍA Y REPORTES ====================
     public async Task<ResultadoAuditoriaDto?> GetAuditoriaSesionesAsync(
         DateTime? fechaInicio = null,

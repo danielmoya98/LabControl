@@ -78,4 +78,22 @@ public class SignalRNotificationService : ISignalRNotificationService
         await _hubContext.Clients.Group($"Aula_{aulaId}")
             .RecibirActualizacionPoliticaAula(aulaId, aulaNombre, minutosInactividad, accionInactividad);
     }
+
+    public async Task SendSolicitudHeartbeatGlobalAsync(CancellationToken cancellationToken = default)
+    {
+        await _hubContext.Clients.Group("TodasLasTerminales")
+            .SolicitarHeartbeat();
+    }
+
+    public async Task SendSolicitudHeartbeatAulaAsync(int aulaId, CancellationToken cancellationToken = default)
+    {
+        await _hubContext.Clients.Group($"Aula_{aulaId}")
+            .SolicitarHeartbeat();
+    }
+
+    public async Task SendSolicitudHeartbeatTerminalAsync(string targetHostname, CancellationToken cancellationToken = default)
+    {
+        await _hubContext.Clients.Group($"Terminal_{targetHostname.Trim().ToUpperInvariant()}")
+            .SolicitarHeartbeat();
+    }
 }

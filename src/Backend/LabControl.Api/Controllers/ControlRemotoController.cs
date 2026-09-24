@@ -259,9 +259,62 @@ public class ControlRemotoController : ControllerBase
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        Log.Warning("Auditoría de Apagado Forzado registrada para {Hostname} (Usuario: {Email}, EventId: {EventId}).",
-            pc.Hostname, emailAfectado, request.EventId);
-
         return Ok(new { ok = true, mensaje = "Incidente de apagado forzado auditado correctamente en la base de datos." });
+    }
+
+    [HttpPost("sondear")]
+    public async Task<IActionResult> SondearTerminales(
+        [FromQuery] int? aulaId,
+        [FromQuery] string? hostname,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(hostname))
+        {
+            var hostNorm = hostname.Trim().ToUpperInvariant();
+            await _signalR.SendSolicitudHeartbeatTerminalAsync(hostNorm, cancellationToken);
+            return Ok(new { ok = true, mensaje = $"Sondeo de telemetría y heartbeat emitido a la terminal '{hostNorm}'." });
+        }
+
+        if (aulaId.HasValue && aulaId.Value > 0)
+        {
+            await _signalR.SendSolicitudHeartbeatAulaAsync(aulaId.Value, cancellationToken);
+        }
+        else
+        {
+            await _signalR.SendSolicitudHeartbeatGlobalAsync(cancellationToken);
+        }
+
+        // Evaluar terminales que no han emitido heartbeat reciente (umbral: 60 segundos)
+        var umbralOffline = DateTime.UtcNow.AddSeconds(-60);
+        var query = _context.Computadoras.AsQueryable();
+        if (aulaId.HasValue && aulaId.Value > 0)
+        {
+            query = query.Where(c => c.AulaId == aulaId.Value);
+        }
+
+        var pcs = await query.ToListAsync(cancellationToken);
+        int marcadasOffline = 0;
+        foreach (var pc in pcs)
+        {
+            if (pc.UltimoHeartbeatUtc.HasValue && pc.UltimoHeartbeatUtc.Value < umbralOffline && pc.EstadoActual != EstadoComputadora.Offline)
+            {
+                pc.CambiarEstado(EstadoComputadora.Offline);
+                marcadasOffline++;
+                await _signalR.NotifyEstadoComputadoraCambiadoAsync(pc.Id, pc.Hostname, EstadoComputadora.Offline, null, cancellationToken);
+            }
+        }
+
+        if (marcadasOffline > 0)
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        return Ok(new
+        {
+            ok = true,
+            mensaje = "Sondeo de telemetría y heartbeat transmitido con éxito.",
+            terminalesEvaluadas = pcs.Count,
+            marcadasOffline
+        });
     }
 }

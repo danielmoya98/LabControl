@@ -173,6 +173,7 @@ public partial class MainWindow : Window
         {
             // Inicializar base de datos SQLite local para tolerancia offline
             await SqliteOfflineService.InicializarBaseDeDatosAsync();
+            await SqliteOfflineService.RecuperarSesionesHuerfanasAsync();
 
             _config = LocalStorageService.LoadConfig();
 
@@ -335,8 +336,32 @@ public partial class MainWindow : Window
                 {
                     TxtSignalRStatus.Text = "● SignalR Conectado";
                     TxtSignalRStatus.Foreground = System.Windows.Media.Brushes.LightGreen;
+                    
+                    var currentIp = SystemInfoService.GetLocalIpAddress();
+                    await AsegurarRegistroComputadoraAsync(currentIp);
                     await RegistrarseEnHubAsync();
-                    // Al reconectar, disparar sincronización offline
+
+                    // Si hay una sesión activa que inició en modo offline, promoverla de inmediato a sesión central
+                    if (_sesionOfflineId.HasValue && !string.IsNullOrWhiteSpace(_emailSesionActual))
+                    {
+                        try
+                        {
+                            var res = await _apiService.IniciarSesionAsync(_config?.ComputadoraId, _config?.Hostname, _emailSesionActual, 90);
+                            if (res != null && res.Exito && res.Datos != null)
+                            {
+                                _sesionActualId = res.Datos.SesionId;
+                                await SqliteOfflineService.MarcarSesionSincronizadaAsync(_sesionOfflineId.Value);
+                                _sesionOfflineId = null;
+                                _sessionWidget?.ActualizarUsuario(_emailSesionActual);
+                            }
+                        }
+                        catch { }
+                    }
+
+                    // Enviar telemetría y estado actual de inmediato
+                    await EnviarHeartbeatAsync();
+
+                    // Disparar sincronización offline en segundo plano de cualquier sesión concluida previa
                     _ = _offlineSyncWorker?.SincronizarPendientesAsync();
                 });
                 return Task.CompletedTask;
@@ -351,6 +376,15 @@ public partial class MainWindow : Window
                 });
                 return Task.CompletedTask;
             };
+
+            // Escuchar sondeo manual / solicitud de telemetría y heartbeat desde WebAdmin
+            _hubConnection.On("SolicitarHeartbeat", () =>
+            {
+                Dispatcher.Invoke(async () =>
+                {
+                    await EnviarHeartbeatAsync();
+                });
+            });
 
             // Escuchar comando de cierre remoto emitido por el administrador
             _hubConnection.On<object>("RecibirComandoCierreSesion", (motivoObj) =>

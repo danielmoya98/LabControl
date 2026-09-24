@@ -52,6 +52,21 @@ public class OfflineSyncWorker : IDisposable
             bool hayConexion = await _apiService.PingAsync();
             if (!hayConexion) return;
 
+            string hostname = !string.IsNullOrWhiteSpace(_config.Hostname) ? _config.Hostname : Environment.MachineName;
+
+            // Asegurar que la máquina esté registrada en PostgreSQL antes de sincronizar el lote
+            if (_config.ComputadoraId <= 0)
+            {
+                var ip = SystemInfoService.GetLocalIpAddress();
+                var mac = !string.IsNullOrWhiteSpace(_config.MacAddress) ? _config.MacAddress : SystemInfoService.GetMacAddress();
+                var regResp = await _apiService.AutoRegistrarAsync(_config.AulaId, hostname, ip, mac);
+                if (regResp != null && regResp.ComputadoraId > 0)
+                {
+                    _config.ComputadoraId = regResp.ComputadoraId;
+                    LocalStorageService.SaveConfig(_config);
+                }
+            }
+
             var sesionesDto = pendientes.Select(p => new SesionBatchItemDto
             {
                 EmailEstudiante = p.EmailEstudiante,
@@ -59,8 +74,6 @@ public class OfflineSyncWorker : IDisposable
                 FechaHoraFin = p.FechaHoraFin,
                 TipoCierre = p.TipoCierre
             }).ToList();
-
-            string hostname = !string.IsNullOrWhiteSpace(_config.Hostname) ? _config.Hostname : Environment.MachineName;
 
             bool exito = await _apiService.SincronizarBatchAsync(hostname, sesionesDto);
 

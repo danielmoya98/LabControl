@@ -30,6 +30,10 @@
     </div>
     
     <div class="d-flex align-center gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Sensors" 
+                   Size="Size.Small" Class="rounded-lg font-weight-bold" OnClick="SondearTerminalesClickAsync" Disabled="IsPollingHeartbeats">
+            @(IsPollingHeartbeats ? "Sondeando..." : "📡 Sondear Terminales")
+        </MudButton>
         <MudTooltip Text="Actualizar datos y telemetría">
             <button type="button" class="refresh-btn" @onclick="CargarDatosAsync" title="Actualizar datos">
                 <MudIcon Icon="@Icons.Material.Outlined.Refresh" Size="Size.Small" />
@@ -201,6 +205,10 @@
                        OnClick="() => ModoMosaico = true">Mosaico en Vivo</MudButton>
         </MudButtonGroup>
 
+        <MudButton Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Sensors" 
+                   Size="Size.Small" Class="rounded-lg" OnClick="SondearTerminalesClickAsync" Disabled="IsPollingHeartbeats">
+            @(IsPollingHeartbeats ? "Sondeando..." : "Sondear Aula")
+        </MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Campaign" 
                    Size="Size.Small" Class="rounded-lg" OnClick="OpenMensajeDialog">
             Transmitir Alerta
@@ -329,6 +337,9 @@
                                                         </MudMenuItem>
                                                         <MudMenuItem Icon="@Icons.Material.Filled.Fingerprint" OnClick="@(() => CopiarAlPortapapeles(pc.MacAddress, "MAC"))">
                                                             Copiar MAC
+                                                        </MudMenuItem>
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.Sensors" IconColor="Color.Info" OnClick="() => SondearTerminalIndividualAsync(pc.Hostname)">
+                                                            Sondear / Ping Terminal
                                                         </MudMenuItem>
                                                         <MudMenuItem Icon="@Icons.Material.Filled.Memory" IconColor="Color.Primary" OnClick="() => AbrirFichaTecnicaAsync(pc)">
                                                             Ficha Técnica & Salud
@@ -538,6 +549,10 @@ else
                         Cerrar Sesión / Desloguear Inmediatamente
                     </MudButton>
                 }
+                <MudButton Variant="Variant.Filled" Color="Color.Info" FullWidth="true" StartIcon="@Icons.Material.Filled.Sensors" 
+                           OnClick="() => { MostrarModalContextual = false; if (PcSeleccionada != null) _ = SondearTerminalIndividualAsync(PcSeleccionada.Hostname); }">
+                    Sondear Telemetría (Ping Heartbeat)
+                </MudButton>
                 <MudButton Variant="Variant.Filled" Color="Color.Warning" FullWidth="true" StartIcon="@Icons.Material.Filled.Chat" 
                            OnClick="() => { MostrarModalContextual = false; AbrirMensajeDirecto(PcSeleccionada.Hostname); }">
                     Enviar Mensaje Directo a esta PC
@@ -1132,6 +1147,68 @@ else
             {
                 Snackbar.Add("No se pudo enviar la orden de apagado al aula.", Severity.Error);
             }
+        }
+    }
+
+    private bool IsPollingHeartbeats = false;
+
+    private async Task SondearTerminalesClickAsync()
+    {
+        if (IsPollingHeartbeats) return;
+
+        try
+        {
+            IsPollingHeartbeats = true;
+            int? aulaId = Aulas.Any() && ActiveTabIndex >= 0 && ActiveTabIndex < Aulas.Count
+                ? Aulas[ActiveTabIndex].AulaId
+                : null;
+
+            string aulaNombre = Aulas.Any() && ActiveTabIndex >= 0 && ActiveTabIndex < Aulas.Count
+                ? Aulas[ActiveTabIndex].Nombre
+                : "todas las aulas";
+
+            Snackbar.Add($"📡 Emitiendo sondeo de telemetría y heartbeat a {aulaNombre}...", Severity.Info);
+            var exito = await ApiClient.SondearTerminalesAsync(aulaId);
+            if (exito)
+            {
+                Snackbar.Add("✓ Solicitud de telemetría transmitida. Actualizando estados...", Severity.Success);
+                await Task.Delay(1500);
+                await CargarDatosAsync();
+            }
+            else
+            {
+                Snackbar.Add("No se pudo transmitir la solicitud de sondeo al servidor.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al sondear: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsPollingHeartbeats = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SondearTerminalIndividualAsync(string hostname)
+    {
+        try
+        {
+            Snackbar.Add($"📡 Solicitando heartbeat inmediato a '{hostname}'...", Severity.Info);
+            var exito = await ApiClient.SondearTerminalesAsync(hostname: hostname);
+            if (exito)
+            {
+                Snackbar.Add($"✓ Solicitud de telemetría enviada a '{hostname}'.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"No se pudo contactar a '{hostname}'.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
     }
 

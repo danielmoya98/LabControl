@@ -103,4 +103,9 @@ public partial class SessionWidgetWindow : Window
     {
         TxtDetalleAula.Text = $"{aulaNombre} • {hostname}";
     }
+
+    public void ActualizarUsuario(string emailEstudiante)
+    {
+        TxtEmailEstudiante.Text = emailEstudiante;
+    }
 }
