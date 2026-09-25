@@ -985,7 +985,11 @@ else
     private string CalcularTiempoTranscurrido(DateTime? horaInicio)
     {
         if (!horaInicio.HasValue) return "Recién iniciada";
-        var diff = DateTime.UtcNow.Subtract(horaInicio.Value);
+        var inicioUtc = horaInicio.Value.Kind == DateTimeKind.Utc 
+            ? horaInicio.Value 
+            : (horaInicio.Value.Kind == DateTimeKind.Local ? horaInicio.Value.ToUniversalTime() : DateTime.SpecifyKind(horaInicio.Value, DateTimeKind.Utc));
+        var diff = DateTime.UtcNow.Subtract(inicioUtc);
+        if (diff.TotalMinutes < 0) return "Recién iniciada";
         if (diff.TotalMinutes < 1) return "< 1 min";
         if (diff.TotalHours < 1) return $"{Math.Floor(diff.TotalMinutes)} min transcurridos";
         return $"{(int)diff.TotalHours}h {diff.Minutes}m transcurridos";

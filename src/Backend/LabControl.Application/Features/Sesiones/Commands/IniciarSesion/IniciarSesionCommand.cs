@@ -79,73 +79,10 @@ public class IniciarSesionCommandHandler : IRequestHandler<IniciarSesionCommand,
                 Error.NotFound("Computadora.NotFound", "No se encontró la computadora especificada en el sistema. Asegúrese de que esté registrada."));
         }
 
-        // 3. Validar programación de horarios y recreos del aula
-        var dayOfWeek = DateTime.Now.DayOfWeek;
-        DiaSemana diaActual = dayOfWeek switch
-        {
-            DayOfWeek.Monday => DiaSemana.Lunes,
-            DayOfWeek.Tuesday => DiaSemana.Martes,
-            DayOfWeek.Wednesday => DiaSemana.Miercoles,
-            DayOfWeek.Thursday => DiaSemana.Jueves,
-            DayOfWeek.Friday => DiaSemana.Viernes,
-            DayOfWeek.Saturday => DiaSemana.Sabado,
-            _ => DiaSemana.Domingo
-        };
-
-        var horaActual = DateTime.Now.TimeOfDay;
-
-        var bloqueActivo = await _context.BloquesHorarios
-            .Where(b => b.AulaId == computadora.AulaId &&
-                        b.DiaSemana == diaActual &&
-                        b.HoraInicio <= horaActual &&
-                        b.HoraFin > horaActual)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (bloqueActivo != null && bloqueActivo.EsRecreo)
-        {
-            return Result<IniciarSesionResponse>.Failure(
-                Error.Validation("Sesion.EnRecreo", $"El laboratorio se encuentra en período de receso/mantenimiento hasta las {bloqueActivo.HoraFin:hh\\:mm}. No es posible iniciar sesión."));
-        }
-
-        // Ajustar dinámicamente el tiempo límite según el bloque horario activo o el próximo turno
-        int minutosLimiteFinal = request.MinutosLimite;
-        if (bloqueActivo != null && !bloqueActivo.EsRecreo)
-        {
-            // La sesión se acota estrictamente a los minutos que restan para el término exacto de la clase actual
-            var minutosRestantesBloque = (int)Math.Max(1, Math.Floor((bloqueActivo.HoraFin - horaActual).TotalMinutes));
-            minutosLimiteFinal = minutosRestantesBloque;
-        }
-        else if (bloqueActivo == null)
-        {
-            // Si no hay clase activa en este instante, verificar si se aproxima una clase hoy
-            var proximoBloque = await _context.BloquesHorarios
-                .Include(b => b.Materia)
-                .Where(b => b.AulaId == computadora.AulaId &&
-                            b.DiaSemana == diaActual &&
-                            b.HoraInicio > horaActual)
-                .OrderBy(b => b.HoraInicio)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (proximoBloque != null)
-            {
-                var minutosHastaProximo = (int)Math.Floor((proximoBloque.HoraInicio - horaActual).TotalMinutes);
-
-                // Si la próxima clase comienza en 5 minutos o menos, impedir sesión para no invadir el siguiente período
-                if (minutosHastaProximo <= 5)
-                {
-                    string descClase = !string.IsNullOrWhiteSpace(proximoBloque.Materia?.Nombre) 
-                        ? proximoBloque.Materia.Nombre 
-                        : (proximoBloque.Descripcion ?? "Clase programada");
-
-                    return Result<IniciarSesionResponse>.Failure(
-                        Error.Validation("Sesion.ProximaClaseInminente", 
-                            $"La próxima clase ({descClase}) comienza en {minutosHastaProximo} minutos ({proximoBloque.HoraInicio:hh\\:mm}). No es posible iniciar sesión en este intervalo."));
-                }
-
-                // Acotar el tiempo máximo exactamente hasta la hora de inicio de la siguiente clase
-                minutosLimiteFinal = Math.Min(request.MinutosLimite, minutosHastaProximo);
-            }
-        }
+        // 3. Duración estándar de sesión (Acceso 100% libre sin restricción horaria)
+        // Las terminales quedan disponibles a cualquier hora para clases regulares, clases de reposición o estudio libre.
+        // Los horarios en base de datos se conservan intactos para cruzar datos y generar reportes de asistencia y auditoría.
+        int minutosLimiteFinal = request.MinutosLimite > 0 ? request.MinutosLimite : 90;
 
         // 4. Cerrar cualquier sesión previa abierta en esta computadora (Relevo forzado)
         var sesionesAbiertas = await _context.SesionesUso

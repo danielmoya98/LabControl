@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using LabControl.Application.Common.Interfaces;
+using LabControl.Domain.Common;
 using LabControl.Domain.Enums;
 using Serilog;
 
@@ -53,7 +54,7 @@ public class HorarioKickoutBackgroundService : BackgroundService
         var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         var signalR = scope.ServiceProvider.GetRequiredService<ISignalRNotificationService>();
 
-        var ahora = DateTime.Now;
+        var ahora = TimeZoneHelper.NowBolivia;
         var horaActual = ahora.TimeOfDay;
         var diaActual = ObtenerDiaSemana(ahora.DayOfWeek);
         var claveFecha = ahora.ToString("yyyyMMdd");

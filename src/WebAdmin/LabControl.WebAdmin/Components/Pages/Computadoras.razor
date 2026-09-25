@@ -296,7 +296,7 @@
                         @if (context.HoraInicioSesion.HasValue)
                         {
                             <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.7rem;">
-                                Sesión iniciada @context.HoraInicioSesion.Value.ToLocalTime().ToString("HH:mm")
+                                Sesión iniciada @context.HoraInicioSesion.Value.ToBoliviaTime().ToString("HH:mm")
                             </MudText>
                         }
                     </div>

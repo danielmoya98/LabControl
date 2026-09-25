@@ -70,10 +70,8 @@ public class OfflineSyncWorker : IDisposable
             var sesionesDto = pendientes.Select(p => new SesionBatchItemDto
             {
                 EmailEstudiante = p.EmailEstudiante,
-                FechaHoraInicio = p.FechaHoraInicio.Kind == DateTimeKind.Utc ? p.FechaHoraInicio : DateTime.SpecifyKind(p.FechaHoraInicio, DateTimeKind.Utc),
-                FechaHoraFin = p.FechaHoraFin.HasValue 
-                    ? (p.FechaHoraFin.Value.Kind == DateTimeKind.Utc ? p.FechaHoraFin.Value : DateTime.SpecifyKind(p.FechaHoraFin.Value, DateTimeKind.Utc))
-                    : null,
+                FechaHoraInicio = p.FechaHoraInicio.ToUniversalTime(),
+                FechaHoraFin = p.FechaHoraFin?.ToUniversalTime(),
                 TipoCierre = p.TipoCierre
             }).ToList();
 

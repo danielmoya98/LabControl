@@ -1122,7 +1122,7 @@ else
 
     private DiaSemana ObtenerDiaActual()
     {
-        return DateTime.Now.DayOfWeek switch
+        return TimeZoneHelper.NowBolivia.DayOfWeek switch
         {
             DayOfWeek.Monday => DiaSemana.Lunes,
             DayOfWeek.Tuesday => DiaSemana.Martes,
@@ -1136,14 +1136,14 @@ else
 
     private bool EsBloqueEnCurso(BloqueHorarioDto bloque)
     {
-        var horaActual = DateTime.Now.TimeOfDay;
+        var horaActual = TimeZoneHelper.NowBolivia.TimeOfDay;
         return bloque.HoraInicio <= horaActual && bloque.HoraFin > horaActual;
     }
 
     private BloqueHorarioDto? ObtenerBloqueEnCurso()
     {
         var diaHoy = ObtenerDiaActual();
-        var horaActual = DateTime.Now.TimeOfDay;
+        var horaActual = TimeZoneHelper.NowBolivia.TimeOfDay;
         return ListaHorarios.FirstOrDefault(h => h.DiaSemana == diaHoy && h.HoraInicio <= horaActual && h.HoraFin > horaActual);
     }
 

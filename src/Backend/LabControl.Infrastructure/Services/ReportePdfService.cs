@@ -6,6 +6,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using LabControl.Application.Common.Interfaces;
+using LabControl.Domain.Common;
 
 namespace LabControl.Infrastructure.Services;
 
@@ -165,8 +166,8 @@ public class ReportePdfService : IReportePdfService
                                 table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(est.NumeroPuesto > 0 ? $"P-{est.NumeroPuesto:D2}" : "-").Bold();
                                 table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).Text(est.Hostname);
                                 table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).Text(est.EmailEstudiante).FontSize(8);
-                                table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(est.FechaHoraInicio.ToLocalTime().ToString("HH:mm:ss"));
-                                table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(est.FechaHoraFin.HasValue ? est.FechaHoraFin.Value.ToLocalTime().ToString("HH:mm:ss") : "En curso");
+                                table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(est.FechaHoraInicio.ToBoliviaTime().ToString("HH:mm:ss"));
+                                table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(est.FechaHoraFin.HasValue ? est.FechaHoraFin.Value.ToBoliviaTime().ToString("HH:mm:ss") : "En curso");
                                 table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(est.DuracionMinutos.HasValue ? $"{est.DuracionMinutos} min" : "-");
                                 table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(""); // Espacio para firma física
 
@@ -340,8 +341,8 @@ public class ReportePdfService : IReportePdfService
                             table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).Text(ses.Hostname).Bold();
                             table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).Text(ses.NombreAula);
                             table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).Text(ses.EmailEstudiante);
-                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(ses.FechaHoraInicio.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
-                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(ses.FechaHoraFin.HasValue ? ses.FechaHoraFin.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Activa");
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(ses.FechaHoraInicio.ToBoliviaTime().ToString("dd/MM/yyyy HH:mm"));
+                            table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(ses.FechaHoraFin.HasValue ? ses.FechaHoraFin.Value.ToBoliviaTime().ToString("dd/MM/yyyy HH:mm") : "Activa");
                             table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(ses.DuracionMinutos.HasValue ? $"{ses.DuracionMinutos} min" : "-");
                             table.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorBorde).Padding(3).AlignCenter().Text(ses.TipoCierre.ToString());
 
