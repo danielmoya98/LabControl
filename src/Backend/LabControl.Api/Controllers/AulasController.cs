@@ -45,10 +45,10 @@ public class AulasController : ApiControllerBase
     [HttpPost("{id:int}/apagar-todo")]
     public async Task<IActionResult> ApagarAula(
         int id,
-        [FromBody] LabControl.Api.Controllers.ComandoEnergiaRequest? request,
-        [FromServices] LabControl.Application.Common.Interfaces.ISignalRNotificationService notificationService,
-        [FromServices] LabControl.Application.Common.Interfaces.IApplicationDbContext context,
-        CancellationToken cancellationToken)
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] LabControl.Api.Controllers.ComandoEnergiaRequest? request = null,
+        [FromServices] LabControl.Application.Common.Interfaces.ISignalRNotificationService notificationService = default!,
+        [FromServices] LabControl.Application.Common.Interfaces.IApplicationDbContext context = default!,
+        CancellationToken cancellationToken = default)
     {
         var aula = await context.Aulas.FindAsync([id], cancellationToken);
         if (aula == null) return NotFound(new { error = "Aula no encontrada." });

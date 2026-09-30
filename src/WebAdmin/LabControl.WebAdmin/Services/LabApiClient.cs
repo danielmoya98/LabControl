@@ -729,7 +729,8 @@ public class LabApiClient
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync($"api/aulas/{aulaId}/apagar-todo", new { Motivo = motivo });
+            var payload = new { TipoComando = "SHUTDOWN", Motivo = motivo ?? "Apagado masivo desde WebAdmin" };
+            var response = await _httpClient.PostAsJsonAsync($"api/aulas/{aulaId}/apagar-todo", payload);
             return response.IsSuccessStatusCode;
         }
         catch

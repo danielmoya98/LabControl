@@ -100,5 +100,5 @@ public class ComputadorasController : ApiControllerBase
     }
 }
 
-public record ComandoEnergiaRequest(string TipoComando, string? Motivo = null);
+public record ComandoEnergiaRequest(string? TipoComando = "SHUTDOWN", string? Motivo = null);
 
