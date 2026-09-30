@@ -73,6 +73,12 @@ public class SignalRNotificationService : ISignalRNotificationService
             .RecibirComandoEnergia(tipoComando, motivo);
     }
 
+    public async Task SendComandoEnergiaGlobalAsync(string tipoComando, string motivo, CancellationToken cancellationToken = default)
+    {
+        await _hubContext.Clients.Group("TodasLasTerminales")
+            .RecibirComandoEnergia(tipoComando, motivo);
+    }
+
     public async Task SendActualizacionPoliticaAulaAsync(int aulaId, string aulaNombre, int minutosInactividad, int accionInactividad, CancellationToken cancellationToken = default)
     {
         await _hubContext.Clients.Group($"Aula_{aulaId}")

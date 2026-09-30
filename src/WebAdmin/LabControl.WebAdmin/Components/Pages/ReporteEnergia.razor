@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using LabControl.WebAdmin.Services
 @using LabControl.Application.Features.Aulas.Commands.CreateAula
+@using LabControl.Application.Features.Energia
 @inject LabApiClient ApiClient
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -143,6 +144,110 @@
         </MudPaper>
     </MudItem>
 </MudGrid>
+
+<!-- GESTIÓN Y AUTOMATIZACIÓN: APAGADO NOCTURNO PROGRAMADO DEL CAMPUS Y APAGADO DE EMERGENCIA -->
+<MudPaper Elevation="0" Outlined="true" Class="pa-4 mb-5 rounded-lg saas-card"
+          Style="background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default);">
+    <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-3">
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-lg d-flex align-center justify-center" style="background: rgba(158, 0, 68, 0.12); width: 38px; height: 38px;">
+                <MudIcon Icon="@Icons.Material.Filled.PowerSettingsNew" Color="Color.Primary" Size="Size.Small" />
+            </div>
+            <div>
+                <MudText Typo="Typo.subtitle1" Class="font-weight-bold" Style="font-size: 1rem;">
+                    Automatización de Cierre y Apagado Masivo del Campus
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Programa el apagado centralizado de todas las computadoras de todas las salas al finalizar la jornada académica
+                </MudText>
+            </div>
+        </div>
+
+        <div class="d-flex align-center gap-2">
+            <!-- Botón de acción masiva inmediata -->
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Error"
+                       StartIcon="@Icons.Material.Filled.PowerSettingsNew"
+                       OnClick="ConfirmarApagadoTodoCampusAsync"
+                       Disabled="IsApagandoCampus"
+                       Class="rounded-lg font-weight-bold"
+                       Style="text-transform: none; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);">
+                @(IsApagandoCampus ? "Enviando órdenes..." : "⏻ Apagar Todo el Campus Ahora")
+            </MudButton>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-center gap-4 pa-3 rounded-lg" style="background: rgba(148, 163, 184, 0.05); border: 1px solid var(--mud-palette-lines-default);">
+        <!-- Switch Habilitar -->
+        <MudSwitch @bind-Value="_configApagado.Habilitado"
+                   Color="Color.Success"
+                   Label="Apagado nocturno programado activo"
+                   Class="font-weight-bold" />
+
+        <MudDivider Vertical="true" FlexItem="true" Class="my-1" />
+
+        <!-- Selector de Hora -->
+        <div class="d-flex align-center gap-2">
+            <MudText Typo="Typo.body2" Class="font-weight-medium">Hora de ejecución:</MudText>
+            <MudTextField @bind-Value="_configApagado.HoraApagado"
+                          Placeholder="21:30"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="width: 120px;"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.Schedule"
+                          Disabled="!_configApagado.Habilitado" />
+        </div>
+
+        <!-- Selector Aviso Previo -->
+        <div class="d-flex align-center gap-2">
+            <MudText Typo="Typo.body2" Class="font-weight-medium">Aviso previo:</MudText>
+            <MudSelect @bind-Value="_configApagado.MinutosAvisoPrevio"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Dense="true"
+                       Style="width: 150px;"
+                       Disabled="!_configApagado.Habilitado">
+                <MudSelectItem Value="1">1 minuto antes</MudSelectItem>
+                <MudSelectItem Value="3">3 minutos antes</MudSelectItem>
+                <MudSelectItem Value="5">5 minutos antes</MudSelectItem>
+                <MudSelectItem Value="10">10 minutos antes</MudSelectItem>
+                <MudSelectItem Value="15">15 minutos antes</MudSelectItem>
+            </MudSelect>
+        </div>
+
+        <!-- Checkbox Lunes a Viernes -->
+        <MudCheckBox @bind-Value="_configApagado.SoloLunesAViernes"
+                     Color="Color.Primary"
+                     Dense="true"
+                     Size="Size.Small"
+                     Label="Solo Lunes a Viernes"
+                     Disabled="!_configApagado.Habilitado" />
+
+        <MudSpacer />
+
+        <!-- Botón Guardar Cambios de Programación -->
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="GuardarConfiguracionApagadoAsync"
+                   Disabled="IsSavingConfigApagado"
+                   Size="Size.Small"
+                   Class="rounded-lg font-weight-bold"
+                   Style="text-transform: none;">
+            @(IsSavingConfigApagado ? "Guardando..." : "Guardar Programación")
+        </MudButton>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_configApagado.UltimaEjecucionFecha))
+    {
+        <div class="mt-2 px-1">
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-size: 0.75rem;">
+                Último apagado masivo nocturno ejecutado el: <strong>@_configApagado.UltimaEjecucionFecha</strong>
+            </MudText>
+        </div>
+    }
+</MudPaper>
 
 <!-- TOP ESTUDIANTES CON MÁS INFRACCIONES (LEADERBOARD SAAS ELEGANTE) -->
 @if (Reporte?.TopInfractores?.Any() == true)
@@ -518,10 +623,83 @@
     private int TotalRegistrosFiltrados =>
         Reporte?.Incidentes.Count(FilterFunc) ?? 0;
 
+    private ConfiguracionApagadoCampusDto _configApagado = new();
+    private bool IsSavingConfigApagado = false;
+    private bool IsApagandoCampus = false;
+
     protected override async Task OnInitializedAsync()
     {
         AulasDisponibles = await ApiClient.GetAulasAsync();
+        await CargarConfiguracionApagadoAsync();
         await CargarReporteAsync();
+    }
+
+    private async Task CargarConfiguracionApagadoAsync()
+    {
+        var cfg = await ApiClient.GetConfiguracionApagadoCampusAsync();
+        if (cfg != null)
+        {
+            _configApagado = cfg;
+        }
+    }
+
+    private async Task GuardarConfiguracionApagadoAsync()
+    {
+        IsSavingConfigApagado = true;
+        try
+        {
+            bool ok = await ApiClient.GuardarConfiguracionApagadoCampusAsync(_configApagado);
+            if (ok)
+            {
+                Snackbar.Add("✓ Programación de apagado masivo del campus guardada.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("No se pudo guardar la configuración de apagado.", Severity.Error);
+            }
+        }
+        finally
+        {
+            IsSavingConfigApagado = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ConfirmarApagadoTodoCampusAsync()
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "⚠️ Confirmar Apagado Masivo del Campus",
+            "Esta acción emitirá la orden de APAGADO INMEDIATO a todas las computadoras registradas en todas las aulas del campus. Las sesiones de estudiantes activas serán guardadas y cerradas en el sistema.\n\n¿Deseas continuar con el apagado?",
+            yesText: "Sí, Apagar Todo el Campus", cancelText: "Cancelar"
+        );
+
+        if (confirm == true)
+        {
+            IsApagandoCampus = true;
+            StateHasChanged();
+            try
+            {
+                var (ok, msg) = await ApiClient.ApagarTodoCampusAsync("Apagado manual masivo emitido por el Administrador");
+                if (ok)
+                {
+                    Snackbar.Add(msg, Severity.Success);
+                    await CargarReporteAsync();
+                }
+                else
+                {
+                    Snackbar.Add(msg, Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                IsApagandoCampus = false;
+                StateHasChanged();
+            }
+        }
     }
 
     private async Task CargarReporteAsync()

@@ -612,11 +612,22 @@ public partial class MainWindow : Window
 
     private void TxtEmail_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (TxtEmail.Text != null && TxtEmail.Text.Contains(' '))
+        if (TxtEmail.Text != null)
         {
-            int caret = TxtEmail.CaretIndex;
-            TxtEmail.Text = TxtEmail.Text.Replace(" ", "");
-            TxtEmail.CaretIndex = Math.Max(0, Math.Min(TxtEmail.Text.Length, caret - 1));
+            var text = TxtEmail.Text;
+            if (text.Contains(' '))
+            {
+                int caret = TxtEmail.CaretIndex;
+                text = text.Replace(" ", "");
+                TxtEmail.Text = text;
+                TxtEmail.CaretIndex = Math.Max(0, Math.Min(TxtEmail.Text.Length, caret - 1));
+            }
+
+            if (TxtEmail.Text.Length > 30)
+            {
+                TxtEmail.Text = TxtEmail.Text.Substring(0, 30);
+                TxtEmail.CaretIndex = 30;
+            }
         }
     }
 
@@ -624,13 +635,17 @@ public partial class MainWindow : Window
     {
         var rawEmail = TxtEmail.Text ?? string.Empty;
         var email = rawEmail.Replace(" ", "").Trim().ToLowerInvariant();
+        if (email.Length > 30)
+        {
+            email = email.Substring(0, 30);
+        }
         TxtEmail.Text = email;
 
         // Validar formato de correo institucional (ej: xxx3005567@est.univalle.edu o xxx3005567@univalle.edu)
         // Acepta solo los 2 dominios institucionales y exige exactamente 7 dígitos antes de la arroba
         var regex = new Regex(@"^[a-zA-Z._-]*\d{7}@(est\.univalle\.edu|univalle\.edu)$", RegexOptions.IgnoreCase);
 
-        if (!regex.IsMatch(email))
+        if (email.Length > 30 || !regex.IsMatch(email))
         {
             TxtAlert.Text = "⚠️ Correo incorrecto.";
             AlertBorder.Visibility = Visibility.Visible;
@@ -639,24 +654,31 @@ public partial class MainWindow : Window
 
         AlertBorder.Visibility = Visibility.Collapsed;
 
-        if (_apiService == null || _config == null)
-        {
-            _apiService = new KioskApiService(_config?.ApiBaseUrl ?? "http://192.168.50.132:5256/");
-        }
+        // Feedback visual inmediato para evitar la sensación de lag
+        BtnIniciarSesion.IsEnabled = false;
+        BtnIniciarSesion.Content = "⏳ Validando credenciales...";
+        LoginProgressBar.Visibility = Visibility.Visible;
 
-        _fechaInicioSesion = DateTime.UtcNow;
-        _emailSesionActual = email;
-
-        // Intentar registrar el inicio de sesión en PostgreSQL vía API central
-        IniciarSesionResult res;
         try
         {
-            res = await _apiService.IniciarSesionAsync(_config?.ComputadoraId, _config?.Hostname, email, 90);
-        }
-        catch
-        {
-            res = new IniciarSesionResult { Exito = false, EsErrorConexion = true };
-        }
+            if (_apiService == null || _config == null)
+            {
+                _apiService = new KioskApiService(_config?.ApiBaseUrl ?? "http://192.168.50.132:5256/");
+            }
+
+            _fechaInicioSesion = DateTime.UtcNow;
+            _emailSesionActual = email;
+
+            // Intentar registrar el inicio de sesión en PostgreSQL vía API central
+            IniciarSesionResult res;
+            try
+            {
+                res = await _apiService.IniciarSesionAsync(_config?.ComputadoraId, _config?.Hostname, email, 90);
+            }
+            catch
+            {
+                res = new IniciarSesionResult { Exito = false, EsErrorConexion = true };
+            }
 
         if (res.Exito && res.Datos != null)
         {
@@ -781,6 +803,13 @@ public partial class MainWindow : Window
                 AlertBorder.Visibility = Visibility.Visible;
             }
         }
+        }
+        finally
+        {
+            BtnIniciarSesion.IsEnabled = true;
+            BtnIniciarSesion.Content = "🔓 Iniciar Sesión en Computadora";
+            LoginProgressBar.Visibility = Visibility.Collapsed;
+        }
     }
 
     public void FinalizarSesionPorApagadoSistema()
@@ -797,18 +826,8 @@ public partial class MainWindow : Window
 
     private void IniciarTimerDuracionSesion(int minutos)
     {
+        // El deslogueo se rige exclusivamente por la política de inactividad física configurada en el aula
         _sessionDurationTimer?.Stop();
-        int duracion = minutos > 0 ? minutos : 90;
-        _sessionDurationTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMinutes(duracion)
-        };
-        _sessionDurationTimer.Tick += (s, e) =>
-        {
-            _sessionDurationTimer.Stop();
-            OnSesionTerminada((int)TipoCierreSesion.FinPeriodo);
-        };
-        _sessionDurationTimer.Start();
     }
 
     private async Task ProcesarInactividadAsync(bool esApagar)

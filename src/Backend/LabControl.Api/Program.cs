@@ -32,8 +32,10 @@ builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<ISignalRNotificationService, SignalRNotificationService>();
 builder.Services.AddHostedService<HeartbeatMonitorBackgroundService>();
-builder.Services.AddHostedService<HorarioKickoutBackgroundService>();
+// builder.Services.AddHostedService<HorarioKickoutBackgroundService>(); // DESACTIVADO: Los horarios se utilizan exclusivamente para reportes y auditoría
 builder.Services.AddHostedService<AuditoriaEnergiaBackgroundService>();
+builder.Services.AddSingleton<CampusShutdownManager>();
+builder.Services.AddHostedService<ApagadoProgramadoBackgroundService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

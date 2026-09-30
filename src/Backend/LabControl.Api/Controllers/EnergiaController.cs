@@ -136,4 +136,35 @@ public class EnergiaController : ApiControllerBase
         var nombreArchivo = $"Auditoria_Energia_LabControl_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
         return File(bytes, "application/pdf", nombreArchivo);
     }
+
+    [HttpGet("configuracion-apagado")]
+    public IActionResult GetConfiguracionApagado([FromServices] LabControl.Api.Services.CampusShutdownManager shutdownManager)
+    {
+        var config = shutdownManager.GetConfiguracion();
+        return Ok(config);
+    }
+
+    [HttpPost("configuracion-apagado")]
+    public IActionResult GuardarConfiguracionApagado(
+        [FromBody] LabControl.Application.Features.Energia.ConfiguracionApagadoCampusDto request,
+        [FromServices] LabControl.Api.Services.CampusShutdownManager shutdownManager)
+    {
+        shutdownManager.SaveConfiguracion(request);
+        return Ok(new { message = "Configuración de apagado masivo del campus guardada exitosamente." });
+    }
+
+    [HttpPost("apagar-todo-campus")]
+    public async Task<IActionResult> ApagarTodoCampus(
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] LabControl.Api.Controllers.ComandoEnergiaRequest? request,
+        [FromServices] LabControl.Api.Services.CampusShutdownManager shutdownManager,
+        [FromServices] IServiceScopeFactory scopeFactory,
+        CancellationToken cancellationToken)
+    {
+        var motivo = string.IsNullOrWhiteSpace(request?.Motivo)
+            ? "Apagado manual masivo de todo el campus solicitado desde el WebAdmin"
+            : request.Motivo;
+
+        int totalAfectados = await shutdownManager.EjecutarApagadoCampusAsync(scopeFactory, motivo, cancellationToken);
+        return Ok(new { message = $"Orden de apagado masivo transmitida con éxito a {totalAfectados} computadoras del campus." });
+    }
 }

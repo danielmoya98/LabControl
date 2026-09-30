@@ -183,10 +183,11 @@ public class KioskApiService
                 MinutosLimite = minutosLimite
             };
 
-            var response = await _httpClient.PostAsJsonAsync("api/sesiones/iniciar", req);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2.5));
+            var response = await _httpClient.PostAsJsonAsync("api/sesiones/iniciar", req, cts.Token);
             if (response.IsSuccessStatusCode)
             {
-                var datos = await response.Content.ReadFromJsonAsync<IniciarSesionApiResponse>();
+                var datos = await response.Content.ReadFromJsonAsync<IniciarSesionApiResponse>(cancellationToken: cts.Token);
                 return new IniciarSesionResult { Exito = true, Datos = datos };
             }
 

@@ -15,6 +15,7 @@ using LabControl.Application.Features.Docentes.Queries.GetDocentes;
 using LabControl.Application.Features.Materias.Commands.CreateMateria;
 using LabControl.Application.Features.Materias.Queries.GetMaterias;
 using LabControl.Application.Common.Interfaces;
+using LabControl.Application.Features.Energia;
 using LabControl.Domain.Enums;
 
 namespace LabControl.WebAdmin.Services;
@@ -917,6 +918,51 @@ public class LabApiClient
             parameters.Add($"emailEstudiante={Uri.EscapeDataString(emailEstudiante.Trim())}");
 
         return parameters.Count > 0 ? "?" + string.Join("&", parameters) : "";
+    }
+
+    public async Task<ConfiguracionApagadoCampusDto?> GetConfiguracionApagadoCampusAsync()
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<ConfiguracionApagadoCampusDto>("api/energia/configuracion-apagado");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> GuardarConfiguracionApagadoCampusAsync(ConfiguracionApagadoCampusDto dto)
+    {
+        try
+        {
+            var res = await _httpClient.PostAsJsonAsync("api/energia/configuracion-apagado", dto);
+            return res.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<(bool Success, string Message)> ApagarTodoCampusAsync(string? motivo = null)
+    {
+        try
+        {
+            var payload = new { Motivo = motivo };
+            var res = await _httpClient.PostAsJsonAsync("api/energia/apagar-todo-campus", payload);
+            if (res.IsSuccessStatusCode)
+            {
+                var json = await res.Content.ReadFromJsonAsync<System.Text.Json.Nodes.JsonObject>();
+                var msg = json?["message"]?.ToString() ?? "Orden de apagado masivo transmitida con éxito a todo el campus.";
+                return (true, msg);
+            }
+            return (false, "El servidor rechazó la solicitud de apagado masivo.");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Error al conectar con el servidor: {ex.Message}");
+        }
     }
 }
 

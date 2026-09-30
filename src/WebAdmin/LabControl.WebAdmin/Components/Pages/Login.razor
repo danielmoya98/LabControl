@@ -5,6 +5,7 @@
 @inject UserSessionService SessionService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <PageTitle>Acceso Administrativo — Control de Laboratorios</PageTitle>
@@ -277,26 +278,6 @@
                 </MudButton>
             </EditForm>
 
-            <!-- Acceso Rápido para Pruebas / Demostración -->
-            <div class="demo-credentials-box mt-6" @onclick="UsarCredencialesDemo" title="Clic para rellenar credenciales de prueba">
-                <div class="d-flex justify-space-between align-center">
-                    <div class="d-flex align-center gap-2">
-                        <MudIcon Icon="@Icons.Material.Filled.Key" Color="Color.Primary" Size="Size.Small" />
-                        <div>
-                            <div style="font-size: 0.78rem; font-weight: 700; color: var(--mud-palette-primary);">
-                                Credenciales Rápidas de Prueba
-                            </div>
-                            <div style="font-size: 0.72rem; color: var(--mud-palette-text-secondary);">
-                                admin@univalle.edu • AdminPass123!
-                            </div>
-                        </div>
-                    </div>
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">
-                        Autocompletar
-                    </MudChip>
-                </div>
-            </div>
-
             <!-- Pie de Seguridad -->
             <div class="text-center mt-6" style="font-size: 0.75rem; color: var(--mud-palette-text-secondary);">
                 <div class="d-flex align-center justify-center gap-1">
@@ -335,6 +316,18 @@
         }, null, 5500, 5500);
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var restored = await SessionService.TryRestoreSessionAsync(JSRuntime);
+            if (restored || SessionService.IsAuthenticated)
+            {
+                Navigation.NavigateTo("/");
+            }
+        }
+    }
+
     private void SiguienteSlide()
     {
         _currentSlide = (_currentSlide + 1) % TotalSlides;
@@ -355,13 +348,6 @@
         _showPassword = !_showPassword;
     }
 
-    private void UsarCredencialesDemo()
-    {
-        LoginModel.Email = "admin@univalle.edu";
-        LoginModel.Password = "AdminPass123!";
-        Snackbar.Add("Credenciales de administrador cargadas", Severity.Info);
-    }
-
     private async Task HandleLoginAsync()
     {
         IsLoading = true;
@@ -371,13 +357,13 @@
 
         if (result != null && !string.IsNullOrEmpty(result.Token))
         {
-            SessionService.Login(new UserSession
+            await SessionService.LoginAsync(JSRuntime, new UserSession
             {
                 Token = result.Token,
                 Email = result.Email,
                 NombreCompleto = result.NombreCompleto,
                 Rol = result.Rol
-            });
+            }, _recordarSesion);
 
             Snackbar.Add($"¡Bienvenido {result.NombreCompleto}!", Severity.Success);
             Navigation.NavigateTo("/");
@@ -397,7 +383,7 @@
 
     public class LoginInputModel
     {
-        public string Email { get; set; } = "admin@univalle.edu";
-        public string Password { get; set; } = "AdminPass123!";
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
     }
 }

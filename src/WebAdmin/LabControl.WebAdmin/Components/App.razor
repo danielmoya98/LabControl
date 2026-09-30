@@ -90,6 +90,38 @@
             }
         };
 
+        window.authManager = {
+            saveSession: function (sessionJson, persistent) {
+                try {
+                    if (persistent) {
+                        localStorage.setItem('labcontrol_session', sessionJson);
+                        sessionStorage.removeItem('labcontrol_session');
+                    } else {
+                        sessionStorage.setItem('labcontrol_session', sessionJson);
+                        localStorage.removeItem('labcontrol_session');
+                    }
+                } catch (e) {
+                    console.error("Error saving session:", e);
+                }
+            },
+            getSession: function () {
+                try {
+                    return localStorage.getItem('labcontrol_session') || sessionStorage.getItem('labcontrol_session') || null;
+                } catch (e) {
+                    console.error("Error getting session:", e);
+                    return null;
+                }
+            },
+            clearSession: function () {
+                try {
+                    localStorage.removeItem('labcontrol_session');
+                    sessionStorage.removeItem('labcontrol_session');
+                } catch (e) {
+                    console.error("Error clearing session:", e);
+                }
+            }
+        };
+
         // Atajo global de teclado: Ctrl+K / Cmd+K
         window.addEventListener('keydown', function (e) {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {

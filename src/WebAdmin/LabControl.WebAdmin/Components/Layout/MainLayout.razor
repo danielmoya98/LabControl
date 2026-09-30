@@ -234,7 +234,7 @@ else
                             <MudDivider Style="opacity: 0.5;" />
 
                             <div class="py-1">
-                                <MudMenuItem Icon="@Icons.Material.Outlined.Logout" IconColor="Color.Error" OnClick="HandleLogout">
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Logout" IconColor="Color.Error" OnClick="HandleLogoutAsync">
                                     <MudText Color="Color.Error" Typo="Typo.body2" Class="font-weight-bold" Style="font-size: 0.84rem;">
                                         Cerrar Sesión
                                     </MudText>
@@ -565,7 +565,7 @@ else
                 new("Pantalla Completa (F11)", "Activar o desactivar modo pantalla completa del navegador", Icons.Material.Outlined.Fullscreen, "NOC", async () => { await JSRuntime.InvokeVoidAsync("fullscreenHelper.toggleFullscreen"); CloseCommandPalette(); }),
                 new("Mi Perfil de Usuario", "Editar nombre, credenciales y avatar administrativo", Icons.Material.Outlined.Person, "Ajustes", () => { _showProfileDialog = true; CloseCommandPalette(); return Task.CompletedTask; }),
                 new("Centro de Ayuda y Soporte", "Guía rápida de operaciones y contactos TI Univalle", Icons.Material.Outlined.HelpOutline, "Ayuda", () => { _showHelpDialog = true; CloseCommandPalette(); return Task.CompletedTask; }),
-                new("Cerrar Sesión Segura", "Finalizar la sesión del administrador", Icons.Material.Outlined.Logout, "Salir", () => { CloseCommandPalette(); HandleLogout(); return Task.CompletedTask; })
+                new("Cerrar Sesión Segura", "Finalizar la sesión del administrador", Icons.Material.Outlined.Logout, "Salir", async () => { CloseCommandPalette(); await HandleLogoutAsync(); })
             };
 
             return string.IsNullOrWhiteSpace(_commandQuery)
@@ -823,11 +823,6 @@ else
                 Navigation.NavigateTo("/onboarding");
                 return;
             }
-
-            if (!SessionService.IsAuthenticated && !Navigation.Uri.Contains("/login"))
-            {
-                Navigation.NavigateTo("/login");
-            }
         }
     }
 
@@ -848,6 +843,19 @@ else
             {
                 // Silencioso si JSInterop no está listo
             }
+
+            if (!Navigation.Uri.Contains("/onboarding") && !Navigation.Uri.Contains("/login"))
+            {
+                bool restored = await SessionService.TryRestoreSessionAsync(JSRuntime);
+                if (!restored && !SessionService.IsAuthenticated)
+                {
+                    Navigation.NavigateTo("/login");
+                }
+                else
+                {
+                    StateHasChanged();
+                }
+            }
         }
     }
 
@@ -864,9 +872,9 @@ else
         }
     }
 
-    private void HandleLogout()
+    private async Task HandleLogoutAsync()
     {
-        SessionService.Logout();
+        await SessionService.LogoutAsync(JSRuntime);
         Navigation.NavigateTo("/login");
     }
 
