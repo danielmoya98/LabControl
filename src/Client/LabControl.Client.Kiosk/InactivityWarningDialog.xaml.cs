@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 
 namespace LabControl.Client.Kiosk;
@@ -14,6 +14,7 @@ public partial class InactivityWarningDialog : Window
 
         string accionStr = esApagar ? "se apagará automáticamente para ahorrar energía" : "cerrará la sesión y se bloqueará";
         TxtMensaje.Text = $"No se ha detectado actividad física en los últimos {minutosInactivos} minutos. Por políticas del laboratorio, el equipo {accionStr}.";
+        Loaded += (s, e) => Services.WindowBlurHelper.EnableBlur(this, alpha: 200, r: 15, g: 23, b: 42);
     }
 
     public void ActualizarSegundos(int segundosRestantes, bool esApagar)

@@ -74,6 +74,30 @@ public class ComputadorasController : ApiControllerBase
         await notificationService.SendComandoEnergiaTerminalAsync(pc.Hostname, cmd, motivo, cancellationToken);
         return Ok(new { message = $"Comando {cmd} enviado a la terminal {pc.Hostname}." });
     }
+
+    [HttpPost("{id:int}/wake-on-lan")]
+    public async Task<IActionResult> WakeOnLan(
+        int id,
+        [FromServices] LabControl.Application.Common.Interfaces.IWakeOnLanService wolService,
+        [FromServices] LabControl.Application.Common.Interfaces.IApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var pc = await context.Computadoras.FindAsync([id], cancellationToken);
+        if (pc == null) return NotFound(new { error = "Computadora no encontrada." });
+
+        if (string.IsNullOrWhiteSpace(pc.MacAddress))
+        {
+            return BadRequest(new { error = $"La terminal '{pc.Hostname}' no tiene una dirección MAC física registrada para Wake-on-LAN." });
+        }
+
+        var exito = await wolService.EnviarMagicPacketAsync(pc.MacAddress, cancellationToken);
+        if (exito)
+        {
+            return Ok(new { message = $"Paquete de encendido Wake-on-LAN enviado a '{pc.Hostname}' (MAC: {pc.MacAddress})." });
+        }
+
+        return StatusCode(500, new { error = $"Error al emitir el paquete Wake-on-LAN a la dirección MAC '{pc.MacAddress}'." });
+    }
 }
 
 public record ComandoEnergiaRequest(string TipoComando, string? Motivo = null);

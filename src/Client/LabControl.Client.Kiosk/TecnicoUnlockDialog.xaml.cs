@@ -18,6 +18,7 @@ public partial class TecnicoUnlockDialog : Window
         // Clave por defecto institucional si no está personalizada
         _claveMaestra = !string.IsNullOrWhiteSpace(claveConfigurada) ? claveConfigurada : "AdminLab@2026";
         TxtPassword.Focus();
+        Loaded += (s, e) => WindowBlurHelper.EnableBlur(this, alpha: 200, r: 15, g: 23, b: 42);
     }
 
     private void OnPasswordKeyDown(object sender, KeyEventArgs e)

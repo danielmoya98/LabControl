@@ -39,12 +39,26 @@ internal enum WindowCompositionAttribute
 
 /// <summary>
 /// Helper para aplicar desenfoque acrílico (Acrylic / Blur Behind / Glassmorphism)
-/// nativo de Windows (DWM) en ventanas flotantes de WPF.
+/// nativo de Windows (DWM) en ventanas flotantes y modales de WPF.
+/// Soporta Windows 11 (DWM System Backdrop) y Windows 10 (SetWindowCompositionAttribute).
 /// </summary>
 public static class WindowBlurHelper
 {
     [DllImport("user32.dll")]
     private static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+
+    // Valores para DWMWA_SYSTEMBACKDROP_TYPE (Windows 11 22H2 build 22621+)
+    private const int DWMSBT_AUTO = 0;
+    private const int DWMSBT_NONE = 1;
+    private const int DWMSBT_MAINWINDOW = 2; // Mica
+    private const int DWMSBT_TRANSIENTWINDOW = 3; // Acrylic Blur
+    private const int DWMSBT_TABBEDWINDOW = 4; // Mica Alt
 
     /// <summary>
     /// Habilita el efecto de desenfoque acrílico esmerilado detrás de la ventana.
@@ -54,17 +68,31 @@ public static class WindowBlurHelper
     /// <param name="r">Canal rojo del tinte</param>
     /// <param name="g">Canal verde del tinte</param>
     /// <param name="b">Canal azul del tinte</param>
-    public static void EnableBlur(Window window, byte alpha = 190, byte r = 18, byte g = 24, byte b = 34)
+    public static void EnableBlur(Window window, byte alpha = 180, byte r = 16, byte g = 22, byte b = 32)
     {
         try
         {
             var handle = new WindowInteropHelper(window).EnsureHandle();
             if (handle == IntPtr.Zero) return;
 
-            // Formato DWM ABGR
+            // Activar modo oscuro inmersivo en DWM si es compatible
+            int darkMode = 1;
+            DwmSetWindowAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
+
+            // Si es Windows 11 build 22000+, intentar activar Backdrop Acrylic oficial
+            if (Environment.OSVersion.Version.Major >= 10 && Environment.OSVersion.Version.Build >= 22621)
+            {
+                int backdropAcrylic = DWMSBT_TRANSIENTWINDOW;
+                int dwmResult = DwmSetWindowAttribute(handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdropAcrylic, sizeof(int));
+                if (dwmResult == 0)
+                {
+                    return; // Aplicado exitosamente por DWM nativo de Windows 11
+                }
+            }
+
+            // Para Windows 10 y versiones anteriores de Windows 11, usar SetWindowCompositionAttribute
             uint gradientColor = ((uint)alpha << 24) | ((uint)b << 16) | ((uint)g << 8) | (uint)r;
 
-            // Intentar primero con ACCENT_ENABLE_ACRYLICBLURBEHIND (Windows 10 1803+ y Windows 11)
             var accent = new AccentPolicy
             {
                 AccentState = AccentState.ACCENT_ENABLE_ACRYLICBLURBEHIND,
@@ -86,7 +114,7 @@ public static class WindowBlurHelper
             int result = SetWindowCompositionAttribute(handle, ref data);
             Marshal.FreeHGlobal(accentPtr);
 
-            // Si falla o no se soporta, intentar fallback a ACCENT_ENABLE_BLURBEHIND
+            // Si falla o no se soporta Acrylic, fallback a BlurBehind estándar
             if (result != 0)
             {
                 var fallbackAccent = new AccentPolicy

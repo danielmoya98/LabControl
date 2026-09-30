@@ -9,6 +9,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RootNamespace>LabControl.Client.Kiosk</RootNamespace>
     <AssemblyName>LabControl.Client.Kiosk</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>

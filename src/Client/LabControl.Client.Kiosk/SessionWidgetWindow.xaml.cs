@@ -26,17 +26,17 @@ public partial class SessionWidgetWindow : Window
         _onApagarCallback = onApagarCallback;
 
         TxtEmailEstudiante.Text = emailEstudiante;
-        TxtDetalleAula.Text = $"{aulaNombre} • {hostname}";
+        TxtEmailEstudiante.ToolTip = $"{emailEstudiante}\n{aulaNombre} • {hostname}";
 
         // Posicionar en la esquina superior derecha de la pantalla principal
-        Left = SystemParameters.WorkArea.Right - Width - 25;
-        Top = 25;
+        Left = SystemParameters.WorkArea.Right - Width - 20;
+        Top = 16;
     }
 
     private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
-        // Activar desenfoque acrílico esmerilado detrás de la ventana con tinte oscuro y acento sutil
-        WindowBlurHelper.EnableBlur(this, alpha: 170, r: 16, g: 22, b: 32);
+        // Activar desenfoque acrílico esmerilado translúcido detrás de la ventana
+        WindowBlurHelper.EnableBlur(this, alpha: 110, r: 15, g: 23, b: 42);
     }
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
@@ -101,11 +101,12 @@ public partial class SessionWidgetWindow : Window
 
     public void ActualizarDetalle(string aulaNombre, string hostname)
     {
-        TxtDetalleAula.Text = $"{aulaNombre} • {hostname}";
+        TxtEmailEstudiante.ToolTip = $"{TxtEmailEstudiante.Text}\n{aulaNombre} • {hostname}";
     }
 
     public void ActualizarUsuario(string emailEstudiante)
     {
         TxtEmailEstudiante.Text = emailEstudiante;
+        TxtEmailEstudiante.ToolTip = emailEstudiante;
     }
 }

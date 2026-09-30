@@ -71,4 +71,28 @@ public class AulasController : ApiControllerBase
 
         return Ok(new { message = $"Orden de apagado general transmitida al aula '{aula.Nombre}' ({pcs.Count} terminales)." });
     }
+
+    [HttpPost("{id:int}/wake-on-lan")]
+    public async Task<IActionResult> WakeOnLanAula(
+        int id,
+        [FromServices] LabControl.Application.Common.Interfaces.IWakeOnLanService wolService,
+        [FromServices] LabControl.Application.Common.Interfaces.IApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var aula = await context.Aulas.FindAsync([id], cancellationToken);
+        if (aula == null) return NotFound(new { error = "Aula no encontrada." });
+
+        var macs = await context.Computadoras
+            .Where(c => c.AulaId == id && !string.IsNullOrWhiteSpace(c.MacAddress))
+            .Select(c => c.MacAddress!)
+            .ToListAsync(cancellationToken);
+
+        if (!macs.Any())
+        {
+            return BadRequest(new { error = $"El aula '{aula.Nombre}' no tiene computadoras con dirección MAC registrada." });
+        }
+
+        var enviados = await wolService.EnviarMagicPacketBatchAsync(macs, cancellationToken);
+        return Ok(new { message = $"Se enviaron paquetes Wake-on-LAN a {enviados} de {macs.Count} computadoras del aula '{aula.Nombre}'." });
+    }
 }

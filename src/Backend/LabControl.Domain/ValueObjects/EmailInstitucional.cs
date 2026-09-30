@@ -27,12 +27,12 @@ public partial record EmailInstitucional
                 Error.Validation("Email.Empty", "El correo institucional no puede estar vacío."));
         }
 
-        string emailLimpio = email.Trim().ToLowerInvariant();
+        string emailLimpio = email.Replace(" ", "").Trim().ToLowerInvariant();
 
         if (!EmailRegex().IsMatch(emailLimpio))
         {
             return Result<EmailInstitucional>.Failure(
-                Error.Validation("Email.InvalidDomain", "Acceso restringido: Ingrese su correo de la universidad completo y sin faltas de ortografía."));
+                Error.Validation("Email.InvalidDomain", "Correo incorrecto."));
         }
 
         return Result<EmailInstitucional>.Success(new EmailInstitucional(emailLimpio));

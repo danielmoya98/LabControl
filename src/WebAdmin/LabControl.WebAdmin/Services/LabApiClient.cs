@@ -738,6 +738,32 @@ public class LabApiClient
         }
     }
 
+    public async Task<bool> WakeOnLanComputadoraAsync(int computadoraId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/computadoras/{computadoraId}/wake-on-lan", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> WakeOnLanAulaAsync(int aulaId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"api/aulas/{aulaId}/wake-on-lan", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public string GetExportarExcelUrl(
         DateTime? fechaInicio = null,
         DateTime? fechaFin = null,

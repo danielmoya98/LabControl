@@ -45,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<ISignalRNotificationService, SignalRNotificationService>();
         services.AddScoped<IReporteExcelService, ReporteExcelService>();
         services.AddScoped<IReportePdfService, ReportePdfService>();
+        services.AddScoped<IWakeOnLanService, WakeOnLanService>();
 
         var jwtSettings = new JwtSettings();
         configuration.GetSection(JwtSettings.SectionName).Bind(jwtSettings);

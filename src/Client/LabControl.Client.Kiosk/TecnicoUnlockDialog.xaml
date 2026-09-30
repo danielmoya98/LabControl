@@ -2,7 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Desbloqueo de Soporte Técnico" 
-        Height="450" Width="480"
+        Width="480"
+        SizeToContent="Height"
+        MinHeight="360" MaxHeight="620"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -37,19 +39,21 @@
             </Border>
 
             <!-- Contenido / Acciones -->
-            <StackPanel Grid.Row="2" VerticalAlignment="Center">
-                <TextBlock Text="Contraseña de Administrador:" FontSize="13" Foreground="#CBD5E1" Margin="0,0,0,6"/>
-                <PasswordBox x:Name="TxtPassword" Style="{StaticResource UnivallePasswordBox}" FontSize="15" Margin="0,0,0,15"
-                             KeyDown="OnPasswordKeyDown"/>
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MaxHeight="320">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Contraseña de Administrador:" FontSize="13" Foreground="#CBD5E1" Margin="0,0,0,6"/>
+                    <PasswordBox x:Name="TxtPassword" Style="{StaticResource UnivallePasswordBox}" FontSize="15" Margin="0,0,0,15"
+                                 KeyDown="OnPasswordKeyDown"/>
 
-                <StackPanel x:Name="PanelOpciones" Visibility="Collapsed" Margin="0,0,0,10">
-                    <TextBlock Text="Opciones de Soporte Técnico:" FontSize="12" Foreground="{StaticResource UnivallePillTextBrush}" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <Button Content="🔓 Desbloquear y Minimizar (Mantenimiento)" Height="38" Style="{StaticResource UnivallePrimaryButton}" Margin="0,0,0,8" Click="OnDesbloquearMinimizarClick"/>
-                    <Button Content="⚙️ Abrir Configuración de Terminal" Height="38" Style="{StaticResource UnivalleOutlineButton}" Margin="0,0,0,8" Click="OnAbrirConfiguracionClick"/>
-                    <Button Content="🗑️ Desinstalar Cliente de la Terminal" Height="38" Style="{StaticResource UnivalleDangerButton}" Margin="0,0,0,8" Click="OnDesinstalarAppClick"/>
-                    <Button Content="❌ Salir y Cerrar Kiosk" Height="38" Style="{StaticResource UnivalleOutlineButton}" Click="OnCerrarAppClick"/>
+                    <StackPanel x:Name="PanelOpciones" Visibility="Collapsed" Margin="0,0,0,10">
+                        <TextBlock Text="Opciones de Soporte Técnico:" FontSize="12" Foreground="{StaticResource UnivallePillTextBrush}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Button Content="🔓 Desbloquear y Minimizar (Mantenimiento)" Height="38" Style="{StaticResource UnivallePrimaryButton}" Margin="0,0,0,8" Click="OnDesbloquearMinimizarClick"/>
+                        <Button Content="⚙️ Abrir Configuración de Terminal" Height="38" Style="{StaticResource UnivalleOutlineButton}" Margin="0,0,0,8" Click="OnAbrirConfiguracionClick"/>
+                        <Button Content="🗑️ Desinstalar Cliente de la Terminal" Height="38" Style="{StaticResource UnivalleDangerButton}" Margin="0,0,0,8" Click="OnDesinstalarAppClick"/>
+                        <Button Content="❌ Salir y Cerrar Kiosk" Height="38" Style="{StaticResource UnivalleOutlineButton}" Click="OnCerrarAppClick"/>
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
+            </ScrollViewer>
 
             <!-- Botones inferiores -->
             <Grid Grid.Row="3" Margin="0,15,0,0">

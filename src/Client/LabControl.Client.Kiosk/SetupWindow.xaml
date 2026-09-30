@@ -2,11 +2,12 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Instalación &amp; Configuración de Terminal — Univalle LabControl"
-        Height="740" Width="680"
+        Height="620" Width="660"
+        MinHeight="460" MinWidth="480"
+        MaxHeight="800" MaxWidth="760"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="NoResize"
         Background="#0F172A">
-    <Grid Margin="25">
+    <Grid Margin="20,16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -38,9 +39,10 @@
             </StackPanel>
         </Grid>
 
-        <!-- Formulario -->
-        <Border Grid.Row="1" Background="{StaticResource UnivalleCardBgBrush}" CornerRadius="14" Padding="22" BorderBrush="{StaticResource UnivalleCardBorderBrush}" BorderThickness="1">
-            <StackPanel>
+        <!-- Formulario con desplazamiento suave para laptops -->
+        <Border Grid.Row="1" Background="{StaticResource UnivalleCardBgBrush}" CornerRadius="14" Padding="20,16" BorderBrush="{StaticResource UnivalleCardBorderBrush}" BorderThickness="1">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
+                <StackPanel Margin="0,0,10,0">
                 <TextBlock Text="🌐 URL de la API Central:" FontSize="13" Foreground="#F8FAFC" FontWeight="SemiBold" Margin="0,0,0,6"/>
                 <Grid Margin="0,0,0,16">
                     <Grid.ColumnDefinitions>
@@ -88,7 +90,8 @@
                 </Border>
 
                 <TextBlock x:Name="TxtStatus" Text="" FontSize="13" Foreground="#EF4444" FontWeight="SemiBold" TextWrapping="Wrap"/>
-            </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <!-- Actions -->

@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -600,16 +601,38 @@ public partial class MainWindow : Window
         }
     }
 
+    private void TxtEmail_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            OnIniciarSesionClick(sender, e);
+        }
+    }
+
+    private void TxtEmail_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (TxtEmail.Text != null && TxtEmail.Text.Contains(' '))
+        {
+            int caret = TxtEmail.CaretIndex;
+            TxtEmail.Text = TxtEmail.Text.Replace(" ", "");
+            TxtEmail.CaretIndex = Math.Max(0, Math.Min(TxtEmail.Text.Length, caret - 1));
+        }
+    }
+
     private async void OnIniciarSesionClick(object sender, RoutedEventArgs e)
     {
-        var email = TxtEmail.Text.Trim();
+        var rawEmail = TxtEmail.Text ?? string.Empty;
+        var email = rawEmail.Replace(" ", "").Trim().ToLowerInvariant();
+        TxtEmail.Text = email;
 
-        // Validar formato de correo institucional
-        var regex = new Regex(@"^[a-zA-Z0-9._%+-]+@(est\.univalle\.edu|univalle\.edu)$", RegexOptions.IgnoreCase);
+        // Validar formato de correo institucional (ej: xxx3005567@est.univalle.edu o xxx3005567@univalle.edu)
+        // Acepta solo los 2 dominios institucionales y exige exactamente 7 dígitos antes de la arroba
+        var regex = new Regex(@"^[a-zA-Z._-]*\d{7}@(est\.univalle\.edu|univalle\.edu)$", RegexOptions.IgnoreCase);
 
         if (!regex.IsMatch(email))
         {
-            TxtAlert.Text = "⚠️ Ingrese su correo de la universidad completo y sin faltas de ortografía.";
+            TxtAlert.Text = "⚠️ Correo incorrecto.";
             AlertBorder.Visibility = Visibility.Visible;
             return;
         }
