@@ -133,6 +133,61 @@ public class AulasController : ApiControllerBase
 
         return Ok(new { message = msg, aula.ModoEventoActivo, aula.ModoEventoFinUtc, aula.ModoEventoNombre });
     }
+
+    [HttpPost("{id:int}/freeze")]
+    public async Task<IActionResult> FreezeAula(
+        int id,
+        [FromBody] ComandoFreezeRequest request,
+        [FromServices] LabControl.Application.Common.Interfaces.ISignalRNotificationService notificationService,
+        [FromServices] LabControl.Application.Common.Interfaces.IApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var aula = await context.Aulas.FindAsync([id], cancellationToken);
+        if (aula == null) return NotFound(new { error = "Aula no encontrada." });
+
+        var accion = request.Accion?.Trim().ToUpperInvariant() ?? "THAW";
+        await notificationService.SendComandoFreezeAulaAsync(id, accion, request.Clave, cancellationToken);
+
+        var pcs = await context.Computadoras
+            .Where(c => c.AulaId == id)
+            .Select(c => c.Hostname)
+            .ToListAsync(cancellationToken);
+
+        foreach (var host in pcs)
+        {
+            await notificationService.SendComandoFreezeTerminalAsync(host, accion, request.Clave, cancellationToken);
+        }
+
+        var textoAccion = accion == "THAW" ? "Descongelar (Thaw)" : "Congelar (Freeze)";
+        return Ok(new { message = $"Comando {textoAccion} transmitido a {pcs.Count} terminales del aula '{aula.Nombre}'. Los equipos aplicarán el comando y se reiniciarán." });
+    }
+
+    [HttpPost("{id:int}/actualizar-clientes")]
+    public async Task<IActionResult> ActualizarClientesAula(
+        int id,
+        [FromBody] ComandoActualizacionRequest request,
+        [FromServices] LabControl.Application.Common.Interfaces.ISignalRNotificationService notificationService,
+        [FromServices] LabControl.Application.Common.Interfaces.IApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var aula = await context.Aulas.FindAsync([id], cancellationToken);
+        if (aula == null) return NotFound(new { error = "Aula no encontrada." });
+
+        var url = string.IsNullOrWhiteSpace(request.UrlDescarga) ? "api/actualizaciones/descargar-cliente" : request.UrlDescarga;
+        await notificationService.SendComandoActualizacionAulaAsync(id, url, request.NuevaVersion ?? "latest", request.Sha256 ?? "", cancellationToken);
+
+        var pcs = await context.Computadoras
+            .Where(c => c.AulaId == id)
+            .Select(c => c.Hostname)
+            .ToListAsync(cancellationToken);
+
+        foreach (var host in pcs)
+        {
+            await notificationService.SendComandoActualizacionTerminalAsync(host, url, request.NuevaVersion ?? "latest", request.Sha256 ?? "", cancellationToken);
+        }
+
+        return Ok(new { message = $"Orden de actualización masiva enviada a {pcs.Count} terminales del aula '{aula.Nombre}' (Versión: {request.NuevaVersion ?? "latest"})." });
+    }
 }
 
 public record ModoEventoRequest(bool Activar, int DuracionMinutos = 0, string? Motivo = null);

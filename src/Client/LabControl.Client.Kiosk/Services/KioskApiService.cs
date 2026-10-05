@@ -24,6 +24,8 @@ public class AutoRegistroRequest
     public string? SistemaOperativo { get; set; }
     public double? UptimeHoras { get; set; }
     public string? DiscosDetalleJson { get; set; }
+    public string? VersionClienteKiosk { get; set; }
+    public string? EstadoFreeze { get; set; }
 }
 
 public class AutoRegistroResponse
@@ -140,7 +142,9 @@ public class KioskApiService
         string hostname,
         string ipActual,
         string macAddress,
-        HardwareInfoDto? hw = null)
+        HardwareInfoDto? hw = null,
+        string? versionCliente = null,
+        string? estadoFreeze = null)
     {
         try
         {
@@ -158,7 +162,9 @@ public class KioskApiService
                 DiscoLibreGb = hw.DiscoLibreGb,
                 SistemaOperativo = hw.SistemaOperativo,
                 UptimeHoras = hw.UptimeHoras,
-                DiscosDetalleJson = hw.DiscosDetalleJson
+                DiscosDetalleJson = hw.DiscosDetalleJson,
+                VersionClienteKiosk = versionCliente,
+                EstadoFreeze = estadoFreeze
             };
 
             var response = await _httpClient.PostAsJsonAsync("api/computadoras/auto-registro", req);

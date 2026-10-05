@@ -91,6 +91,30 @@ public class SignalRNotificationService : ISignalRNotificationService
             .RecibirComandoModoEvento(aulaId, activar, motivo, duracionMinutos);
     }
 
+    public async Task SendComandoFreezeTerminalAsync(string targetHostname, string accion, string? claveSeguridad, CancellationToken cancellationToken = default)
+    {
+        await _hubContext.Clients.Group($"Terminal_{targetHostname.Trim().ToUpperInvariant()}")
+            .RecibirComandoFreeze(accion, claveSeguridad);
+    }
+
+    public async Task SendComandoFreezeAulaAsync(int aulaId, string accion, string? claveSeguridad, CancellationToken cancellationToken = default)
+    {
+        await _hubContext.Clients.Group($"Aula_{aulaId}")
+            .RecibirComandoFreeze(accion, claveSeguridad);
+    }
+
+    public async Task SendComandoActualizacionTerminalAsync(string targetHostname, string urlDescarga, string nuevaVersion, string sha256, CancellationToken cancellationToken = default)
+    {
+        await _hubContext.Clients.Group($"Terminal_{targetHostname.Trim().ToUpperInvariant()}")
+            .RecibirComandoActualizacion(urlDescarga, nuevaVersion, sha256);
+    }
+
+    public async Task SendComandoActualizacionAulaAsync(int aulaId, string urlDescarga, string nuevaVersion, string sha256, CancellationToken cancellationToken = default)
+    {
+        await _hubContext.Clients.Group($"Aula_{aulaId}")
+            .RecibirComandoActualizacion(urlDescarga, nuevaVersion, sha256);
+    }
+
     public async Task SendSolicitudHeartbeatGlobalAsync(CancellationToken cancellationToken = default)
     {
         await _hubContext.Clients.Group("TodasLasTerminales")

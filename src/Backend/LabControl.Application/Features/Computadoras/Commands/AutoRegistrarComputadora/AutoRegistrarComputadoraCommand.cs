@@ -20,7 +20,9 @@ public record AutoRegistrarComputadoraCommand(
     int? DiscoLibreGb = null,
     string? SistemaOperativo = null,
     double? UptimeHoras = null,
-    string? DiscosDetalleJson = null
+    string? DiscosDetalleJson = null,
+    string? VersionClienteKiosk = null,
+    string? EstadoFreeze = null
 ) : IRequest<Result<AutoRegistroResultadoDto>>;
 
 public record AutoRegistroResultadoDto(
@@ -115,6 +117,16 @@ public class AutoRegistrarComputadoraCommandHandler : IRequestHandler<AutoRegist
             request.UptimeHoras,
             request.DiscosDetalleJson
         );
+
+        if (!string.IsNullOrWhiteSpace(request.VersionClienteKiosk))
+        {
+            computadora.ActualizarVersionKiosk(request.VersionClienteKiosk);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.EstadoFreeze))
+        {
+            computadora.ActualizarEstadoFreeze(request.EstadoFreeze);
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 

@@ -57,6 +57,15 @@ public class ComputadoraConfiguration : IEntityTypeConfiguration<Computadora>
             .HasMaxLength(150);
 
         builder.Property(c => c.FechaUltimoUsoUtc);
+        
+        builder.Property(c => c.VersionClienteKiosk)
+            .HasMaxLength(50);
+
+        builder.Property(c => c.EstadoFreeze)
+            .HasMaxLength(50)
+            .HasDefaultValue("Desconocido");
+
+        builder.Property(c => c.UltimaActualizacionExitosaUtc);
 
         builder.HasMany(c => c.SesionesUso)
             .WithOne(s => s.Computadora)

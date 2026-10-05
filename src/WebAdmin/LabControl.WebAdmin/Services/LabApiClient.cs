@@ -788,6 +788,98 @@ public class LabApiClient
         }
     }
 
+    public async Task<(bool Success, string Message)> EnviarComandoFreezeComputadoraAsync(int computadoraId, string accion, string? clave = null)
+    {
+        try
+        {
+            var payload = new { Accion = accion, Clave = clave };
+            var response = await _httpClient.PostAsJsonAsync($"api/computadoras/{computadoraId}/freeze", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadFromJsonAsync<System.Text.Json.Nodes.JsonObject>();
+                return (true, json?["message"]?.ToString() ?? "Comando de Freeze transmitido con éxito.");
+            }
+            var err = await response.Content.ReadAsStringAsync();
+            return (false, string.IsNullOrWhiteSpace(err) ? "Error al enviar comando Freeze." : err);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    public async Task<(bool Success, string Message)> EnviarComandoFreezeAulaAsync(int aulaId, string accion, string? clave = null)
+    {
+        try
+        {
+            var payload = new { Accion = accion, Clave = clave };
+            var response = await _httpClient.PostAsJsonAsync($"api/aulas/{aulaId}/freeze", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadFromJsonAsync<System.Text.Json.Nodes.JsonObject>();
+                return (true, json?["message"]?.ToString() ?? "Comando de Freeze transmitido al aula.");
+            }
+            var err = await response.Content.ReadAsStringAsync();
+            return (false, string.IsNullOrWhiteSpace(err) ? "Error al enviar comando Freeze al aula." : err);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    public async Task<(bool Success, string Message)> EnviarComandoActualizacionComputadoraAsync(int computadoraId, string? urlDescarga = null, string? nuevaVersion = null, string? sha256 = null)
+    {
+        try
+        {
+            var payload = new { UrlDescarga = urlDescarga, NuevaVersion = nuevaVersion, Sha256 = sha256 };
+            var response = await _httpClient.PostAsJsonAsync($"api/computadoras/{computadoraId}/actualizar-cliente", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadFromJsonAsync<System.Text.Json.Nodes.JsonObject>();
+                return (true, json?["message"]?.ToString() ?? "Orden de actualización enviada.");
+            }
+            var err = await response.Content.ReadAsStringAsync();
+            return (false, string.IsNullOrWhiteSpace(err) ? "Error al ordenar la actualización." : err);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    public async Task<(bool Success, string Message)> EnviarComandoActualizacionAulaAsync(int aulaId, string? urlDescarga = null, string? nuevaVersion = null, string? sha256 = null)
+    {
+        try
+        {
+            var payload = new { UrlDescarga = urlDescarga, NuevaVersion = nuevaVersion, Sha256 = sha256 };
+            var response = await _httpClient.PostAsJsonAsync($"api/aulas/{aulaId}/actualizar-clientes", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadFromJsonAsync<System.Text.Json.Nodes.JsonObject>();
+                return (true, json?["message"]?.ToString() ?? "Orden de actualización transmitida al aula.");
+            }
+            var err = await response.Content.ReadAsStringAsync();
+            return (false, string.IsNullOrWhiteSpace(err) ? "Error al ordenar la actualización masiva." : err);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    public async Task<InfoActualizacionDto?> ObtenerInfoActualizacionAsync()
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<InfoActualizacionDto>("api/actualizaciones/info");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public string GetExportarExcelUrl(
         DateTime? fechaInicio = null,
         DateTime? fechaFin = null,
@@ -1053,3 +1145,16 @@ public class SedeDetalleModel
     public int TotalBloques { get; set; }
     public int TotalAulas { get; set; }
 }
+
+public class InfoActualizacionDto
+{
+    public bool Disponible { get; set; }
+    public string? Version { get; set; }
+    public string? NombreArchivo { get; set; }
+    public long TamanoBytes { get; set; }
+    public double TamanoMb { get; set; }
+    public string? Sha256 { get; set; }
+    public DateTime? FechaPublicacionUtc { get; set; }
+    public string? UrlDescarga { get; set; }
+}
+

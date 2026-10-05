@@ -31,7 +31,9 @@ public record ComputadoraTarjetaDto(
     int? DiscoLibreGb = null,
     string? SistemaOperativo = null,
     double? UptimeHoras = null,
-    string? DiscosDetalleJson = null
+    string? DiscosDetalleJson = null,
+    string? VersionClienteKiosk = null,
+    string? EstadoFreeze = null
 )
 {
     public string? MiniaturaBase64 { get; set; }
@@ -83,7 +85,9 @@ public class GetEstadoAulasMapaQueryHandler : IRequestHandler<GetEstadoAulasMapa
                     pc.DiscoLibreGb,
                     pc.SistemaOperativo,
                     pc.UptimeHoras,
-                    pc.DiscosDetalleJson
+                    pc.DiscosDetalleJson,
+                    pc.VersionClienteKiosk,
+                    pc.EstadoFreeze
                 );
             }).ToList()
         )).ToList();

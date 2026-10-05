@@ -98,7 +98,44 @@ public class ComputadorasController : ApiControllerBase
 
         return StatusCode(500, new { error = $"Error al emitir el paquete Wake-on-LAN a la dirección MAC '{pc.MacAddress}'." });
     }
+
+    [HttpPost("{id:int}/freeze")]
+    public async Task<IActionResult> EnviarComandoFreeze(
+        int id,
+        [FromBody] ComandoFreezeRequest request,
+        [FromServices] LabControl.Application.Common.Interfaces.ISignalRNotificationService notificationService,
+        [FromServices] LabControl.Application.Common.Interfaces.IApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var pc = await context.Computadoras.FindAsync([id], cancellationToken);
+        if (pc == null) return NotFound(new { error = "Computadora no encontrada." });
+
+        var accion = request.Accion?.Trim().ToUpperInvariant() ?? "THAW";
+        await notificationService.SendComandoFreezeTerminalAsync(pc.Hostname, accion, request.Clave, cancellationToken);
+        
+        var textoAccion = accion == "THAW" ? "Descongelar (Thaw)" : "Congelar (Freeze)";
+        return Ok(new { message = $"Comando {textoAccion} transmitido a la terminal '{pc.Hostname}'. La máquina aplicará la orden y se reiniciará." });
+    }
+
+    [HttpPost("{id:int}/actualizar-cliente")]
+    public async Task<IActionResult> EnviarComandoActualizacion(
+        int id,
+        [FromBody] ComandoActualizacionRequest request,
+        [FromServices] LabControl.Application.Common.Interfaces.ISignalRNotificationService notificationService,
+        [FromServices] LabControl.Application.Common.Interfaces.IApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var pc = await context.Computadoras.FindAsync([id], cancellationToken);
+        if (pc == null) return NotFound(new { error = "Computadora no encontrada." });
+
+        var url = string.IsNullOrWhiteSpace(request.UrlDescarga) ? "api/actualizaciones/descargar-cliente" : request.UrlDescarga;
+        await notificationService.SendComandoActualizacionTerminalAsync(pc.Hostname, url, request.NuevaVersion ?? "latest", request.Sha256 ?? "", cancellationToken);
+
+        return Ok(new { message = $"Orden de auto-actualización enviada a '{pc.Hostname}' (Versión: {request.NuevaVersion ?? "latest"})." });
+    }
 }
 
 public record ComandoEnergiaRequest(string? TipoComando = "SHUTDOWN", string? Motivo = null);
+public record ComandoFreezeRequest(string Accion, string? Clave = null);
+public record ComandoActualizacionRequest(string? UrlDescarga = null, string? NuevaVersion = null, string? Sha256 = null);
 

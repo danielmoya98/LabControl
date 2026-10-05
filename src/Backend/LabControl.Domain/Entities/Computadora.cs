@@ -30,6 +30,11 @@ public class Computadora : AggregateRoot
     public string? UltimoEstudianteNombre { get; private set; }
     public DateTime? FechaUltimoUsoUtc { get; private set; }
 
+    // Versión Kiosk y Estado de Freeze (Deep Freeze / UWF)
+    public string? VersionClienteKiosk { get; private set; }
+    public string? EstadoFreeze { get; private set; } = "Desconocido";
+    public DateTime? UltimaActualizacionExitosaUtc { get; private set; }
+
     private readonly List<SesionUso> _sesionesUso = [];
     public IReadOnlyCollection<SesionUso> SesionesUso => _sesionesUso.AsReadOnly();
 
@@ -126,6 +131,25 @@ public class Computadora : AggregateRoot
             UltimoEstudianteEmail = email.Trim().ToLowerInvariant();
             UltimoEstudianteNombre = nombre?.Trim();
             FechaUltimoUsoUtc = DateTime.UtcNow;
+            FechaModificacionUtc = DateTime.UtcNow;
+        }
+    }
+
+    public void ActualizarVersionKiosk(string? version)
+    {
+        if (!string.IsNullOrWhiteSpace(version))
+        {
+            VersionClienteKiosk = version.Trim();
+            UltimaActualizacionExitosaUtc = DateTime.UtcNow;
+            FechaModificacionUtc = DateTime.UtcNow;
+        }
+    }
+
+    public void ActualizarEstadoFreeze(string? estado)
+    {
+        if (!string.IsNullOrWhiteSpace(estado))
+        {
+            EstadoFreeze = estado.Trim();
             FechaModificacionUtc = DateTime.UtcNow;
         }
     }

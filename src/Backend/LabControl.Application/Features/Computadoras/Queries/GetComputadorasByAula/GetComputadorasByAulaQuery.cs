@@ -21,7 +21,9 @@ public record ComputadoraDetalleDto(
     int? DiscoLibreGb = null,
     string? SistemaOperativo = null,
     double? UptimeHoras = null,
-    DateTime? UltimaActualizacionHardwareUtc = null
+    DateTime? UltimaActualizacionHardwareUtc = null,
+    string? VersionClienteKiosk = null,
+    string? EstadoFreeze = null
 );
 
 public record GetComputadorasByAulaQuery(int AulaId) : IRequest<Result<List<ComputadoraDetalleDto>>>;
@@ -63,7 +65,9 @@ public class GetComputadorasByAulaQueryHandler : IRequestHandler<GetComputadoras
                 c.DiscoLibreGb,
                 c.SistemaOperativo,
                 c.UptimeHoras,
-                c.UltimaActualizacionHardwareUtc
+                c.UltimaActualizacionHardwareUtc,
+                c.VersionClienteKiosk,
+                c.EstadoFreeze
             );
         }).ToList();
 

@@ -323,6 +323,110 @@
     </DialogActions>
 </MudDialog>
 
+<!-- MODAL PARA GESTIÓN DE FREEZE EN AULA -->
+<MudDialog @bind-Visible="MostrarModalFreeze" Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@(FreezeAccion == "Descongelar" ? Icons.Material.Filled.LocalFireDepartment : Icons.Material.Filled.AcUnit)" 
+                     Color="@(FreezeAccion == "Descongelar" ? Color.Warning : Color.Info)" />
+            <MudText Typo="Typo.h6" Class="font-weight-bold">
+                @(FreezeAccion == "Descongelar" ? "Descongelar Aula (Thawed / Mantenimiento)" : "Congelar Aula (Frozen / Proteger)")
+            </MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudAlert Severity="@(FreezeAccion == "Descongelar" ? Severity.Warning : Severity.Info)" Class="mb-3">
+            <span>Objetivo: Aula <strong>@AulaFreezeSeleccionada?.Nombre</strong> (@AulaFreezeSeleccionada?.TotalComputadoras PCs).</span>
+            <br />
+            @if (FreezeAccion == "Descongelar")
+            {
+                <span class="mt-1 d-block">
+                    ⚠️ Se transmitirá la orden de <strong>descongelado</strong> a todas las terminales del aula y se <strong>reiniciarán</strong> automáticamente para entrar en modo mantenimiento.
+                </span>
+            }
+            else
+            {
+                <span class="mt-1 d-block">
+                    🔒 Se transmitirá la orden de <strong>congelado</strong> a todas las terminales del aula y se <strong>reiniciarán</strong> automáticamente para proteger los discos contra cambios.
+                </span>
+            }
+        </MudAlert>
+
+        <MudTextField @bind-Value="FreezeClave" Label="Clave de Deep Freeze (Opcional si usa clave)" 
+                      InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      HelperText="Dejar en blanco si su configuración Deep Freeze CLI (DFC) no requiere contraseña." FullWidth="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalFreeze = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="@(FreezeAccion == "Descongelar" ? Color.Warning : Color.Info)" 
+                   Disabled="IsExecutingFreeze" StartIcon="@(FreezeAccion == "Descongelar" ? Icons.Material.Filled.LocalFireDepartment : Icons.Material.Filled.AcUnit)" 
+                   OnClick="EjecutarComandoFreezeAulaAsync">
+            @(IsExecutingFreeze ? "Transmitiendo orden..." : (FreezeAccion == "Descongelar" ? "Sí, Descongelar Aula" : "Sí, Congelar Aula"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- MODAL PARA ACTUALIZACIÓN REMOTA DE CLIENTES DEL AULA -->
+<MudDialog @bind-Visible="MostrarModalActualizar" Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.SystemUpdate" Color="Color.Primary" />
+            <MudText Typo="Typo.h6" Class="font-weight-bold">
+                Actualizar Clientes Kiosk del Aula (OTA)
+            </MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (IsLoadingUpdateInfo)
+        {
+            <div class="pa-4 text-center">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Consultando paquete de actualización disponible...</MudText>
+            </div>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">
+                Se transmitirá la orden de auto-actualización a todas las terminales del aula <strong>@AulaActualizarSeleccionada?.Nombre</strong> (@AulaActualizarSeleccionada?.TotalComputadoras PCs).
+            </MudText>
+
+            @if (InfoActualizacion != null && InfoActualizacion.Disponible)
+            {
+                <MudPaper Outlined="true" Class="pa-3 rounded-lg mb-3" Style="background: rgba(37,99,235,0.04); border-color: rgba(37,99,235,0.2);">
+                    <div class="d-flex justify-space-between align-center mb-1">
+                        <span class="font-weight-bold" style="color: var(--mud-palette-primary);">Paquete Oficial Central:</span>
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">v@InfoActualizacion.Version</MudChip>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--mud-palette-text-secondary);">
+                        <div>Archivo: <strong>@InfoActualizacion.NombreArchivo</strong> (@(InfoActualizacion.TamanoMb) MB)</div>
+                        @if (!string.IsNullOrEmpty(InfoActualizacion.Sha256))
+                        {
+                            <div class="text-truncate">SHA256: <code style="font-size: 0.75rem;">@(InfoActualizacion.Sha256.Substring(0, Math.Min(16, InfoActualizacion.Sha256.Length)))...</code></div>
+                        }
+                    </div>
+                </MudPaper>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-3">
+                    La API distribuirá el instalador/ejecutable del cliente disponible en el repositorio central.
+                </MudAlert>
+            }
+
+            <MudAlert Severity="Severity.Normal" Dense="true" Class="mb-2" Style="font-size: 0.78rem;">
+                💡 <strong>Recomendación:</strong> Si las máquinas están congeladas, descongélalas primero para asegurar que los archivos actualizados persistan en los discos duros tras los reinicios.
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalActualizar = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(IsLoadingUpdateInfo || IsExecutingUpdate)"
+                   StartIcon="@Icons.Material.Filled.CloudDownload" OnClick="EjecutarComandoActualizarAulaAsync">
+            @(IsExecutingUpdate ? "Enviando orden..." : "Iniciar Actualización OTA")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 <!-- Tabla de Aulas SaaS Ultra-Refinada con Paginación y Corner Radius Sutil -->
 <MudTable Items="AulasFiltradas" Loading="IsLoading" Hover="true" Striped="false" Elevation="0"
           Class="saas-card rounded-lg overflow-hidden" Dense="false">
@@ -455,10 +559,21 @@
                     <MudIconButton Icon="@Icons.Material.Outlined.Edit" Color="Color.Default" Size="Size.Small"
                                    OnClick="@(() => OpenEditDialog(context))" />
                 </MudTooltip>
-                <MudTooltip Text="Eliminar o Desactivar">
-                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Size="Size.Small"
-                                   OnClick="@(() => ConfirmarEliminarAulaAsync(context))" />
-                </MudTooltip>
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AriaLabel="Operaciones de Aula">
+                    <MudMenuItem Icon="@Icons.Material.Filled.LocalFireDepartment" IconColor="Color.Warning" OnClick="@(() => OpenFreezeAulaDialog(context, "Descongelar"))">
+                        Descongelar Aula Completa (Thawed)
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.AcUnit" IconColor="Color.Info" OnClick="@(() => OpenFreezeAulaDialog(context, "Congelar"))">
+                        Congelar Aula Completa (Frozen)
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdate" IconColor="Color.Primary" OnClick="@(() => OpenActualizarAulaDialog(context))">
+                        Actualizar Clientes Kiosk (OTA)
+                    </MudMenuItem>
+                    <MudDivider Class="my-1" />
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Delete" IconColor="Color.Error" OnClick="@(() => ConfirmarEliminarAulaAsync(context))">
+                        Eliminar / Desactivar Aula
+                    </MudMenuItem>
+                </MudMenu>
             </div>
         </MudTd>
     </RowTemplate>
@@ -822,6 +937,111 @@
             {
                 Snackbar.Add(msg, Severity.Error);
             }
+        }
+    }
+
+    private bool MostrarModalFreeze = false;
+    private string FreezeAccion = "Descongelar";
+    private string FreezeClave = "";
+    private AulaDto? AulaFreezeSeleccionada;
+    private bool IsExecutingFreeze = false;
+
+    private bool MostrarModalActualizar = false;
+    private AulaDto? AulaActualizarSeleccionada;
+    private InfoActualizacionDto? InfoActualizacion;
+    private bool IsLoadingUpdateInfo = false;
+    private bool IsExecutingUpdate = false;
+
+    private void OpenFreezeAulaDialog(AulaDto aula, string accion)
+    {
+        AulaFreezeSeleccionada = aula;
+        FreezeAccion = accion;
+        FreezeClave = "";
+        MostrarModalFreeze = true;
+    }
+
+    private async Task EjecutarComandoFreezeAulaAsync()
+    {
+        if (AulaFreezeSeleccionada == null) return;
+
+        IsExecutingFreeze = true;
+        try
+        {
+            var (success, msg) = await ApiClient.EnviarComandoFreezeAulaAsync(
+                AulaFreezeSeleccionada.Id,
+                FreezeAccion,
+                string.IsNullOrWhiteSpace(FreezeClave) ? null : FreezeClave);
+
+            if (success)
+            {
+                Snackbar.Add($"✓ Orden de '{FreezeAccion}' transmitida a todas las terminales del aula '{AulaFreezeSeleccionada.Nombre}'.", Severity.Success);
+                MostrarModalFreeze = false;
+            }
+            else
+            {
+                Snackbar.Add(msg, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al enviar comando: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsExecutingFreeze = false;
+        }
+    }
+
+    private async Task OpenActualizarAulaDialog(AulaDto aula)
+    {
+        AulaActualizarSeleccionada = aula;
+        MostrarModalActualizar = true;
+        IsLoadingUpdateInfo = true;
+        try
+        {
+            InfoActualizacion = await ApiClient.ObtenerInfoActualizacionAsync();
+        }
+        catch
+        {
+            InfoActualizacion = null;
+        }
+        finally
+        {
+            IsLoadingUpdateInfo = false;
+        }
+    }
+
+    private async Task EjecutarComandoActualizarAulaAsync()
+    {
+        if (AulaActualizarSeleccionada == null) return;
+
+        IsExecutingUpdate = true;
+        try
+        {
+            string? url = InfoActualizacion?.UrlDescarga;
+            string? ver = InfoActualizacion?.Version;
+            string? sha = InfoActualizacion?.Sha256;
+
+            var (success, msg) = await ApiClient.EnviarComandoActualizacionAulaAsync(
+                AulaActualizarSeleccionada.Id, url, ver, sha);
+
+            if (success)
+            {
+                Snackbar.Add($"🚀 Orden de actualización OTA transmitida a las terminales de '{AulaActualizarSeleccionada.Nombre}'.", Severity.Success);
+                MostrarModalActualizar = false;
+            }
+            else
+            {
+                Snackbar.Add(msg, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al ordenar actualización: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsExecutingUpdate = false;
         }
     }
 }

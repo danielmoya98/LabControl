@@ -228,6 +228,19 @@
                    Size="Size.Small" Class="rounded-lg" OnClick="ConfirmarApagadoAulaAsync" Disabled="@(!Aulas.Any())">
             Apagar Aula
         </MudButton>
+        <MudMenu Label="Deep Freeze" Variant="Variant.Outlined" Color="Color.Tertiary" StartIcon="@Icons.Material.Filled.AcUnit"
+                 Size="Size.Small" Class="rounded-lg font-weight-bold" Disabled="@(!Aulas.Any())" EndIcon="@Icons.Material.Filled.ArrowDropDown">
+            <MudMenuItem Icon="@Icons.Material.Filled.LocalFireDepartment" IconColor="Color.Warning" OnClick="@(() => OpenFreezeAulaDialog("Descongelar"))">
+                Descongelar Aula (Thawed)
+            </MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.AcUnit" IconColor="Color.Info" OnClick="@(() => OpenFreezeAulaDialog("Congelar"))">
+                Congelar Aula (Frozen)
+            </MudMenuItem>
+        </MudMenu>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.SystemUpdate" 
+                   Size="Size.Small" Class="rounded-lg font-weight-bold" OnClick="OpenActualizarAulaDialog" Disabled="@(!Aulas.Any())">
+            Actualizar Clientes
+        </MudButton>
     </div>
 </div>
 
@@ -316,9 +329,23 @@
                                                 <MudIcon Icon="@Icons.Material.Filled.Computer" Size="Size.Small" />
                                                 <MudText Typo="Typo.subtitle2" Class="font-weight-bold text-truncate">@pc.Hostname</MudText>
                                             </div>
-                                            <MudChip T="string" Color="@GetChipColor(pc.EstadoActual)" Size="Size.Small" Class="font-weight-bold">
-                                                @GetEstadoTexto(pc.EstadoActual)
-                                            </MudChip>
+                                            <div class="d-flex align-center gap-1">
+                                                @if (pc.EstadoFreeze?.Equals("Congelado", StringComparison.OrdinalIgnoreCase) == true)
+                                                {
+                                                    <MudTooltip Text="Protección Activa (Congelado)">
+                                                        <span style="font-size: 0.85rem;">🧊</span>
+                                                    </MudTooltip>
+                                                }
+                                                else if (pc.EstadoFreeze?.Equals("Descongelado", StringComparison.OrdinalIgnoreCase) == true)
+                                                {
+                                                    <MudTooltip Text="Modo Mantenimiento (Descongelado)">
+                                                        <span style="font-size: 0.85rem;">🔥</span>
+                                                    </MudTooltip>
+                                                }
+                                                <MudChip T="string" Color="@GetChipColor(pc.EstadoActual)" Size="Size.Small" Class="font-weight-bold">
+                                                    @GetEstadoTexto(pc.EstadoActual)
+                                                </MudChip>
+                                            </div>
                                         </div>
 
                                         <div style="position: relative; width: 100%; aspect-ratio: 16/9; background: #0f172a; display: flex; align-items: center; justify-content: center; cursor: pointer;"
@@ -361,9 +388,16 @@
                                         </MudCardContent>
 
                                         <MudCardActions Class="justify-space-between px-3 py-1 flex-wrap gap-1">
-                                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Chat" OnClick="() => AbrirMensajeDirecto(pc.Hostname)">
-                                                Mensaje
-                                            </MudButton>
+                                            <div class="d-flex align-center gap-1">
+                                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Chat" OnClick="() => AbrirMensajeDirecto(pc.Hostname)">
+                                                    Mensaje
+                                                </MudButton>
+                                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AriaLabel="Más opciones">
+                                                    <MudMenuItem Icon="@Icons.Material.Filled.LocalFireDepartment" IconColor="Color.Warning" OnClick="@(() => OpenFreezePcDialog(pc, "Descongelar"))">Descongelar PC</MudMenuItem>
+                                                    <MudMenuItem Icon="@Icons.Material.Filled.AcUnit" IconColor="Color.Info" OnClick="@(() => OpenFreezePcDialog(pc, "Congelar"))">Congelar PC</MudMenuItem>
+                                                    <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdate" IconColor="Color.Primary" OnClick="@(() => OpenActualizarPcDialog(pc))">Actualizar Cliente Kiosk</MudMenuItem>
+                                                </MudMenu>
+                                            </div>
                                             @if (pc.EstadoActual == EstadoComputadora.EnUso)
                                             {
                                                 <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.Block" OnClick="() => ConfirmarCierreForzadoAsync(pc.Hostname)">
@@ -391,7 +425,20 @@
                                 <MudTd DataLabel="Terminal">
                                     <div class="d-flex align-center gap-2">
                                         <MudIcon Icon="@Icons.Material.Filled.Computer" Size="Size.Small" Color="@GetChipColor(pc.EstadoActual)" />
-                                        <span class="font-weight-bold">@pc.Hostname</span>
+                                        <div class="d-flex flex-column">
+                                            <span class="font-weight-bold">@pc.Hostname</span>
+                                            <div class="d-flex align-center gap-1">
+                                                <span style="font-size: 0.72rem; color: #94A3B8;">v@(pc.VersionClienteKiosk ?? "1.0.0")</span>
+                                                @if (pc.EstadoFreeze?.Equals("Congelado", StringComparison.OrdinalIgnoreCase) == true)
+                                                {
+                                                    <span style="font-size: 0.72rem; color: #38bdf8;">• 🧊 Congelado</span>
+                                                }
+                                                else if (pc.EstadoFreeze?.Equals("Descongelado", StringComparison.OrdinalIgnoreCase) == true)
+                                                {
+                                                    <span style="font-size: 0.72rem; color: #fb923c;">• 🔥 Descongelado</span>
+                                                }
+                                            </div>
+                                        </div>
                                     </div>
                                 </MudTd>
                                 <MudTd DataLabel="IP / MAC">
@@ -482,6 +529,9 @@
                                         <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
                                             <MudMenuItem Icon="@Icons.Material.Filled.Bolt" IconColor="Color.Warning" OnClick="() => EnviarWakeOnLanPcAsync(pc)">Encender Terminal (Wake-on-LAN)</MudMenuItem>
                                             <MudMenuItem Icon="@Icons.Material.Filled.Sensors" IconColor="Color.Info" OnClick="() => SondearTerminalIndividualAsync(pc.Hostname)">Sondear Terminal</MudMenuItem>
+                                            <MudMenuItem Icon="@Icons.Material.Filled.LocalFireDepartment" IconColor="Color.Warning" OnClick="@(() => OpenFreezePcDialog(pc, "Descongelar"))">Descongelar PC (Thawed)</MudMenuItem>
+                                            <MudMenuItem Icon="@Icons.Material.Filled.AcUnit" IconColor="Color.Info" OnClick="@(() => OpenFreezePcDialog(pc, "Congelar"))">Congelar PC (Frozen)</MudMenuItem>
+                                            <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdate" IconColor="Color.Primary" OnClick="@(() => OpenActualizarPcDialog(pc))">Actualizar Cliente Kiosk</MudMenuItem>
                                             <MudMenuItem Icon="@Icons.Material.Filled.History" IconColor="Color.Info" OnClick="@(() => NavigationManager.NavigateTo($"/auditoria?hostname={Uri.EscapeDataString(pc.Hostname)}"))">Historial de Sesiones</MudMenuItem>
                                             <MudMenuItem Icon="@Icons.Material.Filled.PowerSettingsNew" IconColor="Color.Error" OnClick="() => ConfirmarApagadoPcAsync(pc)">Apagar</MudMenuItem>
                                             <MudMenuItem Icon="@Icons.Material.Filled.RestartAlt" IconColor="Color.Warning" OnClick="() => ConfirmarReinicioPcAsync(pc)">Reiniciar</MudMenuItem>
@@ -501,12 +551,33 @@
                                         <MudCard Elevation="0" Class="saas-card rounded-lg mud-hover" Style="@($"{GetEstiloBordeCard(pc.EstadoActual)}; height: 100%;")">
                                             <MudCardHeader Class="pb-2">
                                                 <CardHeaderContent>
-                                                    <MudText Typo="Typo.h6" Class="font-weight-bold">@pc.Hostname</MudText>
+                                                    <div class="d-flex flex-column">
+                                                        <MudText Typo="Typo.h6" Class="font-weight-bold">@pc.Hostname</MudText>
+                                                        <span style="font-size: 0.72rem; color: #94A3B8;">v@(pc.VersionClienteKiosk ?? "1.0.0")</span>
+                                                    </div>
                                                 </CardHeaderContent>
                                                 <CardHeaderActions>
-                                                    <MudChip T="string" Color="@GetChipColor(pc.EstadoActual)" Size="Size.Small" Class="font-weight-bold">
-                                                        @GetEstadoTexto(pc.EstadoActual)
-                                                    </MudChip>
+                                                    <div class="d-flex align-center gap-1">
+                                                        @if (pc.EstadoFreeze?.Equals("Congelado", StringComparison.OrdinalIgnoreCase) == true)
+                                                        {
+                                                            <MudTooltip Text="Protección Activa (Deep Freeze / UWF)">
+                                                                <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Class="font-weight-bold px-1" Style="font-size: 0.7rem; height: 22px;">
+                                                                    🧊 Congelado
+                                                                </MudChip>
+                                                            </MudTooltip>
+                                                        }
+                                                        else if (pc.EstadoFreeze?.Equals("Descongelado", StringComparison.OrdinalIgnoreCase) == true)
+                                                        {
+                                                            <MudTooltip Text="Modo Mantenimiento (Descongelado)">
+                                                                <MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small" Class="font-weight-bold px-1" Style="font-size: 0.7rem; height: 22px;">
+                                                                    🔥 Descongelado
+                                                                </MudChip>
+                                                            </MudTooltip>
+                                                        }
+                                                        <MudChip T="string" Color="@GetChipColor(pc.EstadoActual)" Size="Size.Small" Class="font-weight-bold">
+                                                            @GetEstadoTexto(pc.EstadoActual)
+                                                        </MudChip>
+                                                    </div>
                                                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AriaLabel="Opciones">
                                                         <MudMenuItem Icon="@Icons.Material.Filled.Bolt" IconColor="Color.Warning" OnClick="() => EnviarWakeOnLanPcAsync(pc)">
                                                             Encender Terminal (Wake-on-LAN)
@@ -532,6 +603,17 @@
                                                         <MudMenuItem Icon="@Icons.Material.Filled.Sensors" IconColor="Color.Info" OnClick="() => SondearTerminalIndividualAsync(pc.Hostname)">
                                                             Sondear / Ping Terminal
                                                         </MudMenuItem>
+                                                        <MudDivider Class="my-1" />
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.LocalFireDepartment" IconColor="Color.Warning" OnClick="@(() => OpenFreezePcDialog(pc, "Descongelar"))">
+                                                            Descongelar PC (Thawed / Mantenimiento)
+                                                        </MudMenuItem>
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.AcUnit" IconColor="Color.Info" OnClick="@(() => OpenFreezePcDialog(pc, "Congelar"))">
+                                                            Congelar PC (Frozen / Proteger)
+                                                        </MudMenuItem>
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.SystemUpdate" IconColor="Color.Primary" OnClick="@(() => OpenActualizarPcDialog(pc))">
+                                                            Actualizar Cliente Kiosk
+                                                        </MudMenuItem>
+                                                        <MudDivider Class="my-1" />
                                                         <MudMenuItem Icon="@Icons.Material.Filled.Memory" IconColor="Color.Primary" OnClick="() => AbrirFichaTecnicaAsync(pc)">
                                                             Ficha Técnica & Salud
                                                         </MudMenuItem>
@@ -788,6 +870,124 @@ else
             </MudButton>
         }
         <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalZoom = false">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Modal Gestión de Congelado / Descongelado (Deep Freeze / UWF) -->
+<MudDialog @bind-Visible="MostrarModalFreeze" Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@(FreezeAccion == "Descongelar" ? Icons.Material.Filled.LocalFireDepartment : Icons.Material.Filled.AcUnit)" 
+                     Color="@(FreezeAccion == "Descongelar" ? Color.Warning : Color.Info)" />
+            <MudText Typo="Typo.h6" Class="font-weight-bold">
+                @(FreezeAccion == "Descongelar" ? "Descongelar Terminales (Thawed)" : "Congelar Terminales (Frozen)")
+            </MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudAlert Severity="@(FreezeAccion == "Descongelar" ? Severity.Warning : Severity.Info)" Class="mb-3">
+            @if (FreezeTargetComputadoraId.HasValue)
+            {
+                <span>Objetivo: Terminal individual <strong>@FreezeTargetHostname</strong>.</span>
+            }
+            else
+            {
+                <span>Objetivo: Aula completa <strong>@FreezeTargetAulaNombre</strong>.</span>
+            }
+            <br />
+            @if (FreezeAccion == "Descongelar")
+            {
+                <span class="mt-1 d-block">
+                    ⚠️ Esta orden desactivará la protección contra escrituras (Deep Freeze / UWF) y <strong>reiniciará automáticamente</strong> el equipo para entrar en modo mantenimiento, permitiendo instalar programas o actualizaciones permanentes.
+                </span>
+            }
+            else
+            {
+                <span class="mt-1 d-block">
+                    🔒 Esta orden activará la protección de disco y <strong>reiniciará automáticamente</strong> el equipo. Todas las modificaciones futuras se descartarán en cada reinicio.
+                </span>
+            }
+        </MudAlert>
+
+        <MudTextField @bind-Value="FreezeClave" Label="Clave de Deep Freeze (Opcional si usa clave)" 
+                      InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      HelperText="Déjalo en blanco si tu instalación no requiere contraseña CLI (DFC)." FullWidth="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalFreeze = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="@(FreezeAccion == "Descongelar" ? Color.Warning : Color.Info)" 
+                   Disabled="IsExecutingFreeze" StartIcon="@(FreezeAccion == "Descongelar" ? Icons.Material.Filled.LocalFireDepartment : Icons.Material.Filled.AcUnit)" 
+                   OnClick="EjecutarComandoFreezeAsync">
+            @(IsExecutingFreeze ? "Transmitiendo orden..." : (FreezeAccion == "Descongelar" ? "Sí, Descongelar y Reiniciar" : "Sí, Congelar y Reiniciar"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Modal Actualización Remota OTA de Clientes Kiosk -->
+<MudDialog @bind-Visible="MostrarModalActualizar" Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.SystemUpdate" Color="Color.Primary" />
+            <MudText Typo="Typo.h6" Class="font-weight-bold">
+                Actualizar Cliente Kiosk Over-the-Air (OTA)
+            </MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (IsLoadingUpdateInfo)
+        {
+            <div class="pa-4 text-center">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Consultando paquete de actualización en el servidor...</MudText>
+            </div>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">
+                @if (UpdateTargetComputadoraId.HasValue)
+                {
+                    <span>Se enviará la orden de descarga y auto-reemplazo a la terminal <strong>@UpdateTargetHostname</strong>.</span>
+                }
+                else
+                {
+                    <span>Se enviará la orden a todas las computadoras del aula <strong>@UpdateTargetAulaNombre</strong>.</span>
+                }
+            </MudText>
+
+            @if (InfoActualizacion != null && InfoActualizacion.Disponible)
+            {
+                <MudPaper Outlined="true" Class="pa-3 rounded-lg mb-3" Style="background: rgba(37,99,235,0.04); border-color: rgba(37,99,235,0.2);">
+                    <div class="d-flex justify-space-between align-center mb-1">
+                        <span class="font-weight-bold" style="color: var(--mud-palette-primary);">Paquete Oficial Disponible:</span>
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">v@InfoActualizacion.Version</MudChip>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--mud-palette-text-secondary);">
+                        <div>Archivo: <strong>@InfoActualizacion.NombreArchivo</strong> (@(InfoActualizacion.TamanoMb) MB)</div>
+                        @if (!string.IsNullOrEmpty(InfoActualizacion.Sha256))
+                        {
+                            <div class="text-truncate">SHA256: <code style="font-size: 0.75rem;">@(InfoActualizacion.Sha256.Substring(0, Math.Min(16, InfoActualizacion.Sha256.Length)))...</code></div>
+                        }
+                    </div>
+                </MudPaper>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-3">
+                    La API distribuirá el binario actual del cliente disponible en el repositorio central.
+                </MudAlert>
+            }
+
+            <MudAlert Severity="Severity.Normal" Dense="true" Class="mb-2" Style="font-size: 0.78rem;">
+                💡 <strong>Nota sobre equipos congelados:</strong> Si las terminales tienen Deep Freeze activo, se recomienda <em>descongelarlas</em> primero para que la nueva versión persista después de reiniciar.
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalActualizar = false">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(IsLoadingUpdateInfo || IsExecutingUpdate)"
+                   StartIcon="@Icons.Material.Filled.CloudDownload" OnClick="EjecutarComandoActualizarAsync">
+            @(IsExecutingUpdate ? "Enviando orden..." : "Iniciar Actualización OTA")
+        </MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -1064,7 +1264,9 @@ else
                     pc.DiscoLibreGb,
                     pc.SistemaOperativo,
                     pc.UptimeHoras,
-                    pc.DiscosDetalleJson
+                    pc.DiscosDetalleJson,
+                    pc.VersionClienteKiosk,
+                    pc.EstadoFreeze
                 );
                 nuevaPc.MiniaturaBase64 = pc.MiniaturaBase64;
                 aula.Computadoras[index] = nuevaPc;
@@ -1414,6 +1616,194 @@ else
         EstadoComputadora.Offline => "border-left: 5px solid #ef4444 !important;",    // Rojo
         _ => "border-left: 5px solid #64748b !important;"                             // Gris
     };
+
+    private bool MostrarModalFreeze = false;
+    private string FreezeAccion = "Descongelar";
+    private string FreezeClave = "";
+    private int? FreezeTargetComputadoraId = null;
+    private string FreezeTargetHostname = "";
+    private int? FreezeTargetAulaId = null;
+    private string FreezeTargetAulaNombre = "";
+    private bool IsExecutingFreeze = false;
+
+    private bool MostrarModalActualizar = false;
+    private int? UpdateTargetComputadoraId = null;
+    private string UpdateTargetHostname = "";
+    private int? UpdateTargetAulaId = null;
+    private string UpdateTargetAulaNombre = "";
+    private InfoActualizacionDto? InfoActualizacion = null;
+    private bool IsLoadingUpdateInfo = false;
+    private bool IsExecutingUpdate = false;
+
+    private void OpenFreezeAulaDialog(string accion)
+    {
+        var aulaActual = Aulas.ElementAtOrDefault(ActiveTabIndex);
+        if (aulaActual == null) return;
+
+        FreezeAccion = accion;
+        FreezeClave = "";
+        FreezeTargetComputadoraId = null;
+        FreezeTargetHostname = "";
+        FreezeTargetAulaId = aulaActual.AulaId;
+        FreezeTargetAulaNombre = aulaActual.Nombre;
+        MostrarModalFreeze = true;
+    }
+
+    private void OpenFreezePcDialog(ComputadoraTarjetaDto pc, string accion)
+    {
+        FreezeAccion = accion;
+        FreezeClave = "";
+        FreezeTargetComputadoraId = pc.ComputadoraId;
+        FreezeTargetHostname = pc.Hostname;
+        FreezeTargetAulaId = null;
+        FreezeTargetAulaNombre = "";
+        MostrarModalFreeze = true;
+    }
+
+    private async Task EjecutarComandoFreezeAsync()
+    {
+        IsExecutingFreeze = true;
+        try
+        {
+            if (FreezeTargetComputadoraId.HasValue)
+            {
+                var (success, msg) = await ApiClient.EnviarComandoFreezeComputadoraAsync(
+                    FreezeTargetComputadoraId.Value, 
+                    FreezeAccion, 
+                    string.IsNullOrWhiteSpace(FreezeClave) ? null : FreezeClave);
+
+                if (success)
+                {
+                    Snackbar.Add($"✓ Orden de '{FreezeAccion}' transmitida a {FreezeTargetHostname}.", Severity.Success);
+                    MostrarModalFreeze = false;
+                }
+                else
+                {
+                    Snackbar.Add(msg, Severity.Error);
+                }
+            }
+            else if (FreezeTargetAulaId.HasValue)
+            {
+                var (success, msg) = await ApiClient.EnviarComandoFreezeAulaAsync(
+                    FreezeTargetAulaId.Value, 
+                    FreezeAccion, 
+                    string.IsNullOrWhiteSpace(FreezeClave) ? null : FreezeClave);
+
+                if (success)
+                {
+                    Snackbar.Add($"✓ Orden de '{FreezeAccion}' transmitida a todas las terminales del aula {FreezeTargetAulaNombre}.", Severity.Success);
+                    MostrarModalFreeze = false;
+                }
+                else
+                {
+                    Snackbar.Add(msg, Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al ejecutar orden de freeze: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsExecutingFreeze = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenActualizarAulaDialog()
+    {
+        var aulaActual = Aulas.ElementAtOrDefault(ActiveTabIndex);
+        if (aulaActual == null) return;
+
+        UpdateTargetComputadoraId = null;
+        UpdateTargetHostname = "";
+        UpdateTargetAulaId = aulaActual.AulaId;
+        UpdateTargetAulaNombre = aulaActual.Nombre;
+        MostrarModalActualizar = true;
+
+        await CargarInfoActualizacionAsync();
+    }
+
+    private async Task OpenActualizarPcDialog(ComputadoraTarjetaDto pc)
+    {
+        UpdateTargetComputadoraId = pc.ComputadoraId;
+        UpdateTargetHostname = pc.Hostname;
+        UpdateTargetAulaId = null;
+        UpdateTargetAulaNombre = "";
+        MostrarModalActualizar = true;
+
+        await CargarInfoActualizacionAsync();
+    }
+
+    private async Task CargarInfoActualizacionAsync()
+    {
+        IsLoadingUpdateInfo = true;
+        try
+        {
+            InfoActualizacion = await ApiClient.ObtenerInfoActualizacionAsync();
+        }
+        catch
+        {
+            InfoActualizacion = null;
+        }
+        finally
+        {
+            IsLoadingUpdateInfo = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task EjecutarComandoActualizarAsync()
+    {
+        IsExecutingUpdate = true;
+        try
+        {
+            string? url = InfoActualizacion?.UrlDescarga;
+            string? ver = InfoActualizacion?.Version;
+            string? sha = InfoActualizacion?.Sha256;
+
+            if (UpdateTargetComputadoraId.HasValue)
+            {
+                var (success, msg) = await ApiClient.EnviarComandoActualizacionComputadoraAsync(
+                    UpdateTargetComputadoraId.Value, url, ver, sha);
+
+                if (success)
+                {
+                    Snackbar.Add($"🚀 Orden de actualización OTA enviada a {UpdateTargetHostname}.", Severity.Success);
+                    MostrarModalActualizar = false;
+                }
+                else
+                {
+                    Snackbar.Add(msg, Severity.Error);
+                }
+            }
+            else if (UpdateTargetAulaId.HasValue)
+            {
+                var (success, msg) = await ApiClient.EnviarComandoActualizacionAulaAsync(
+                    UpdateTargetAulaId.Value, url, ver, sha);
+
+                if (success)
+                {
+                    Snackbar.Add($"🚀 Orden de actualización OTA transmitida al aula {UpdateTargetAulaNombre}.", Severity.Success);
+                    MostrarModalActualizar = false;
+                }
+                else
+                {
+                    Snackbar.Add(msg, Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al ordenar actualización: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsExecutingUpdate = false;
+            StateHasChanged();
+        }
+    }
 
     public async ValueTask DisposeAsync()
     {

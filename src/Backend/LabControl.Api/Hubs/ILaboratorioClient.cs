@@ -12,5 +12,7 @@ public interface ILaboratorioClient
     Task RecibirMiniaturaPantalla(int computadoraId, string hostname, string imagenBase64);
     Task RecibirActualizacionPoliticaAula(int aulaId, string aulaNombre, int minutosInactividad, int accionInactividad);
     Task RecibirComandoModoEvento(int aulaId, bool activar, string motivo, int duracionMinutos);
+    Task RecibirComandoFreeze(string accion, string? claveSeguridad);
+    Task RecibirComandoActualizacion(string urlDescarga, string nuevaVersion, string sha256);
     Task SolicitarHeartbeat();
 }

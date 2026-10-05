@@ -150,6 +150,35 @@
                                 </MudChip>
                             </div>
                         </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <span class="kpi-title">ESTADO DE PROTECCIÓN (FREEZE)</span>
+                            <div class="mt-1 d-flex align-center gap-1">
+                                @if (Pc.EstadoFreeze?.Equals("Congelado", StringComparison.OrdinalIgnoreCase) == true)
+                                {
+                                    <MudChip T="string" Color="Color.Info" Variant="Variant.Filled" Size="Size.Small" Icon="@Icons.Material.Filled.AcUnit" Class="font-weight-bold">
+                                        🧊 Congelado (Deep Freeze / UWF Activo)
+                                    </MudChip>
+                                }
+                                else if (Pc.EstadoFreeze?.Equals("Descongelado", StringComparison.OrdinalIgnoreCase) == true)
+                                {
+                                    <MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small" Icon="@Icons.Material.Filled.LocalFireDepartment" Class="font-weight-bold">
+                                        🔥 Descongelado (Modo Mantenimiento)
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined" Size="Size.Small">
+                                        @(string.IsNullOrWhiteSpace(Pc.EstadoFreeze) ? "No detectado / Estándar" : Pc.EstadoFreeze)
+                                    </MudChip>
+                                }
+                            </div>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <span class="kpi-title">VERSIÓN CLIENTE KIOSK</span>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold mt-1">
+                                🚀 v@(string.IsNullOrWhiteSpace(Pc.VersionClienteKiosk) ? "1.0.0" : Pc.VersionClienteKiosk)
+                            </MudText>
+                        </MudItem>
                     </MudGrid>
                 </MudPaper>
             </MudItem>

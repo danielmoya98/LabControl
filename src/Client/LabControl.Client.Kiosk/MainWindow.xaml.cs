@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private bool _cerrandoPorEnergia = false;
     private bool _modoEventoActivo = false;
     private DispatcherTimer? _modoEventoTimer;
+    public const string VersionActual = "1.0.0";
 
     public MainWindow()
     {
@@ -272,11 +273,15 @@ public partial class MainWindow : Window
 
         try
         {
+            var estadoFreeze = await FreezeManagerService.ObtenerEstadoFreezeAsync();
+
             var respuesta = await _apiService.AutoRegistrarAsync(
                 _config.AulaId,
                 _config.Hostname,
                 currentIp,
-                _config.MacAddress);
+                _config.MacAddress,
+                versionCliente: VersionActual,
+                estadoFreeze: estadoFreeze);
 
             if (respuesta != null && respuesta.ComputadoraId > 0)
             {
@@ -510,6 +515,46 @@ public partial class MainWindow : Window
                     if (_config != null && _config.AulaId == aulaId)
                     {
                         ProcesarComandoModoEvento(activar, motivo, duracionMinutos);
+                    }
+                });
+            });
+
+            // Escuchar órdenes de congelado o descongelado remoto (Deep Freeze / Windows UWF)
+            _hubConnection.On<string, string?>("RecibirComandoFreeze", (accion, clave) =>
+            {
+                Dispatcher.Invoke(async () =>
+                {
+                    if (accion.Equals("THAW", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var toast = new NotificationToastWindow("❄️ Descongelando equipo para mantenimiento... Se reiniciará en 5 segundos.");
+                        toast.Show();
+                        await FreezeManagerService.DescongelarAsync(clave, reiniciar: true);
+                    }
+                    else if (accion.Equals("FREEZE", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var toast = new NotificationToastWindow("🔒 Congelando y protegiendo disco... Se reiniciará en 5 segundos.");
+                        toast.Show();
+                        await FreezeManagerService.CongelarAsync(clave, reiniciar: true);
+                    }
+                });
+            });
+
+            // Escuchar órdenes de auto-actualización remota (OTA)
+            _hubConnection.On<string, string, string>("RecibirComandoActualizacion", (urlDescarga, nuevaVersion, sha256) =>
+            {
+                Dispatcher.Invoke(async () =>
+                {
+                    var toast = new NotificationToastWindow($"🚀 Descargando actualización v{nuevaVersion}...");
+                    toast.Show();
+                    var (exito, msg) = await UpdateDownloaderService.AplicarActualizacionRemotaAsync(
+                        _config?.ApiBaseUrl ?? "",
+                        urlDescarga,
+                        nuevaVersion,
+                        sha256);
+                    if (!exito)
+                    {
+                        var errToast = new NotificationToastWindow($"⚠️ Error en actualización: {msg}");
+                        errToast.Show();
                     }
                 });
             });

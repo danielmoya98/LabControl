@@ -66,6 +66,26 @@ public class SignalRNotificationService : ISignalRNotificationService
         return Task.CompletedTask;
     }
 
+    public Task SendComandoFreezeTerminalAsync(string targetHostname, string accion, string? claveSeguridad, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task SendComandoFreezeAulaAsync(int aulaId, string accion, string? claveSeguridad, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task SendComandoActualizacionTerminalAsync(string targetHostname, string urlDescarga, string nuevaVersion, string sha256, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task SendComandoActualizacionAulaAsync(int aulaId, string urlDescarga, string nuevaVersion, string sha256, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
     public Task SendSolicitudHeartbeatGlobalAsync(CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
