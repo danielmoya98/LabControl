@@ -766,6 +766,28 @@ public class LabApiClient
         }
     }
 
+    public async Task<(bool Success, string Message)> CambiarModoEventoAulaAsync(int aulaId, bool activar, int duracionMinutos = 0, string? motivo = null)
+    {
+        try
+        {
+            var payload = new { Activar = activar, DuracionMinutos = duracionMinutos, Motivo = motivo };
+            var response = await _httpClient.PostAsJsonAsync($"api/aulas/{aulaId}/modo-evento", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadFromJsonAsync<System.Text.Json.Nodes.JsonObject>();
+                var msg = json?["message"]?.ToString() ?? (activar ? "Modo Evento activado con éxito." : "Modo Evento finalizado.");
+                return (true, msg);
+            }
+
+            var err = await response.Content.ReadAsStringAsync();
+            return (false, string.IsNullOrWhiteSpace(err) ? "Error al procesar la solicitud de Modo Evento." : err);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
     public string GetExportarExcelUrl(
         DateTime? fechaInicio = null,
         DateTime? fechaFin = null,

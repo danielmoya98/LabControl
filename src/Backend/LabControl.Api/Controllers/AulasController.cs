@@ -95,4 +95,45 @@ public class AulasController : ApiControllerBase
         var enviados = await wolService.EnviarMagicPacketBatchAsync(macs, cancellationToken);
         return Ok(new { message = $"Se enviaron paquetes Wake-on-LAN a {enviados} de {macs.Count} computadoras del aula '{aula.Nombre}'." });
     }
+
+    [HttpPost("{id:int}/modo-evento")]
+    public async Task<IActionResult> ModoEventoAula(
+        int id,
+        [FromBody] ModoEventoRequest request,
+        [FromServices] LabControl.Application.Common.Interfaces.ISignalRNotificationService notificationService,
+        [FromServices] LabControl.Application.Common.Interfaces.IApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var aula = await context.Aulas.FindAsync([id], cancellationToken);
+        if (aula == null) return NotFound(new { error = "Aula no encontrada." });
+
+        if (request.Activar)
+        {
+            var nombreEvento = string.IsNullOrWhiteSpace(request.Motivo) ? "Evento / Invitados Especiales" : request.Motivo.Trim();
+            aula.IniciarModoEvento(nombreEvento, request.DuracionMinutos);
+        }
+        else
+        {
+            aula.FinalizarModoEvento();
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        // Notificar por SignalR a todas las terminales del aula
+        await notificationService.SendComandoModoEventoAulaAsync(
+            aula.Id,
+            request.Activar,
+            request.Motivo ?? (request.Activar ? "Evento / Invitados" : "Fin de Evento"),
+            request.DuracionMinutos,
+            cancellationToken);
+
+        var msg = request.Activar
+            ? $"Modo Evento activado en el aula '{aula.Nombre}' ({(request.DuracionMinutos > 0 ? $"{request.DuracionMinutos} min" : "Indefinido")}). Las computadoras han sido desbloqueadas."
+            : $"Modo Evento finalizado en el aula '{aula.Nombre}'. El bloqueo Kiosk ha sido restablecido.";
+
+        return Ok(new { message = msg, aula.ModoEventoActivo, aula.ModoEventoFinUtc, aula.ModoEventoNombre });
+    }
 }
+
+public record ModoEventoRequest(bool Activar, int DuracionMinutos = 0, string? Motivo = null);
+

@@ -36,6 +36,9 @@ public class AutoRegistroResponse
     public string EstadoActual { get; set; } = "";
     public int MinutosInactividadMaximo { get; set; } = 15;
     public int AccionInactividad { get; set; } = 0;
+    public bool ModoEventoActivo { get; set; } = false;
+    public string? ModoEventoNombre { get; set; }
+    public int ModoEventoMinutosRestantes { get; set; } = 0;
 }
 
 public class IniciarSesionApiRequest

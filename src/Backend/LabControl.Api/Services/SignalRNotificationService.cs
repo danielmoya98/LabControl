@@ -85,6 +85,12 @@ public class SignalRNotificationService : ISignalRNotificationService
             .RecibirActualizacionPoliticaAula(aulaId, aulaNombre, minutosInactividad, accionInactividad);
     }
 
+    public async Task SendComandoModoEventoAulaAsync(int aulaId, bool activar, string motivo, int duracionMinutos, CancellationToken cancellationToken = default)
+    {
+        await _hubContext.Clients.Group($"Aula_{aulaId}")
+            .RecibirComandoModoEvento(aulaId, activar, motivo, duracionMinutos);
+    }
+
     public async Task SendSolicitudHeartbeatGlobalAsync(CancellationToken cancellationToken = default)
     {
         await _hubContext.Clients.Group("TodasLasTerminales")

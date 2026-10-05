@@ -61,6 +61,11 @@ public class SignalRNotificationService : ISignalRNotificationService
         return Task.CompletedTask;
     }
 
+    public Task SendComandoModoEventoAulaAsync(int aulaId, bool activar, string motivo, int duracionMinutos, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
     public Task SendSolicitudHeartbeatGlobalAsync(CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;

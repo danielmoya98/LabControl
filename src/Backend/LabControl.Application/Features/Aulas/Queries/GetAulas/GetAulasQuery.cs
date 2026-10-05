@@ -43,7 +43,10 @@ public class GetAulasQueryHandler : IRequestHandler<GetAulasQuery, Result<List<A
                 a.AccionInactividad,
                 a.BloqueId,
                 a.Bloque != null ? a.Bloque.Nombre : null,
-                a.Piso
+                a.Piso,
+                a.ModoEventoActivo && (!a.ModoEventoFinUtc.HasValue || a.ModoEventoFinUtc.Value > DateTime.UtcNow),
+                a.ModoEventoFinUtc,
+                a.ModoEventoNombre
             ))
             .ToListAsync(cancellationToken);
 

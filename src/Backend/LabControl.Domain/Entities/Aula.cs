@@ -14,6 +14,9 @@ public class Aula : AggregateRoot
     public bool Activo { get; private set; } = true;
     public int MinutosInactividadMaximo { get; private set; } = 15;
     public TipoAccionInactividad AccionInactividad { get; private set; } = TipoAccionInactividad.ApagarEquipo;
+    public bool ModoEventoActivo { get; private set; } = false;
+    public DateTime? ModoEventoFinUtc { get; private set; }
+    public string? ModoEventoNombre { get; private set; }
 
     private readonly List<Computadora> _computadoras = [];
     public IReadOnlyCollection<Computadora> Computadoras => _computadoras.AsReadOnly();
@@ -92,6 +95,22 @@ public class Aula : AggregateRoot
     public void Activar()
     {
         Activo = true;
+        FechaModificacionUtc = DateTime.UtcNow;
+    }
+
+    public void IniciarModoEvento(string? nombreEvento, int duracionMinutos)
+    {
+        ModoEventoActivo = true;
+        ModoEventoNombre = string.IsNullOrWhiteSpace(nombreEvento) ? "Evento / Invitados" : nombreEvento.Trim();
+        ModoEventoFinUtc = duracionMinutos > 0 ? DateTime.UtcNow.AddMinutes(duracionMinutos) : null;
+        FechaModificacionUtc = DateTime.UtcNow;
+    }
+
+    public void FinalizarModoEvento()
+    {
+        ModoEventoActivo = false;
+        ModoEventoFinUtc = null;
+        ModoEventoNombre = null;
         FechaModificacionUtc = DateTime.UtcNow;
     }
 }

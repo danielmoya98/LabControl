@@ -31,6 +31,8 @@ public partial class MainWindow : Window
     private readonly InactivityMonitorService _inactivityService = new();
     private DispatcherTimer? _screenCaptureTimer;
     private bool _cerrandoPorEnergia = false;
+    private bool _modoEventoActivo = false;
+    private DispatcherTimer? _modoEventoTimer;
 
     public MainWindow()
     {
@@ -282,6 +284,15 @@ public partial class MainWindow : Window
                 _config.MinutosInactividadMaximo = respuesta.MinutosInactividadMaximo;
                 _config.AccionInactividad = respuesta.AccionInactividad;
                 LocalStorageService.SaveConfig(_config);
+
+                if (respuesta.ModoEventoActivo)
+                {
+                    ProcesarComandoModoEvento(true, respuesta.ModoEventoNombre ?? "Modo Evento / Invitados", respuesta.ModoEventoMinutosRestantes);
+                }
+                else if (_modoEventoActivo && !respuesta.ModoEventoActivo)
+                {
+                    ProcesarComandoModoEvento(false, "Fin de evento", 0);
+                }
             }
         }
         catch
@@ -488,6 +499,18 @@ public partial class MainWindow : Window
                 Dispatcher.Invoke(() =>
                 {
                     ActualizarPoliticaAulaEnTiempoReal(aulaId, aulaNombre, minutosInactividad, accionInactividad);
+                });
+            });
+
+            // Escuchar orden de activación o desactivación de Modo Evento / Invitados
+            _hubConnection.On<int, bool, string, int>("RecibirComandoModoEvento", (aulaId, activar, motivo, duracionMinutos) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    if (_config != null && _config.AulaId == aulaId)
+                    {
+                        ProcesarComandoModoEvento(activar, motivo, duracionMinutos);
+                    }
                 });
             });
 
@@ -1021,6 +1044,83 @@ public partial class MainWindow : Window
             var accionTexto = esApagar ? "apagado automático del equipo" : "cierre automático de sesión";
             var toast = new NotificationToastWindow($"ℹ️ Política actualizada: Tras {minutosInactividad}m de inactividad se ejecutará {accionTexto}.");
             toast.Show();
+        }
+    }
+
+    private void ProcesarComandoModoEvento(bool activar, string motivo, int duracionMinutos)
+    {
+        _modoEventoTimer?.Stop();
+        _modoEventoTimer = null;
+
+        if (activar)
+        {
+            _modoEventoActivo = true;
+
+            // Finalizar cualquier temporizador o sesión previa
+            _sessionDurationTimer?.Stop();
+            _sesionActualId = null;
+            _sesionOfflineId = null;
+            _emailSesionActual = null;
+            _inactivityService.Stop();
+
+            // Desbloquear PC: desinstalar hook de teclado y ocultar ventana de bloqueo
+            WindowsHookManager.UninstallHook();
+            TaskManagerHelper.StartAntiSabotageWatchdog();
+            CerrarPantallasSecundarias();
+            this.Hide();
+
+            // Mostrar widget flotante en la esquina superior con el nombre del evento
+            _sessionWidget?.CloseAuthorized();
+            var textoEvento = string.IsNullOrWhiteSpace(motivo) ? "🏛️ Modo Invitado / Evento" : $"🏛️ {motivo}";
+            _sessionWidget = new SessionWidgetWindow(
+                textoEvento,
+                _config?.AulaNombre ?? "Laboratorio",
+                _config?.Hostname ?? Environment.MachineName,
+                onCerrarCallback: (m) =>
+                {
+                    // Si el usuario da clic en cerrar sesión en el widget flotante, restaurar bloqueo
+                    ProcesarComandoModoEvento(false, "Bloqueo solicitado desde widget", 0);
+                },
+                onApagarCallback: () =>
+                {
+                    EjecutarComandoEnergia("SHUTDOWN", "Apagado solicitado desde widget en Modo Evento");
+                }
+            );
+            _sessionWidget.Show();
+
+            // Temporizador de duración de evento (si se especificó en minutos)
+            if (duracionMinutos > 0)
+            {
+                _modoEventoTimer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMinutes(duracionMinutos)
+                };
+                _modoEventoTimer.Tick += (s, e) =>
+                {
+                    _modoEventoTimer.Stop();
+                    _modoEventoTimer = null;
+                    ProcesarComandoModoEvento(false, "Tiempo de evento concluido", 0);
+                };
+                _modoEventoTimer.Start();
+            }
+        }
+        else
+        {
+            _modoEventoActivo = false;
+
+            // Cerrar widget flotante
+            _sessionWidget?.CloseAuthorized();
+            _sessionWidget = null;
+
+            // Restaurar bloqueo de pantalla principal y pantallas secundarias
+            BloquearPantallasSecundarias();
+            this.Show();
+            this.WindowState = WindowState.Maximized;
+            this.Activate();
+            this.Focus();
+
+            WindowsHookManager.InstallHook();
+            TaskManagerHelper.StartAntiSabotageWatchdog();
         }
     }
 

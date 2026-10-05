@@ -109,7 +109,10 @@ public class UpdateAulaCommandHandler : IRequestHandler<UpdateAulaCommand, Resul
             aula.AccionInactividad,
             aula.BloqueId,
             bloqueNombre,
-            aula.Piso
+            aula.Piso,
+            aula.ModoEventoActivo,
+            aula.ModoEventoFinUtc,
+            aula.ModoEventoNombre
         ));
     }
 }
