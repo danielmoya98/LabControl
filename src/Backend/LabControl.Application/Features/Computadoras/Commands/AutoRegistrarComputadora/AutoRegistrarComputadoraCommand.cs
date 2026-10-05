@@ -31,7 +31,10 @@ public record AutoRegistroResultadoDto(
     string MacAddress,
     string EstadoActual,
     int MinutosInactividadMaximo = 15,
-    int AccionInactividad = 0
+    int AccionInactividad = 0,
+    bool ModoEventoActivo = false,
+    string? ModoEventoNombre = null,
+    int ModoEventoMinutosRestantes = 0
 );
 
 public class AutoRegistrarComputadoraCommandValidator : AbstractValidator<AutoRegistrarComputadoraCommand>
@@ -128,6 +131,34 @@ public class AutoRegistrarComputadoraCommandHandler : IRequestHandler<AutoRegist
         int minutosInactividad = aula?.MinutosInactividadMaximo ?? 15;
         int accionInactividad = (int)(aula?.AccionInactividad ?? TipoAccionInactividad.ApagarEquipo);
 
+        bool modoEventoActivo = false;
+        string? modoEventoNombre = null;
+        int modoEventoMinutosRestantes = 0;
+
+        if (aula != null && aula.ModoEventoActivo)
+        {
+            if (aula.ModoEventoFinUtc.HasValue)
+            {
+                if (aula.ModoEventoFinUtc.Value > DateTime.UtcNow)
+                {
+                    modoEventoActivo = true;
+                    modoEventoNombre = aula.ModoEventoNombre;
+                    modoEventoMinutosRestantes = (int)Math.Ceiling((aula.ModoEventoFinUtc.Value - DateTime.UtcNow).TotalMinutes);
+                }
+                else
+                {
+                    aula.FinalizarModoEvento();
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+            }
+            else
+            {
+                modoEventoActivo = true;
+                modoEventoNombre = aula.ModoEventoNombre;
+                modoEventoMinutosRestantes = 0;
+            }
+        }
+
         return Result<AutoRegistroResultadoDto>.Success(new AutoRegistroResultadoDto(
             computadora.Id,
             computadora.AulaId,
@@ -136,7 +167,10 @@ public class AutoRegistrarComputadoraCommandHandler : IRequestHandler<AutoRegist
             computadora.MacAddress,
             computadora.EstadoActual.ToString(),
             minutosInactividad,
-            accionInactividad
+            accionInactividad,
+            modoEventoActivo,
+            modoEventoNombre,
+            modoEventoMinutosRestantes
         ));
     }
 }

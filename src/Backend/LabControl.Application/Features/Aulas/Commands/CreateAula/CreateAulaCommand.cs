@@ -29,7 +29,10 @@ public record AulaDto(
     TipoAccionInactividad AccionInactividad = TipoAccionInactividad.ApagarEquipo,
     int? BloqueId = null,
     string? BloqueNombre = null,
-    string? Piso = null
+    string? Piso = null,
+    bool ModoEventoActivo = false,
+    DateTime? ModoEventoFinUtc = null,
+    string? ModoEventoNombre = null
 );
 
 public class CreateAulaCommandValidator : AbstractValidator<CreateAulaCommand>
@@ -89,7 +92,10 @@ public class CreateAulaCommandHandler : IRequestHandler<CreateAulaCommand, Resul
             aula.AccionInactividad,
             aula.BloqueId,
             bloqueNombre,
-            aula.Piso
+            aula.Piso,
+            aula.ModoEventoActivo,
+            aula.ModoEventoFinUtc,
+            aula.ModoEventoNombre
         ));
     }
 }

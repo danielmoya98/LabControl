@@ -264,6 +264,65 @@
     </DialogActions>
 </MudDialog>
 
+<!-- MODAL PARA ACTIVAR MODO EVENTO / INVITADOS -->
+<MudDialog @bind-Visible="MostrarModalEvento" Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <div class="pa-2 rounded-md" style="background: rgba(245, 158, 11, 0.1);">
+                <MudIcon Icon="@Icons.Material.Filled.LockOpen" Color="Color.Warning" Size="Size.Small" />
+            </div>
+            <div>
+                <MudText Typo="Typo.h6" Class="font-weight-bold" Style="font-size: 1.1rem;">
+                    Desbloquear Aula — Modo Evento / Invitados
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Aula: @AulaEventoSeleccionada?.Nombre
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Esta acción desbloqueará temporalmente todas las terminales del aula para que personas externas o invitados puedan usar las computadoras sin requerir inicio de sesión con correo institucional.
+        </MudText>
+        <MudTextField @bind-Value="NombreEvento"
+                      Label="Nombre del Evento / Motivo"
+                      Placeholder="Ej: Taller de Robótica, Charla Externa, Hackathon"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Class="mb-3" />
+
+        <MudSelect @bind-Value="DuracionEventoMinutos"
+                   Label="Duración del Desbloqueo"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Class="mb-2">
+            <MudSelectItem Value="60">1 Hora (60 min)</MudSelectItem>
+            <MudSelectItem Value="120">2 Horas (120 min)</MudSelectItem>
+            <MudSelectItem Value="240">4 Horas (240 min)</MudSelectItem>
+            <MudSelectItem Value="480">Jornada Completa (8 horas)</MudSelectItem>
+            <MudSelectItem Value="0">Indefinido (Hasta restablecer manualmente)</MudSelectItem>
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="() => MostrarModalEvento = false" Class="rounded-lg" Style="text-transform: none;">
+            Cancelar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="EjecutarActivarModoEventoAsync" Disabled="IsSavingEvento" Class="rounded-lg" Style="text-transform: none;">
+            @if (IsSavingEvento)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Desbloqueando...</span>
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Class="mr-1" />
+                <span>Desbloquear Aula Ahora</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 <!-- Tabla de Aulas SaaS Ultra-Refinada con Paginación y Corner Radius Sutil -->
 <MudTable Items="AulasFiltradas" Loading="IsLoading" Hover="true" Striped="false" Elevation="0"
           Class="saas-card rounded-lg overflow-hidden" Dense="false">
@@ -349,19 +408,27 @@
 
         <!-- 5. Estado -->
         <MudTd DataLabel="Estado">
-            <div class="d-flex align-center">
-                @if (context.Activo)
+            <div class="d-flex flex-column gap-1">
+                <div class="d-flex align-center">
+                    @if (context.Activo)
+                    {
+                        <span class="badge-soft badge-soft-success">
+                            <span class="pulse-dot-green"></span>
+                            Activa
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge-soft badge-soft-error">
+                            <span class="dot-red"></span>
+                            Inactiva
+                        </span>
+                    }
+                </div>
+                @if (context.ModoEventoActivo)
                 {
-                    <span class="badge-soft badge-soft-success">
-                        <span class="pulse-dot-green"></span>
-                        Activa
-                    </span>
-                }
-                else
-                {
-                    <span class="badge-soft badge-soft-error">
-                        <span class="dot-red"></span>
-                        Inactiva
+                    <span class="badge-soft badge-soft-warning" style="font-size: 0.7rem; padding: 2px 6px;" title="@(context.ModoEventoFinUtc.HasValue ? $"Hasta {context.ModoEventoFinUtc.Value.ToLocalTime():HH:mm}" : "Indefinido")">
+                        🔓 @(string.IsNullOrWhiteSpace(context.ModoEventoNombre) ? "Evento" : context.ModoEventoNombre)
                     </span>
                 }
             </div>
@@ -370,6 +437,20 @@
         <!-- 6. Acciones -->
         <MudTd DataLabel="Acciones" Style="text-align: right;">
             <div class="d-flex align-center justify-end gap-1">
+                @if (context.ModoEventoActivo)
+                {
+                    <MudTooltip Text="Restablecer Bloqueo Kiosk (Finalizar Evento)">
+                        <MudIconButton Icon="@Icons.Material.Filled.Lock" Color="Color.Warning" Size="Size.Small"
+                                       OnClick="@(() => FinalizarModoEventoAsync(context))" />
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudTooltip Text="Modo Evento / Desbloquear Invitados">
+                        <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Color="Color.Info" Size="Size.Small"
+                                       OnClick="@(() => AbrirModalModoEvento(context))" />
+                    </MudTooltip>
+                }
                 <MudTooltip Text="Editar Aula">
                     <MudIconButton Icon="@Icons.Material.Outlined.Edit" Color="Color.Default" Size="Size.Small"
                                    OnClick="@(() => OpenEditDialog(context))" />
@@ -464,10 +545,17 @@
     private bool IsLoading = true;
     private bool MostrarModal = false;
     private bool MostrarModalSedes = false;
+    private bool MostrarModalEvento = false;
     private bool IsSaving = false;
+    private bool IsSavingEvento = false;
     private bool IsEditMode = false;
     private int AulaIdSeleccionada = 0;
+    private AulaDto? AulaEventoSeleccionada;
     private string? MensajeError;
+
+    // Modo Evento
+    private string NombreEvento = "Taller / Evento Especial";
+    private int DuracionEventoMinutos = 120;
 
     // Filtros exteriores
     private string TextoBusqueda = "";
@@ -673,6 +761,67 @@
         else
         {
             Snackbar.Add($"No se pudo actualizar el segmento de red para '{sede.Nombre}'.", Severity.Error);
+        }
+    }
+
+    private void AbrirModalModoEvento(AulaDto aula)
+    {
+        AulaEventoSeleccionada = aula;
+        NombreEvento = "Taller / Evento Especial";
+        DuracionEventoMinutos = 120;
+        MostrarModalEvento = true;
+    }
+
+    private async Task EjecutarActivarModoEventoAsync()
+    {
+        if (AulaEventoSeleccionada == null) return;
+
+        IsSavingEvento = true;
+        try
+        {
+            var (success, msg) = await ApiClient.CambiarModoEventoAulaAsync(
+                AulaEventoSeleccionada.Id,
+                activar: true,
+                duracionMinutos: DuracionEventoMinutos,
+                motivo: NombreEvento);
+
+            if (success)
+            {
+                Snackbar.Add(msg, Severity.Success);
+                MostrarModalEvento = false;
+                await CargarAulasAsync();
+            }
+            else
+            {
+                Snackbar.Add(msg, Severity.Error);
+            }
+        }
+        finally
+        {
+            IsSavingEvento = false;
+        }
+    }
+
+    private async Task FinalizarModoEventoAsync(AulaDto aula)
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Restablecer Bloqueo de Aula",
+            $"¿Desea finalizar el Modo Evento en el aula '{aula.Nombre}' y restablecer inmediatamente el bloqueo Kiosk de todas sus computadoras?",
+            yesText: "Sí, Restablecer Bloqueo",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            var (success, msg) = await ApiClient.CambiarModoEventoAulaAsync(aula.Id, activar: false, 0, null);
+            if (success)
+            {
+                Snackbar.Add(msg, Severity.Info);
+                await CargarAulasAsync();
+            }
+            else
+            {
+                Snackbar.Add(msg, Severity.Error);
+            }
         }
     }
 }

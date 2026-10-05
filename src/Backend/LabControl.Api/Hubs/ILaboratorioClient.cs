@@ -11,5 +11,6 @@ public interface ILaboratorioClient
     Task RecibirTelemetria(int computadoraId, string hostname, int cpuUso, int ramUso, int discoLibreGb);
     Task RecibirMiniaturaPantalla(int computadoraId, string hostname, string imagenBase64);
     Task RecibirActualizacionPoliticaAula(int aulaId, string aulaNombre, int minutosInactividad, int accionInactividad);
+    Task RecibirComandoModoEvento(int aulaId, bool activar, string motivo, int duracionMinutos);
     Task SolicitarHeartbeat();
 }

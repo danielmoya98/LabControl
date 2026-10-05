@@ -55,6 +55,18 @@ namespace LabControl.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(15);
 
+                    b.Property<bool>("ModoEventoActivo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("ModoEventoFinUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModoEventoNombre")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -227,6 +239,9 @@ namespace LabControl.Infrastructure.Migrations
 
                     b.Property<int?>("DiscoTotalGb")
                         .HasColumnType("integer");
+
+                    b.Property<string>("DiscosDetalleJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("EstadoActual")
                         .IsRequired()

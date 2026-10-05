@@ -32,6 +32,13 @@ public class AulaConfiguration : IEntityTypeConfiguration<Aula>
             .HasDefaultValue(TipoAccionInactividad.ApagarEquipo)
             .IsRequired();
 
+        builder.Property(a => a.ModoEventoActivo)
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(a => a.ModoEventoNombre)
+            .HasMaxLength(100);
+
         builder.HasOne(a => a.Bloque)
             .WithMany(b => b.Aulas)
             .HasForeignKey(a => a.BloqueId)
