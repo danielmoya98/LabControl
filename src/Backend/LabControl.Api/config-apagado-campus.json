@@ -1,0 +1,7 @@
+{
+  "Habilitado": true,
+  "HoraApagado": "21:30",
+  "MinutosAvisoPrevio": 5,
+  "SoloLunesAViernes": true,
+  "UltimaEjecucionFecha": null
+}
