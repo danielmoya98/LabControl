@@ -51,6 +51,14 @@ Copy-Item -Path "$OutputDir\LabControl.Client.Kiosk.exe" -Destination "$OutputDi
 Copy-Item -Path "$PSScriptRoot\Install-Kiosk.ps1" -Destination $OutputDir -Force
 Copy-Item -Path "$PSScriptRoot\Uninstall-Kiosk.ps1" -Destination $OutputDir -Force
 
+# Copiar automáticamente al repositorio de actualizaciones de la API
+$ApiUpdatesDir = "$ProjectRoot\src\Backend\LabControl.Api\Updates"
+if (-not (Test-Path $ApiUpdatesDir)) {
+    New-Item -ItemType Directory -Path $ApiUpdatesDir -Force | Out-Null
+}
+Copy-Item -Path "$OutputDir\LabControl.Client.Kiosk.exe" -Destination "$ApiUpdatesDir\LabControl.Client.Kiosk.exe" -Force
+Write-Host "Binario de actualización colocado en API Updates: $ApiUpdatesDir\LabControl.Client.Kiosk.exe" -ForegroundColor Green
+
 # Crear archivo de instrucciones README en la distribución
 $DistReadme = @"
 ============================================================

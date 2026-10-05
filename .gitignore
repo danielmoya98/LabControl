@@ -17,3 +17,5 @@ Thumbs.db
 
 ## Publish Output
 publish/
+dist/
+src/Backend/LabControl.Api/Updates/*.exe

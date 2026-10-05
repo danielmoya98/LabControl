@@ -32,13 +32,13 @@
         </LinearGradientBrush>
 
         <LinearGradientBrush x:Key="UnivallePrimaryGradient" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#9E0044" Offset="0.0" />
-            <GradientStop Color="#7D0036" Offset="1.0" />
+            <GradientStop Color="#4F46E5" Offset="0.0" />
+            <GradientStop Color="#3730A3" Offset="1.0" />
         </LinearGradientBrush>
 
         <LinearGradientBrush x:Key="UnivallePrimaryGradientHover" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#BE123C" Offset="0.0" />
-            <GradientStop Color="#9E0044" Offset="1.0" />
+            <GradientStop Color="#6366F1" Offset="0.0" />
+            <GradientStop Color="#4F46E5" Offset="1.0" />
         </LinearGradientBrush>
 
         <!-- Estilo de Botón Primario Univalle -->

@@ -33,7 +33,7 @@ public partial class MainWindow : Window
     private bool _cerrandoPorEnergia = false;
     private bool _modoEventoActivo = false;
     private DispatcherTimer? _modoEventoTimer;
-    public const string VersionActual = "1.0.0";
+    public const string VersionActual = "1.0.1";
 
     public MainWindow()
     {

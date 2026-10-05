@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using LabControl.Api.Hubs;
 using LabControl.Api.Middlewares;
@@ -76,6 +77,15 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var dbContext = services.GetRequiredService<ApplicationDbContext>();
+        
+        // Aplicar migraciones pendientes automáticamente al iniciar la API
+        if (dbContext.Database.IsRelational())
+        {
+            Log.Information("Verificando y aplicando migraciones de base de datos pendientes...");
+            await dbContext.Database.MigrateAsync();
+            Log.Information("Migraciones de base de datos aplicadas correctamente.");
+        }
+
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
 

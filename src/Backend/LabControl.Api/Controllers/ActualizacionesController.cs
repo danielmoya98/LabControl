@@ -9,11 +9,16 @@ public class ActualizacionesController : ControllerBase
 {
     private readonly IWebHostEnvironment _environment;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<ActualizacionesController> _logger;
 
-    public ActualizacionesController(IWebHostEnvironment environment, IConfiguration configuration)
+    public ActualizacionesController(
+        IWebHostEnvironment environment, 
+        IConfiguration configuration,
+        ILogger<ActualizacionesController> logger)
     {
         _environment = environment;
         _configuration = configuration;
+        _logger = logger;
     }
 
     private string ObtenerRutaDirectorioUpdates()
@@ -28,26 +33,46 @@ public class ActualizacionesController : ControllerBase
 
     private (string FilePath, string FileName, string Version, DateTime FechaUtc) ObtenerUltimoBinarioDisponible()
     {
-        var dir = ObtenerRutaDirectorioUpdates();
-        var files = Directory.GetFiles(dir, "*.exe")
-            .Select(f => new FileInfo(f))
-            .OrderByDescending(f => f.LastWriteTimeUtc)
-            .ToList();
-
-        if (files.Count > 0)
+        var candidateDirs = new List<string>
         {
-            var f = files[0];
-            return (f.FullName, f.Name, "1.0.1", f.LastWriteTimeUtc);
+            ObtenerRutaDirectorioUpdates(),
+            Path.Combine(AppContext.BaseDirectory, "Updates"),
+            Path.Combine(Directory.GetCurrentDirectory(), "Updates"),
+            Path.Combine(_environment.ContentRootPath, "..", "..", "dist", "LabControl-Kiosk-Client"),
+            Path.Combine(_environment.ContentRootPath, "..", "..", "..", "dist", "LabControl-Kiosk-Client"),
+            Path.Combine(Directory.GetCurrentDirectory(), "dist", "LabControl-Kiosk-Client"),
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "dist", "LabControl-Kiosk-Client"),
+            Path.Combine(_environment.ContentRootPath, "dist", "LabControl-Kiosk-Client"),
+            @"C:\LabControl\LabControl\dist\LabControl-Kiosk-Client",
+            @"C:\LabControl\LabControl\src\Backend\LabControl.Api\Updates",
+            @"C:\LabControl\Updates"
+        };
+
+        foreach (var dir in candidateDirs.Distinct())
+        {
+            try
+            {
+                if (!Directory.Exists(dir)) continue;
+
+                var files = Directory.GetFiles(dir, "*.exe")
+                    .Select(f => new FileInfo(f))
+                    .OrderByDescending(f => f.LastWriteTimeUtc)
+                    .ToList();
+
+                if (files.Count > 0)
+                {
+                    var f = files[0];
+                    _logger.LogInformation("Binario de actualización encontrado en: {Path} ({SizeMb} MB)", f.FullName, Math.Round((double)f.Length / (1024 * 1024), 2));
+                    return (f.FullName, f.Name, "1.0.1", f.LastWriteTimeUtc);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Error al escanear directorio '{Dir}' para actualizaciones: {Msg}", dir, ex.Message);
+            }
         }
 
-        // Fallback: verificar en dist/LabControl-Kiosk-Client si se compiló localmente
-        var distPath = Path.GetFullPath(Path.Combine(_environment.ContentRootPath, "..", "..", "dist", "LabControl-Kiosk-Client", "LabControl.Client.Kiosk.exe"));
-        if (System.IO.File.Exists(distPath))
-        {
-            var f = new FileInfo(distPath);
-            return (distPath, "LabControl.Client.Kiosk.exe", "1.0.0", f.LastWriteTimeUtc);
-        }
-
+        _logger.LogWarning("No se encontró ningún binario .exe para actualización en los directorios evaluados: {Dirs}", string.Join("; ", candidateDirs));
         return (string.Empty, string.Empty, "0.0.0", DateTime.MinValue);
     }
 
